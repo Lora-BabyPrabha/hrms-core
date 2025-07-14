@@ -72,6 +72,9 @@ TEMPLATES = [
 from pathlib import Path
 from decouple import config
 import dj_database_url
+DATABASES = {
+    'default': dj_database_url.config(default=config('DATABASE_URL'))
+}
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
