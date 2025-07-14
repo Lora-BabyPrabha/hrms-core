@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}" >
+
+<div class="container-fluid dashboard-wrapper">
+    <div class="row row-cols-1 row-cols-md-2 g-4 justify-content-center">
+
+      <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-4">
+            <img src="/static/lora-log.png" class="company-logo mb-3">
+            <h5 class="card-title fw-bold mb-2">Company Posts</h5>
+            <small class="txt text-muted text-center">Everything Explore with LoRa IT Innovation.</small>
+          </div>
+        </div>
+      </div>
+  
+      <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow">
+          <div class="card-body p-4">
+            <h5 class="card-title text-center fw-bold mb-3">Clock-in / Clock-out</h5>
+  
+            {% for message in messages %}
+              {% if messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show py-1 small" role="alert">
+                  <strong>{{ message }}</strong>
+                  <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endif %}    
+            {% endfor %}
+  
+            <div class="row g-3 align-items-center">
+              <div class="col-12 col-sm-5">
+                <div class="text-center text-sm-start">
+                  <small class="txt text-muted">Employee ID</small>
+                  <div class="border-bottom border-2 w-50 mx-auto mx-sm-0 my-1"></div>
+                  <div class="txt fw-bold small">{{user.employee_id.title}}</div>
+                </div>
+              </div>
+  
+              <div class="col-12 col-sm-7">
+                <div class="d-flex flex-column gap-3">
+                  <form method="POST" action="{% url 'clock_in' %}" id="clock-in-form" class="mb-2">
+                    {% csrf_token %}
+                    <button type="button" id="clock-in-button" onclick="getLocationAndSubmitClockIn()" 
+                            class="btn btn-primary btn-md w-100 rounded-pill">
+                      <i class="bi bi-box-arrow-in-right me-1"></i>Clock In
+                    </button>
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+                  </form>
+  
+                  <form method="POST" action="{% url 'clock_out' %}" id="clock-out-form">
+                    {% csrf_token %}
+                    <button type="button" id="clock-out-button" onclick="getLocationAndSubmitClockOut()" 
+                            class="btn btn-primary btn-md w-100 rounded-pill">
+                      <i class="bi bi-box-arrow-right me-1"></i>Clock Out
+                    </button>
+                    <input type="hidden" id="clock-out-latitude" name="latitude">
+                    <input type="hidden" id="clock-out-longitude" name="longitude">
+                  </form>
+                </div>
+              </div>
+            </div>
+  
+            <div class="text-center mt-3">
+              <small class="txt text-muted">Emergency leave / Early logout.?</small>
+              <a href="/muster" class="txt tt btn btn-link btn-sm p-0 ms-1 text-decoration-none">
+                Request for leave <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow">
+          <div class="card-body p-4">
+            <h5 class="card-title text-center fw-bold mb-3">
+              <i class="bi bi-gift me-1"></i>Birthdays
+            </h5>
+            {% if employees_with_birthday %}
+              <div class="birthday-list">
+                {% for employee in employees_with_birthday %}
+                  <div class="text-center py-2 ">
+                    <small class="fw-medium d-block ">{{ employee.name.title }}</small>
+                    <small class="text-mutedd">{{ employee.date_of_birth|date:"M j"}}🎁</small>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="txt text-center text-muted small mb-0">No birthdays today.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+  
+
+
+      <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-4">
+            <!-- <h5 class="card-title text-center fw-bold mb-3">
+              <i class="bi bi-award me-1"></i>Best Wishes from LORA
+            </h5>
+            <small class="txt text-muted text-center d-block">Everything Explore with LoRa IT Innovation.</small> -->
+            <img src="https://i.ibb.co/4DyV3Jp/Congratulations-removebg-preview.png" 
+            alt="Congratulations" 
+            class="img-fluid rounded"
+            style="max-width: 52%; height: auto;">
+            <!-- <div class="wave-text-container">
+              <small class="wave-text"  >Best Employee for the Month!</small>
+            </div> -->
+            <div class="hover-textt-container">
+              <span class="hover-textt">Best Employee for the Month!</span>
+            </div>
+            <div class=" text-center" id="best-employee-namee" style="margin-top:-20px;" ></div>
+
+          </div>
+        </div>
+      </div>
+      
+      <style>
+
+.img-fluid{
+margin-top:-70px;
+}
+#best-employee-namee{
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1.5em;
+  background: linear-gradient(45deg, rgb(185, 247, 103), rgb(46, 78, 25), rgb(68, 70, 70), rgb(72, 182, 22));
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent; /* Important */
+  -webkit-mask-image: linear-gradient(black, black);
+  mask-image: linear-gradient(black, black);
+  animation: colorFlow 6s linear infinite;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+@keyframes colorFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+
+
+@keyframes colorFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+
+.hover-textt-container {
+  text-align: center;
+  padding: 20px;
+  margin-top:-70px;
+}
+
+.hover-textt {
+  display: inline-block;
+  font-weight: 500;
+  font-size: 1.5em;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  animation: hover 3s ease-in-out infinite, colorChange 6s linear infinite;
+  background: linear-gradient(45deg,rgb(223, 140, 15), #FF8C00,rgb(9, 117, 106), #7B68EE);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes hover {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.1);
+  }
+}
+
+@keyframes colorChange {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+
+.hover-textt:hover {
+  animation-play-state: paused;
+}
+
+
+
+.fw-medium {
+  background-image: linear-gradient(90deg, #ff8a00,rgb(226, 229, 46),rgb(84, 83, 85),rgb(107, 106, 35));
+  background-size: 300% 100%;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: gradientShift 8s ease infinite, floatAnimation 3s ease-in-out infinite;
+  font-size:20px;
+}
+
+/* Animation for the gradient color shift */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Animation for the floating effect */
+@keyframes floatAnimation {
+  0% {
+    transform: translateY(0px);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    transform: translateY(-7px);
+    text-shadow: 0 10px 10px rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: translateY(0px);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.text-center:hover .fw-medium {
+  animation-play-state: paused;
+  background-position: 100% 50%;
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+/* Optional: animate the date to subtly fade in and out */
+.text-mutedd {
+  opacity: 0.7;
+  animation: fadeEffect 4s ease-in-out infinite;
+  font-size:15px;
+margin-top:20px;
+}
+
+@keyframes fadeEffect {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+      </style>
+      
+     
+
+      <!-- <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-4">
+            <h5 class="card-title text-center fw-bold mb-3">
+              <i class="bi bi-award me-1"></i>Best Wishes from LORA
+            </h5>
+            <small class="txt text-muted text-center d-block">Everything Explore with LoRa IT Innovation.</small>
+            <small class="txt fw-medium text-center">Congratulations to the Best Employee for the Month!</small>
+          </div>
+        </div>
+      </div> -->
+
+    </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+      try {
+          const bestEmployeeData = localStorage.getItem('bestEmployee');
+          console.log("Best Employee Data:", bestEmployeeData); // Debugging
+
+          if (bestEmployeeData) {
+              const bestEmployee = JSON.parse(bestEmployeeData);
+              const bestEmployeeNameElement = document.getElementById("best-employee-namee");
+
+              if (bestEmployeeNameElement) {
+                  bestEmployeeNameElement.textContent = `🎉 ${bestEmployee.employee_name}`;
+              } else {
+                  console.warn("Element #best-employee-namee not found in DOM.");
+              }
+          } else {
+              console.warn("No best employee data found in localStorage.");
+          }
+      } catch (error) {
+          console.error("Error accessing localStorage:", error);
+      }
+  });
+
+</script>
+
+  
+
+{% endblock %}

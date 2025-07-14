@@ -1,0 +1,154 @@
+:root {
+    --primary-color: #95c936;
+    --secondary-color: #333;
+    --background-color: #f8f9fa;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+}
+
+.main-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow: hidden;
+}
+
+.content-wrapper {
+    max-width: 1200px;
+    width: 100%;
+    margin: auto;
+    display: flex;
+    gap: 3rem;
+    align-items: center;
+}
+
+.hero-section {
+    flex: 1;
+    padding: 2rem;
+}
+
+.form-section {
+    flex: 1;
+    
+    padding: 2.5rem;
+    border-radius: 1rem;
+    
+}
+
+#elementID {
+    color: var(--primary-color);
+    font-size: 2.8rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    min-height: 120px;
+}
+
+.typed-cursor {
+    color: var(--primary-color);
+    font-size: 2.8rem;
+}
+
+.form-control {
+    padding: 0.8rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(149, 201, 54, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border: none;
+    padding: 0.8rem 2rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #86b82f;
+    transform: translateY(-2px);
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo-container img {
+    max-width: 250px;
+    height: auto;
+}
+
+footer {
+    background-color: white;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: auto;
+}
+
+@media (max-width: 992px) {
+    .content-wrapper {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .hero-section, .form-section {
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+    }
+
+    #elementID {
+        font-size: 2.2rem;
+        min-height: 90px;
+    }
+
+    .typed-cursor {
+        font-size: 2.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    
+
+    #elementID {
+        font-size: 1.8rem;
+        min-height: 80px;
+        margin-top:-20px;
+    }
+
+    .typed-cursor {
+        font-size: 1.8rem;
+    }
+
+    .form-section {
+position: fixed;
+bottom: 10%;
+left: 50%;
+transform: translateX(-50%);
+width: 90%;
+max-width: 400px;
+z-index: 1000;
+}
+
+.main-container {
+padding-bottom: 50vh;
+}
+}

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block head %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/edit_professional_info.css' %}">
+{% endblock %}
+
+{% block title %}Edit Professional Info{% endblock %}
+
+{% block content %}
+
+<div class="form-container">
+    <h2 class='text-center' style='color: blue;'>Edit Professional Information</h2>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="submit-btn">Save Changes</button>
+    </form>
+    <a href="{% url 'profile' %}" class="cancel-btn">Cancel</a>
+</div>
+
+{% endblock %}
