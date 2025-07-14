@@ -23,7 +23,8 @@ ROLE_TYPE = (
 
 class CustomUser(AbstractUser):
     username = None
-    name = models.CharField(max_length=150)  #!-- Added-->
+    name = models.CharField(max_length=100, default='rakesh')
+ #!-- Added-->
     role = models.CharField(choices=ROLE_TYPE, max_length=100, error_messages={'required': "Role must be provided"})
     employee_id = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254, unique=True)
