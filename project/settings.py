@@ -79,10 +79,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = False
-CSRF_TRUSTED_ORIGINS = [
+'''CSRF_TRUSTED_ORIGINS = [
     "https://aihr4u.com",
     "https://www.aihr4u.com",
-]
+]'''
+
 # Installed Applications
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -136,9 +137,9 @@ TEMPLATES = [
         },
     },
 ]
-'''
+
 # Database
-DATABASES = {
+'''DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hrms_db', 
@@ -151,12 +152,7 @@ DATABASES = {
             'charset': 'utf8mb4',
         },
     }
-}
-'''
-# Database
-DATABASES = {
-    'default': dj_database_url.config(default=config('DATABASE_URL'))
-}
+}'''
 
 # Password Validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -195,7 +191,7 @@ AUTH_USER_MODEL = 'app.CustomUser'
 LOGOUT_REDIRECT_URL = '/'
 
 # Default PK
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+'''DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -209,7 +205,7 @@ DATABASES = {
             'charset': 'utf8mb4',
         },
     }
-}
+}'''
 
 # Password Validation
 AUTH_PASSWORD_VALIDATORS = [
