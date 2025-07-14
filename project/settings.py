@@ -136,7 +136,7 @@ TEMPLATES = [
         },
     },
 ]
-
+'''
 # Database
 DATABASES = {
     'default': {
@@ -151,6 +151,11 @@ DATABASES = {
             'charset': 'utf8mb4',
         },
     }
+}
+'''
+# Database
+DATABASES = {
+    'default': dj_database_url.config(default=config('DATABASE_URL'))
 }
 
 # Password Validation
