@@ -47,6 +47,7 @@ import random
 from django.core.mail import send_mail
 from django.utils import timezone
 import zoneinfo
+from django.http import JsonResponse
 
 CustomUser = get_user_model()
 

@@ -308,7 +308,7 @@ a.sidebar-link {
 }
 
 .approve {
-    color: #95c936;
+    color: #CF8B60;
 }
 
 .approve:hover {
@@ -670,7 +670,7 @@ p {
 }
 
 #profileDropdownMenu .dropdown-item:hover {
-    background-color: #95c936;
+    background-color: #CF8B60;
     transform: translateX(2px);
 }
 
@@ -734,6 +734,6 @@ p {
 
 
 .btn-white:hover {
-    border-color:#95c936;
+    border-color:#CF8B60;
 }
 

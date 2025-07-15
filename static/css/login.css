@@ -122,11 +122,11 @@ footer {
 .form input {
     border: none;
     border-radius: 7px;
-    border: 2px solid #95c936;
+    border: 2px solid #CF8B60;
 }
 
 .form label{
-    color: #95c936;
+    color: #CF8B60;
 }
 
 
@@ -182,7 +182,7 @@ footer {
     border: 2px  rgb(155, 221, 31);
     border-radius: 12px;
     color: white;
-    background-color:  #95c936;
+    background-color:  #CF8B60;
     transition: all 0.3s ease;
     cursor: pointer;
     outline: none;

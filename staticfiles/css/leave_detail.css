@@ -8,7 +8,7 @@
 }
 
 .card-header {
-    background:#95c936;
+    background:#CF8B60;
     padding: 1.5rem;
     border-bottom: 1px solid #e9ecef;
 }
@@ -55,7 +55,7 @@
 
 .back-link {
     display: inline-block;
-    background-color: #95c936;
+    background-color: #CF8B60;
     color:white;
     text-decoration: none;
     padding: 0.5rem 1rem;
