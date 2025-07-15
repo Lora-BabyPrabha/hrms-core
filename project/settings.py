@@ -137,14 +137,11 @@ TEMPLATES = [
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hrms',
-        'USER': 'myhrms',
-        'PASSWORD': 'hrms',
-        'HOST': '192.168.1.94',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 # Database
 '''DATABASES = {
