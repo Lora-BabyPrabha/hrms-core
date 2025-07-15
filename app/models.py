@@ -9,9 +9,16 @@ from .validators import StrongPasswordValidator
 
 #------------------------------------------------------------- Company Check #
 
+from django.utils.text import slugify
+
 class Company_check(models.Model):
     company_name = models.CharField(max_length=500, null=True, blank=True)
     slug = models.SlugField(unique=True, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug and self.company_name:
+            self.slug = slugify(self.company_name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.company_name or "Unnamed Company"
