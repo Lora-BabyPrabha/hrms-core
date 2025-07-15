@@ -18,23 +18,41 @@ admin.site.register(ExpenseClaim)
 admin.site.register(LoanRequest)
 admin.site.register(Holiday)
 admin.site.register(Performance)
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from .models import CustomUser
 
 class CustomUserAdmin(UserAdmin):
+    add_form = UserCreationForm  # ✅ Your custom form
 
-    add_form = UserCreationForm
-    list_display = ('employee_id', 'email', 'password', 'first_name', 'last_name', 'last_login', 'date_joined', 'role', 'is_superuser', 'is_staff', 'is_active')
+    list_display = (
+        'employee_id', 'email', 'first_name', 'last_name',
+        'role', 'company', 'is_superuser', 'is_staff', 'is_active'
+    )
     ordering = ('employee_id',)
 
     fieldsets = (
-        (None, {'fields': ('password', 'first_name', 'last_name', 'last_login', 'date_joined', 'role', 'groups')}),
-        )
+        (None, {
+            'fields': (
+                'employee_id', 'email', 'password', 'first_name', 'last_name',
+                'role', 'company', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'
+            )
+        }),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('employee_id', 'email', 'first_name', 'last_name', 'password', 'last_login', 'date_joined', 'role', 'user_permissions', 'is_superuser', 'is_staff', 'is_active')}
-            ),
-        )
+            'fields': (
+                'employee_id', 'email', 'first_name', 'last_name',
+                'role', 'company', 'password',  # ✅ Just 'password', not password1/password2
+                'is_superuser', 'is_staff', 'is_active', 'groups', 'user_permissions'
+            )
+        }),
+    )
 
     filter_horizontal = ('groups', 'user_permissions')
+
 
 admin.site.register(CustomUser, CustomUserAdmin)

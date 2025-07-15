@@ -228,7 +228,7 @@ def company_check(request):
 
 @login_required(login_url='/')
 def company_detail(request, company_id):
-    company = CompanyCheck.objects.get(id=company_id)
+    company = Company_check.objects.get(id=company_id)
     return render(request, 'company_detail.html', {'company': company})
 
 
@@ -1464,17 +1464,24 @@ def review_loan_notifications(request, loan_id, action):
 @login_required(login_url='/')
 @staff_member_required
 def user_list(request):
-
     employee_id_filter = request.GET.get('employee_id')
+    user = request.user
 
-    user_query = CustomUser.objects.all()
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+        company = employee.company
+    except Employee.DoesNotExist:
+        company = None
+
+    # Filter users by company
+    user_query = CustomUser.objects.filter(company=company) if company else CustomUser.objects.none()
 
     if employee_id_filter:
         user_query = user_query.filter(employee_id=employee_id_filter)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+    notifications = Notification.objects.filter(
+        recipient=user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'user_list.html', {
         'users': user_query,
@@ -1487,71 +1494,86 @@ def user_list(request):
 @login_required(login_url='/')
 @staff_member_required
 def user_create(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
-            form.save()
+            new_user = form.save(commit=False)
+            new_user.company = company  # Assign company
+            new_user.save()
             messages.success(request, "User created successfully!")
             return redirect('user_list')
     else:
         form = UserCreationForm()
-    
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+
+    notifications = Notification.objects.filter(
+        recipient=user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'user_form.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications,
-        }
-    )
+    })
+
 
 
 @login_required(login_url='/')
 @staff_member_required
 def user_edit(request, pk):
-    user = get_object_or_404(CustomUser, pk=pk)
+    current_employee = Employee.objects.get(employee_id=request.user.employee_id)
+    company = current_employee.company
+
+    # Secure access
+    user_to_edit = get_object_or_404(CustomUser, pk=pk, company=company)
+
     if request.method == 'POST':
-        form = UserCreationForm(request.POST, instance=user)
+        form = UserCreationForm(request.POST, instance=user_to_edit)
         if form.is_valid():
             form.save()
             messages.success(request, "User updated successfully!")
             return redirect('user_list')
     else:
-        form = UserCreationForm(instance=user)
+        form = UserCreationForm(instance=user_to_edit)
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'user_form.html', {
         'form': form,
-        'employee': employee,
+        'employee': current_employee,
         'notifications': notifications,
-        }
-    )
+    })
 
 
 @login_required(login_url='/')
 @staff_member_required
 def user_confirm_delete(request, pk):
-    emp = get_object_or_404(CustomUser, pk=pk)
-    
+    current_employee = Employee.objects.get(employee_id=request.user.employee_id)
+    company = current_employee.company
+
+    # Secure delete
+    user_to_delete = get_object_or_404(CustomUser, pk=pk, company=company)
+
     if request.method == 'POST':
-        emp.delete()
+        user_to_delete.delete()
         messages.success(request, 'User deleted successfully!')
         return redirect('user_list')
 
-    user = request.user
-    current_employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
+
     return render(request, 'user_confirm_delete.html', {
-        'emp': emp,
+        'emp': user_to_delete,
         'current_employee': current_employee,
         'notifications': notifications
     })
+
 
 
 #------------------------------------------------------------- Policies #
@@ -2096,84 +2118,73 @@ def employee_list(request):
     user = request.user
     employee_id_filter = request.GET.get('employee_id')
 
-    # Default: Empty queryset
+    try:
+        current_employee = Employee.objects.get(employee_id=user.employee_id)
+        company = current_employee.company
+    except Employee.DoesNotExist:
+        company = None
+
+    # Default to empty list if company not found
     employee_query = Employee.objects.none()
 
-    # Only show employees from the same company if user is a manager
-    if user.role == 'Manager':
-        employee_query = Employee.objects.filter(company=user.company)
-    else:
-        # HR or Admins can see all employees
-        employee_query = Employee.objects.filter(company=user.company)
+    if company:
+        employee_query = Employee.objects.filter(company=company)
 
-    # Apply filter if employee_id is given
-    if employee_id_filter:
-        employee_query = employee_query.filter(employee_id=employee_id_filter)
+        # Apply employee_id filter if provided
+        if employee_id_filter:
+            employee_query = employee_query.filter(employee_id=employee_id_filter)
 
-    # Get current employee profile (if exists)
-    try:
-        employee = Employee.objects.get(employee_id=user.employee_id)
-    except Employee.DoesNotExist:
-        employee = None
-
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(
+        recipient=user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'employee_list.html', {
         'employee_query': employee_query,
-        'employee': employee,
+        'employee': current_employee if company else None,
         'notifications': notifications,
         'employee_id_filter': employee_id_filter,
     })
 
 
-# @login_required(login_url='/')
-# @staff_member_required
-# def employee_create(request):
-#     if request.method == 'POST':
-#         form = EmployeeProfileForm(request.POST, request.FILES)
-#         if form.is_valid():
-#             form.save()
-#             messages.success(request, 'Employee added successfully!')
-#             return redirect('employee_list')
-#     else:
-#         form = EmployeeProfileForm()
-#     user = request.user
-#     employee = Employee.objects.get(employee_id=user.employee_id)
-#     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-#     return render(request, 'employee_create.html', {'form': form,'employee': employee,'notifications': notifications})
+
 
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES)
-        # Validate if the form is valid
         if form.is_valid():
-            # Check if a CustomUser exists with the provided employee_id
             employee_id = form.cleaned_data['employee_id']
             try:
-                # Check if the CustomUser exists with the given employee_id
                 user = CustomUser.objects.get(employee_id=employee_id)
-                # If found, create an Employee for this CustomUser
                 employee = form.save(commit=False)
-                employee.user = user  # Link the user to the employee
-                employee.save()  # Save the employee
+                employee.user = user
+                employee.save()
                 messages.success(request, 'Employee added successfully!')
                 return redirect('employee_list')
             except CustomUser.DoesNotExist:
-                # If no user exists with that employee_id, show an error message
                 messages.error(request, 'No user found with the provided employee ID.')
     else:
         form = EmployeeProfileForm()
 
-    return render(request, 'employee_create.html', {'form': form})
+    current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+
+    return render(request, 'employee_create.html', {
+        'form': form,
+        'employee': current_employee,
+        'notifications': notifications
+    })
 
 
 
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
-    employee = get_object_or_404(Employee, pk=pk)
+    user = request.user
+    current_employee = Employee.objects.get(employee_id=user.employee_id)
+    employee = get_object_or_404(Employee, pk=pk, company=current_employee.company)
+
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES, instance=employee)
         if form.is_valid():
@@ -2183,31 +2194,38 @@ def employee_edit(request, pk):
     else:
         form = EmployeeProfileForm(instance=employee)
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'employee_create.html', {'form': form, 'employee': employee,'notifications': notifications})
+
+    return render(request, 'employee_create.html', {
+        'form': form,
+        'employee': current_employee,
+        'notifications': notifications
+    })
+
 
 
 @login_required(login_url='/')
 @staff_member_required
 def employee_delete(request, pk):
-    employee = get_object_or_404(Employee, pk=pk)
-    
+    user = request.user
+    current_employee = Employee.objects.get(employee_id=user.employee_id)
+
+    # Only allow deleting if same company
+    employee = get_object_or_404(Employee, pk=pk, company=current_employee.company)
+
     if request.method == 'POST':
         employee.delete()
         messages.success(request, 'Employee deleted successfully!')
         return redirect('employee_list')
 
-    user = request.user
-    current_employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    
+
     return render(request, 'employee_delete.html', {
         'employee': employee,
         'current_employee': current_employee,
         'notifications': notifications
     })
+
 
 
 
@@ -2285,15 +2303,18 @@ def holiday_delete(request, pk):
 def leave_list(request):
     employee_id_filter = request.GET.get('employee_id')
 
-    leave_query = Leave.objects.all()
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
+    # Filter leaves only for this company
+    leave_query = Leave.objects.filter(company=employee.company)
 
     if employee_id_filter:
         leave_query = leave_query.filter(employee__employee_id=employee_id_filter)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'leave_list.html', {
         'leaves': leave_query,
@@ -2303,51 +2324,74 @@ def leave_list(request):
     })
 
 
+
 @login_required(login_url='/')
 @staff_member_required
 def leave_create(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
     if request.method == 'POST':
         form = LeaveForm(request.POST)
         if form.is_valid():
             employee_id = form.cleaned_data['employee_id']
-            
             try:
-                employee = CustomUser.objects.get(employee_id=employee_id)
-                leave_balance, created = Leave.objects.get_or_create(employee=employee)
+                custom_user = CustomUser.objects.get(employee_id=employee_id)
+                leave_balance, created = Leave.objects.get_or_create(employee=custom_user)
+
                 leave_balance.advance_privilege_leave = form.cleaned_data.get('advance_privilege_leave', leave_balance.advance_privilege_leave)
                 leave_balance.sick_leave = form.cleaned_data.get('sick_leave', leave_balance.sick_leave)
                 leave_balance.casual_leave = form.cleaned_data.get('casual_leave', leave_balance.casual_leave)
+                
+                # Assign the company from the logged-in user's company
+                leave_balance.company = employee.company
                 leave_balance.save()
-                return redirect('leave_list')
 
+                return redirect('leave_list')
             except CustomUser.DoesNotExist:
                 return JsonResponse({'status': 'error', 'message': 'Employee with the given ID does not exist.'}, status=400)
         else:
             return JsonResponse({'status': 'error', 'message': 'Invalid form submission.'}, status=400)
     else:
         form = LeaveForm()
-    
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    
-    return render(request, 'leave_create.html', {'form': form, 'employee': employee, 'notifications': notifications})
 
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
+
+    return render(request, 'leave_create.html', {
+        'form': form,
+        'employee': employee,
+        'notifications': notifications
+    })
 
 @login_required(login_url='/')
 @staff_member_required
 def leave_detail(request, pk):
-    leave = get_object_or_404(Leave, pk=pk)
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'leave_detail.html', {'leave': leave,'employee': employee,'notifications': notifications})
 
+    # Ensure only leaves for that company are fetched
+    leave = get_object_or_404(Leave, pk=pk, company=employee.company)
+
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
+
+    return render(request, 'leave_detail.html', {
+        'leave': leave,
+        'employee': employee,
+        'notifications': notifications
+    })
 
 @login_required(login_url='/')
 @staff_member_required
 def leave_edit(request, pk):
-    leave = get_object_or_404(Leave, pk=pk)
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
+    leave = get_object_or_404(Leave, pk=pk, company=employee.company)
+
     if request.method == 'POST':
         form = LeaveForm(request.POST, instance=leave)
         if form.is_valid():
@@ -2356,21 +2400,34 @@ def leave_edit(request, pk):
     else:
         form = LeaveForm(instance=leave)
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'leave_edit.html', {'form': form,'employee': employee,'notifications': notifications})
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
 
+    return render(request, 'leave_edit.html', {
+        'form': form,
+        'employee': employee,
+        'notifications': notifications
+    })
 
 @login_required(login_url='/')
 @staff_member_required
 def leave_delete(request, pk):
-    leave = get_object_or_404(Leave, pk=pk)
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
+    leave = get_object_or_404(Leave, pk=pk, company=employee.company)
+
     if request.method == "POST":
         leave.delete()
         return redirect('leave_list')
-    
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'leave_delete.html', {'leave': leave,'employee': employee,'notifications': notifications})
+
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
+
+    return render(request, 'leave_delete.html', {
+        'leave': leave,
+        'employee': employee,
+        'notifications': notifications
+    })
