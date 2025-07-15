@@ -205,9 +205,32 @@ def contact_us(request):
 
 #------------------------------------------------------------- Company records #
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Company_check
+
 @login_required(login_url='/')
 def company_check(request):
-    return render(request,'company_check.html')
+    if request.method == 'POST':
+        company_name = request.POST.get('company_name', '').strip()
+        
+        if not company_name:
+            return render(request, 'company_check.html', {'message': 'Company name is required.'})
+        
+        company, created = Company_check.objects.get_or_create(company_name=company_name)
+        
+        return redirect('company_detail', company_id=company.id)
+
+    return render(request, 'company_check.html')
+
+@login_required(login_url='/')
+def company_detail(request, company_id):
+    company = CompanyCheck.objects.get(id=company_id)
+    return render(request, 'company_detail.html', {'company': company})
+
 
 
 #------------------------------------------------------------- Company records #
@@ -2070,15 +2093,31 @@ def performance_list(request):
 @login_required(login_url='/')
 @staff_member_required
 def employee_list(request):
+    user = request.user
     employee_id_filter = request.GET.get('employee_id')
-    employee_query = Employee.objects.all()
 
+    # Default: Empty queryset
+    employee_query = Employee.objects.none()
+
+    # Only show employees from the same company if user is a manager
+    if user.role == 'Manager':
+        employee_query = Employee.objects.filter(company=user.company)
+    else:
+        # HR or Admins can see all employees
+        employee_query = Employee.objects.filter(company=user.company)
+
+    # Apply filter if employee_id is given
     if employee_id_filter:
         employee_query = employee_query.filter(employee_id=employee_id_filter)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+    # Get current employee profile (if exists)
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+    except Employee.DoesNotExist:
+        employee = None
+
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+
     return render(request, 'employee_list.html', {
         'employee_query': employee_query,
         'employee': employee,
