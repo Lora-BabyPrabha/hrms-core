@@ -36,14 +36,14 @@ ROLE_TYPE = (
 
 class CustomUser(AbstractUser):
     username = None
-    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100, default='rakesh')
     role = models.CharField(choices=ROLE_TYPE, max_length=100, error_messages={'required': "Role must be provided"})
     employee_id = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254, unique=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
+    
     USERNAME_FIELD = "employee_id"
     REQUIRED_FIELDS = ['email']
 
@@ -66,7 +66,6 @@ class Notification(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return f"Notification for {self.recipient.employee_id}: {self.message[:5]}"
 
@@ -78,7 +77,7 @@ class Holiday(models.Model):
     day = models.CharField(max_length=500, null=True, blank=True)
     date = models.DateField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
-
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='holidays')
     def __str__(self):
         return self.name
 
@@ -214,6 +213,7 @@ class Leave(models.Model):
     advance_privilege_leave = models.IntegerField(default=6)
     sick_leave = models.IntegerField(default=6)
     casual_leave = models.IntegerField(default=6)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='leave')
 
     def __str__(self):
         return f"{self.employee.employee_id} Leave Balance"
