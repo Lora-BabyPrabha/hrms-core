@@ -68,13 +68,7 @@ TEMPLATES = [
     },
 ]
 
-# Databaseimport os
-from pathlib import Path
-from decouple import config
-import dj_database_url
-DATABASES = {
-    'default': dj_database_url.config(default=config('DATABASE_URL'))
-}
+
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -140,6 +134,18 @@ TEMPLATES = [
         },
     },
 ]
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'hrms',
+        'USER': 'myhrms',
+        'PASSWORD': 'hrms',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
 # Database
 '''DATABASES = {
     'default': {
