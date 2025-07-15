@@ -141,7 +141,7 @@ DATABASES = {
         'NAME': 'hrms',
         'USER': 'myhrms',
         'PASSWORD': 'hrms',
-        'HOST': 'localhost',
+        'HOST': '192.168.1.94',
         'PORT': '5432',
     }
 }
