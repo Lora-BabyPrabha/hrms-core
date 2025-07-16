@@ -155,7 +155,7 @@ body {
     }
     
     .calendar-header  button {
-    background: #95c936;
+    background: #CF8B60;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -260,7 +260,7 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-    background-color: #95c936;
+    background-color: #CF8B60;
     }
     
     .modal-header h2 {

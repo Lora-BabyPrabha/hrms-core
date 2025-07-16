@@ -23,7 +23,7 @@
                 <div class="h-100">
 
                     <div class="sidebar-logo text-center">
-                        <a href="/dashboard"><img src="/static/lora-log.png" height="auto" width="150"></a>
+                        <a href="/dashboard"><img src="{% static 'images/lora-log.png' %}" height="auto" width="150"></a>
                     </div>
 
                     <ul class="sidebar-nav">
@@ -34,7 +34,7 @@
                         {% block sidebar %}
 
                         <li class="sidebar-item">
-                            <a href="/dashboard" class="sidebar-link active" style='color: black;'>
+                            <a href="/HR4U" class="sidebar-link active" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-columns-gap mx-3" viewBox="0 0 16 16">
                                     <path d="M6 1v3H1V1zM1 0a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1zm14 12v3h-5v-3zm-5-1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1zM6 8v7H1V8zM1 7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zm14-6v7h-5V1zm-5-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1z"/>
                                 </svg>
@@ -862,44 +862,65 @@
         </script>
 
         <!----  Profile Section ---->
-        <script>
-            // Open the modal when clicking the "Plus Icon" for Profile Picture
-            document.querySelector('.edit-profile-icon').addEventListener('click', function () {
-                document.getElementById('uploadModal').style.display = 'block';
+      <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // ✅ Show "personal-info" section on initial load
+        showSection('personal-info');
+
+        // ✅ Open profile modal
+        const profileIcon = document.querySelector('.edit-profile-icon');
+        if (profileIcon) {
+            profileIcon.addEventListener('click', function () {
+                const modal = document.getElementById('uploadModal');
+                if (modal) modal.style.display = 'block';
             });
-    
-            // Open the modal when clicking the "Plus Icon" for Cover Picture
-            document.querySelector('.edit-cover-icon').addEventListener('click', function () {
-                document.getElementById('coverUploadModal').style.display = 'block';
+        }
+
+        // ✅ Open cover modal
+        const coverIcon = document.querySelector('.edit-cover-icon');
+        if (coverIcon) {
+            coverIcon.addEventListener('click', function () {
+                const modal = document.getElementById('coverUploadModal');
+                if (modal) modal.style.display = 'block';
             });
-    
-            // Close the modal when clicking the close (cross) button
-            document.getElementById('closeModal').addEventListener('click', function () {
-                document.getElementById('uploadModal').style.display = 'none';
+        }
+
+        // ✅ Close profile modal
+        const closeProfileModal = document.getElementById('closeModal');
+        if (closeProfileModal) {
+            closeProfileModal.addEventListener('click', function () {
+                const modal = document.getElementById('uploadModal');
+                if (modal) modal.style.display = 'none';
             });
-    
-            document.getElementById('closeCoverModal').addEventListener('click', function () {
-                document.getElementById('coverUploadModal').style.display = 'none';
+        }
+
+        // ✅ Close cover modal
+        const closeCoverModal = document.getElementById('closeCoverModal');
+        if (closeCoverModal) {
+            closeCoverModal.addEventListener('click', function () {
+                const modal = document.getElementById('coverUploadModal');
+                if (modal) modal.style.display = 'none';
             });
-    
-            // Handle the profile picture form submission using AJAX
-            document.getElementById('profilePictureForm').addEventListener('submit', function (e) {
+        }
+
+        // ✅ Handle profile picture AJAX upload
+        const profileForm = document.getElementById('profilePictureForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-
-                var formData = new FormData(this);
-
+                const formData = new FormData(this);
                 fetch("{% url 'edit_profile_picture' %}", {
                     method: "POST",
                     headers: {
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
-                    body: formData,
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        var newPictureUrl = data.new_picture_url;
-                        document.querySelector('.profile-picture').src = newPictureUrl;
+                        document.querySelector('.profile-picture').src = data.new_picture_url;
                         document.getElementById('uploadModal').style.display = 'none';
                     } else {
                         alert("Error: The profile picture could not be uploaded.");
@@ -909,23 +930,25 @@
                     console.error("Error uploading profile picture:", error);
                 });
             });
+        }
 
-    
-            // Handle the cover picture form submission using AJAX
-            document.getElementById('coverPictureForm').addEventListener('submit', function (e) {
+        // ✅ Handle cover picture AJAX upload
+        const coverForm = document.getElementById('coverPictureForm');
+        if (coverForm) {
+            coverForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-    
-                var formData = new FormData(this);
-    
+                const formData = new FormData(this);
                 fetch("{% url 'edit_cover_picture' %}", {
                     method: "POST",
-                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        var newCoverPictureUrl = data.new_cover_picture_url;
-                        document.querySelector('.cover-photo img').src = newCoverPictureUrl;
+                        document.querySelector('.cover-photo img').src = data.new_cover_picture_url;
                         document.getElementById('coverUploadModal').style.display = 'none';
                     } else {
                         alert("Error: The cover picture could not be uploaded.");
@@ -935,24 +958,22 @@
                     console.error("Error uploading cover picture:", error);
                 });
             });
-    
-            // Function to toggle sections
-            function showSection(sectionId) {
-                var sections = document.querySelectorAll('.info-section');
-                sections.forEach(function(section) {
-                    section.style.display = 'none';
-                });
-    
-                var sectionToShow = document.getElementById(sectionId);
-                if (sectionToShow) {
-                    sectionToShow.style.display = 'block';
-                }
+        }
+
+        // ✅ Function to show only selected section
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.info-section');
+            sections.forEach(section => section.style.display = 'none');
+
+            const sectionToShow = document.getElementById(sectionId);
+            if (sectionToShow) {
+                sectionToShow.style.display = 'block';
             }
-    
-            document.addEventListener('DOMContentLoaded', function() {
-                showSection('personal-info');
-            });
-        </script>
+        }
+
+    });
+</script>
+
 
         <!----  Chat Bot ---->
         <script>

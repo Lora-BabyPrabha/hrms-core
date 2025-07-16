@@ -26,7 +26,6 @@ from django.urls import reverse
 from django.http import HttpResponse
 from weasyprint import HTML
 from .models import Employee, Salary
-from django.conf import settings
 from django.utils.timezone import now
 from datetime import timedelta
 from rest_framework.decorators import api_view
@@ -47,6 +46,8 @@ import random
 from django.core.mail import send_mail
 from django.utils import timezone
 import zoneinfo
+from django.http import JsonResponse
+from .models import EmployeeProfile, Payroll, Benefit, Training, HelpTicket
 
 CustomUser = get_user_model()
 
@@ -2467,3 +2468,78 @@ def leave_delete(request, pk):
         'employee': employee,
         'notifications': notifications
     })
+
+
+
+
+
+# ----------------------------------------------Main views  HR4U content
+
+@login_required
+def hr4u_dashboard(request):
+    """Main HR4U dashboard view"""
+    return render(request, 'HR4U.html')
+
+
+@login_required
+def employee_self_service(request):
+    employee = get_object_or_404(EmployeeProfile, user=request.user)
+    context = {'employee': employee}
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'hr/partials/employee_self_service.html', context)
+    return render(request, 'hr/employee_self_service.html', context)
+
+@login_required
+def benefits_compensation(request):
+    employee = get_object_or_404(EmployeeProfile, user=request.user)
+    payrolls = Payroll.objects.filter(employee=employee).order_by('-period_end')
+    benefits = Benefit.objects.filter(employee=employee)
+    
+    context = {
+        'payrolls': payrolls,
+        'benefits': benefits
+    }
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'hr/partials/benefits_compensation.html', context)
+    return render(request, 'hr/benefits_compensation.html', context)
+
+@login_required
+def career_development(request):
+    employee = get_object_or_404(EmployeeProfile, user=request.user)
+    trainings = Training.objects.filter(employee=employee).order_by('-date_completed')
+    
+    context = {
+        'trainings': trainings,
+        'skills': employee.skills.all()
+    }
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'hr/partials/career_development.html', context)
+    return render(request, 'hr/career_development.html', context)
+
+@login_required
+def help_desk(request):
+    tickets = HelpTicket.objects.filter(employee__user=request.user).order_by('-created_at')
+    
+    if request.method == 'POST':
+        subject = request.POST.get('subject')
+        description = request.POST.get('description')
+        category = request.POST.get('category')
+        
+        employee = get_object_or_404(EmployeeProfile, user=request.user)
+        ticket = HelpTicket.objects.create(
+            employee=employee,
+            subject=subject,
+            description=description,
+            category=category
+        )
+        tickets = list(tickets)  # Convert to list to add new ticket
+        tickets.insert(0, ticket)
+    
+    context = {'tickets': tickets}
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'hr/partials/help_desk.html', context)
+    return render(request, 'hr/help_desk.html', context)

@@ -1,5 +1,5 @@
  :root {
-            --primary-color: #95c936;
+            --primary-color: #CF8B60;
             --secondary-color:rgb(71, 175, 30);
             --background-color: #f3f4f6;
             --text-color: #1f2937;
@@ -25,12 +25,12 @@
         .btn-primary {
             background-color: var(--primary-color);
             color: white;
-            border-color:#95c936;
+            border-color:#CF8B60;
         }
 
         .btn-primary:hover {
             background-color: var(--secondary-color);
-            border-color:#95c936;
+            border-color:#CF8B60;
         }
 
         .employee-list {

@@ -163,4 +163,12 @@ urlpatterns = [
     path('leave_edit/<int:pk>', views.leave_edit, name='leave_edit'),
     path('leave_delete/<int:pk>', views.leave_delete, name='leave_delete'),
 
+
+    #  HR4U #
+    path('HR4U/', views.hr4u_dashboard, name='hr_dashboard'),
+    path('employee_self_service', views.employee_self_service, name='employee_self_service'),
+    path('benefits_compensation', views.benefits_compensation, name='benefits_compensation'),
+    path('career_development', views.career_development, name='career_development'),
+    path('help_desk', views.help_desk, name='help_desk'),
+
 ]
