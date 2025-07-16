@@ -56,42 +56,54 @@ CustomUser = get_user_model()
 
 #------------------------------------------------------------- Index #
 
+
 def indexview(request):
-
     if request.user.is_authenticated:
-        return render(request, 'dashboard.html')
-    
-    else:
+        return redirect('dashboard')  # If already logged in, redirect to dashboard
 
-        if request.method == "POST":
-            company_name = request.POST.get('company_name', '').strip()
-            
-            if company_name:
-                company = Company_check.objects.filter(company_name__iexact=company_name).first()
+    if request.method == "POST":
+        company_name = request.POST.get('company_name', '').strip()
 
-                if company:
-                    return redirect('login')
-                
-                else:
-                    return render(request, 'index.html', {'message': 'No records found for the company.'})
+        if company_name:
+            # Case-insensitive exact match
+            company = Company_check.objects.filter(company_name__iexact=company_name).first()
+
+            if company:
+                # Redirect to login with company ID as a GET parameter
+                return redirect(f'/login/?company_id={company.id}')
+            else:
+                return render(request, 'index.html', {'message': 'No records found for the company.'})
 
     return render(request, 'index.html')
 
 
 #------------------------------------------------------------- Login #
 
+
 def loginview(request):
     if request.user.is_authenticated:
-        return render(request, 'dashboard.html')
+        return redirect('dashboard')
+
+    company_id = request.GET.get('company_id') or request.POST.get('company_id')
 
     if request.method == 'POST':
-        employee_id = request.POST['username']  
-        password = request.POST['password']
+        employee_id = request.POST.get('username')  
+        password = request.POST.get('password')
 
         try:
             user_obj = User.objects.get(employee_id=employee_id)
         except User.DoesNotExist:
-            return render(request, 'login.html', {'message': 'User not found'})
+            return render(request, 'login.html', {
+                'message': 'User not found',
+                'company_id': company_id
+            })
+
+        # Check if user belongs to this company
+        if str(user_obj.company_id) != str(company_id):
+            return render(request, 'login.html', {
+                'message': 'You are not authorized for this company',
+                'company_id': company_id
+            })
 
         user = authenticate(request, employee_id=employee_id, password=password)
 
@@ -99,9 +111,12 @@ def loginview(request):
             login(request, user)
             return redirect("dashboard")
         else:
-            return render(request, 'login.html', {'message': 'Incorrect Password'})
+            return render(request, 'login.html', {
+                'message': 'Incorrect Password',
+                'company_id': company_id
+            })
 
-    return render(request, "login.html")
+    return render(request, "login.html", {'company_id': company_id})
 
 
 #------------------------------------------------------------- Search bar #

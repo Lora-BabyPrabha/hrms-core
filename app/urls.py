@@ -6,6 +6,7 @@ urlpatterns = [
 
     #  Welcome url #
     path('',views.indexview,name='index'),
+    path('login/',views.loginview,name='login'),
     path('company_check/', views.company_check, name='company_check'),
     path('company/<int:company_id>/', views.company_detail, name='company_detail'),
     path('base', views.base, name='base'),
