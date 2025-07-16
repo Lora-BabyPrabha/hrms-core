@@ -111,7 +111,7 @@
 <!-- Profile Picture Upload Modal -->
 <div class="modal" id="uploadModal">
     <div class="modal-content">
-        <span class="close" onclick="closeModal('uploadModal')">&times;</span>
+        <span id="closeModal" class="close">&times;</span>
         <h2>Upload Profile Picture</h2>
         <form action="{% url 'edit_profile_picture' %}" method="POST" enctype="multipart/form-data">
             {% csrf_token %}
@@ -124,7 +124,7 @@
 <!-- Cover Picture Upload Modal -->
 <div class="modal" id="coverUploadModal">
     <div class="modal-content">
-        <span class="close" onclick="closeModal('coverUploadModal')">&times;</span>
+        <span id="closeCoverModal" class="close">&times;</span>
         <h2>Upload Cover Picture</h2>
         <form action="{% url 'edit_cover_picture' %}" method="POST" enctype="multipart/form-data">
             {% csrf_token %}
