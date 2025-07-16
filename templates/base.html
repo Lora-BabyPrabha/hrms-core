@@ -367,7 +367,7 @@
                                 <li id="profileDropdownItem" class="nav-item dropdown">
                                     <a href="#" data-bs-toggle="dropdown" id="profileDropdownButton" style='color: black;'>
                                         <img width="28" height="28" 
-                                             src="{% if employee.profile_picture %}{{ employee.profile_picture.url }}{% else %}{% static 'person-circle.svg' %}{% endif %}" 
+                                             src="{% if employee.media and employee.media.profile_picture %}{{ employee.media.profile_picture.url }}{% else %}{% static 'person-circle.svg' %}{% endif %}" 
                                              alt="Profile Picture" 
                                              id="profileImage" 
                                              class="profile-icon" 

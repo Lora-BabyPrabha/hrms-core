@@ -56,42 +56,54 @@ CustomUser = get_user_model()
 
 #------------------------------------------------------------- Index #
 
+
 def indexview(request):
-
     if request.user.is_authenticated:
-        return render(request, 'dashboard.html')
-    
-    else:
+        return redirect('dashboard')  # If already logged in, redirect to dashboard
 
-        if request.method == "POST":
-            company_name = request.POST.get('company_name', '').strip()
-            
-            if company_name:
-                company = Company_check.objects.filter(company_name__iexact=company_name).first()
+    if request.method == "POST":
+        company_name = request.POST.get('company_name', '').strip()
 
-                if company:
-                    return redirect('login')
-                
-                else:
-                    return render(request, 'index.html', {'message': 'No records found for the company.'})
+        if company_name:
+            # Case-insensitive exact match
+            company = Company_check.objects.filter(company_name__iexact=company_name).first()
+
+            if company:
+                # Redirect to login with company ID as a GET parameter
+                return redirect(f'/login/?company_id={company.id}')
+            else:
+                return render(request, 'index.html', {'message': 'No records found for the company.'})
 
     return render(request, 'index.html')
 
 
 #------------------------------------------------------------- Login #
 
+
 def loginview(request):
     if request.user.is_authenticated:
-        return render(request, 'dashboard.html')
+        return redirect('dashboard')
+
+    company_id = request.GET.get('company_id') or request.POST.get('company_id')
 
     if request.method == 'POST':
-        employee_id = request.POST['username']  
-        password = request.POST['password']
+        employee_id = request.POST.get('username')  
+        password = request.POST.get('password')
 
         try:
             user_obj = User.objects.get(employee_id=employee_id)
         except User.DoesNotExist:
-            return render(request, 'login.html', {'message': 'User not found'})
+            return render(request, 'login.html', {
+                'message': 'User not found',
+                'company_id': company_id
+            })
+
+        # Check if user belongs to this company
+        if str(user_obj.company_id) != str(company_id):
+            return render(request, 'login.html', {
+                'message': 'You are not authorized for this company',
+                'company_id': company_id
+            })
 
         user = authenticate(request, employee_id=employee_id, password=password)
 
@@ -99,9 +111,12 @@ def loginview(request):
             login(request, user)
             return redirect("dashboard")
         else:
-            return render(request, 'login.html', {'message': 'Incorrect Password'})
+            return render(request, 'login.html', {
+                'message': 'Incorrect Password',
+                'company_id': company_id
+            })
 
-    return render(request, "login.html")
+    return render(request, "login.html", {'company_id': company_id})
 
 
 #------------------------------------------------------------- Search bar #
@@ -314,69 +329,49 @@ def dashboard(request):
     
 
 #------------------------------------------------------------- Employee requests - Notifications  #
-
 @login_required(login_url='/')
 @staff_member_required
 def employee_requests(request):
     user = request.user
-    muster_requests = Muster.objects.all()
-    leave_requests = LeaveRequest.objects.all()
-    expense_claims = ExpenseClaim.objects.all()
-    loan_requests = LoanRequest.objects.all()
-    time_entries = TimeEntry.objects.all()
-    employees = CustomUser.objects.all()
+    company = user.company  # Get logged-in user's company
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
+    # Initial filtering by company
+    muster_requests = Muster.objects.filter(user__company=company)
+    leave_requests = LeaveRequest.objects.filter(employee__company=company)
+    expense_claims = ExpenseClaim.objects.filter(employee__company=company)
+    loan_requests = LoanRequest.objects.filter(employee__company=company)
+    time_entries = TimeEntry.objects.filter(user__company=company)
+    employees = CustomUser.objects.filter(company=company)
 
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
         selected_request_type = request.POST.get('request_type')
 
+        employee = None
         if employee_id_input:
             try:
-                employee = CustomUser.objects.get(employee_id=employee_id_input)
+                employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
             except CustomUser.DoesNotExist:
                 employee = None
-        else:
-            employee = None
- 
-        if selected_request_type == 'muster' or selected_request_type == '':
-            if employee:
-                muster_requests = Muster.objects.filter(user_id=employee.id)
-                time_entries = TimeEntry.objects.filter(user_id=employee.id)
-            else:
-                muster_requests = Muster.objects.all()
-                time_entries = TimeEntry.objects.all()
- 
-        if selected_request_type == 'leave' or selected_request_type == '':
-            if employee:
-                leave_requests = LeaveRequest.objects.filter(employee_id=employee.id)
-            else:
-                leave_requests = LeaveRequest.objects.all()
- 
-        if selected_request_type == 'expense' or selected_request_type == '':
-            if employee:
-                expense_claims = ExpenseClaim.objects.filter(employee_id=employee.id)
-            else:
-                expense_claims = ExpenseClaim.objects.all()
- 
-        if selected_request_type == 'loan' or selected_request_type == '':
-            if employee:
-                loan_requests = LoanRequest.objects.filter(employee_id=employee.id)
-            else:
-                loan_requests = LoanRequest.objects.all()
- 
-        if selected_request_type == 'time_entry' or selected_request_type == '':
-            if employee:
-                time_entries = TimeEntry.objects.filter(user_id=employee.id)
-            else:
-                time_entries = TimeEntry.objects.all()
- 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    employee = Employee.objects.get(employee_id=user.employee_id)
 
-    if user.role == 'HR' or user.role == 'Manager' or user.is_superuser:
-        user = request.user
-        notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-        
+        if selected_request_type in ['muster', ''] and employee:
+            muster_requests = Muster.objects.filter(user=employee)
+            time_entries = TimeEntry.objects.filter(user=employee)
+
+        if selected_request_type in ['leave', ''] and employee:
+            leave_requests = LeaveRequest.objects.filter(employee=employee)
+
+        if selected_request_type in ['expense', ''] and employee:
+            expense_claims = ExpenseClaim.objects.filter(employee=employee)
+
+        if selected_request_type in ['loan', ''] and employee:
+            loan_requests = LoanRequest.objects.filter(employee=employee)
+
+        if selected_request_type in ['time_entry', ''] and employee:
+            time_entries = TimeEntry.objects.filter(user=employee)
+
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'employee_data.html', {
         'employees': employees,
@@ -396,19 +391,17 @@ def employee_requests(request):
 @staff_member_required
 def staff_notifications(request):
     user = request.user
+    company = user.company  # Get company of logged-in staff
     employee = Employee.objects.get(employee_id=user.employee_id)
 
-    musters = Muster.objects.filter(status='Pending')
-    leaves = LeaveRequest.objects.filter(status='pending')
-    expenses = ExpenseClaim.objects.filter(status='pending')
-    pendings_loan = LoanRequest.objects.filter(status='pending')
+    # Filter only pending requests for this company
+    musters = Muster.objects.filter(status='Pending', user__company=company)
+    leaves = LeaveRequest.objects.filter(status='pending', employee__company=company)
+    expenses = ExpenseClaim.objects.filter(status='pending', employee__company=company)
+    pendings_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
-    if user.role == 'HR' or user.role == 'Manager' or user.is_superuser:
-        user = request.user
-        notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-        
+    # Notifications for logged-in user
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'staff_notifications.html', {
         'employee': employee,
@@ -1797,11 +1790,27 @@ def performance_page(request):
 
 #------------------------------------------------------------- Working days #
 
+from datetime import timedelta, datetime
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from django.http import Http404
+from django.db.models import F
+import calendar
+
+from .models import (
+    CustomUser, Employee, TimeEntry, Muster,
+    Holiday, LeaveRequest, Notification
+)
+
+
 @login_required(login_url='/')
 @staff_member_required
 def working_days(request):
     today = timezone.localtime(timezone.now()).date()
 
+    # Build a list of 12 previous months for filter dropdown
     months = [today]
     for i in range(1, 12):
         previous_month = today.replace(day=1) - timedelta(days=i * 30)
@@ -1811,7 +1820,7 @@ def working_days(request):
 
     selected_month_year = request.GET.get('month_year', None)
     employee_id_filter = request.GET.get('employee_id', None)
- 
+
     if selected_month_year:
         try:
             selected_month, selected_year = map(int, selected_month_year.split('-'))
@@ -1822,18 +1831,25 @@ def working_days(request):
         selected_date = today
         selected_month, selected_year = selected_date.month, selected_date.year
 
+    # Define payroll period
     period_start = selected_date.replace(day=23)
     if selected_date.day < 23:
         period_start = (selected_date.replace(day=1) - timedelta(days=1)).replace(day=23)
     period_end = (period_start + timedelta(days=32)).replace(day=22)
 
+    # Get current user company
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
+    # Filter employees by company
     if employee_id_filter:
-        employees = CustomUser.objects.filter(employee_id=employee_id_filter)
+        employees = CustomUser.objects.filter(employee_id=employee_id_filter, company=company)
     else:
-        employees = CustomUser.objects.all()
+        employees = CustomUser.objects.filter(company=company)
 
     employee_data = []
- 
+
     for employee in employees:
         data = {'employee': employee, 'working_days': [], 'leaves_taken': 0}
 
@@ -1843,19 +1859,19 @@ def working_days(request):
             clock_in_time__lte=period_end,
             clock_out_time__lte=F('clock_in_time') + timedelta(hours=12)
         ).values('clock_in_time__date')
- 
+
         approved_musters = Muster.objects.filter(
             user=employee,
             date__gte=period_start,
             date__lte=period_end,
             status='approved'
         ).values('date')
- 
+
         holidays = Holiday.objects.filter(
             date__gte=period_start,
             date__lte=period_end
         ).values('date')
- 
+
         approved_leaves = LeaveRequest.objects.filter(
             employee=employee,
             start_date__gte=period_start,
@@ -1865,27 +1881,23 @@ def working_days(request):
 
         total_leave_days = 18
         remaining_leave_days = total_leave_days
-
-        combined_dates = set(time_entries.values_list('clock_in_time__date', flat=True)) | \
-                          set(approved_musters.values_list('date', flat=True)) | \
-                          set(holidays.values_list('date', flat=True))
-
-        total_working_days = 0
         counted_days = set()
-
         leaves_taken = set()
- 
+
         for leave in approved_leaves:
             leave_days = leave['days_requested']
-
             if remaining_leave_days > 0:
                 if leave_days <= remaining_leave_days:
                     remaining_leave_days -= leave_days
-                    total_working_days += leave_days 
+                    total_working_days = leave_days
                     leave_day = leave['start_date']
                     for i in range(leave_days):
                         current_leave_day = leave_day + timedelta(days=i)
                         leaves_taken.add(current_leave_day)
+
+        combined_dates = set(time_entries.values_list('clock_in_time__date', flat=True)) | \
+                         set(approved_musters.values_list('date', flat=True)) | \
+                         set(holidays.values_list('date', flat=True))
 
         standardized_dates = set()
         for date in combined_dates:
@@ -1896,22 +1908,21 @@ def working_days(request):
 
         working_dates = {date for date in standardized_dates if date.weekday() < 5}
 
+        total_working_days = 0
         for date in working_dates:
             if date not in counted_days:
                 total_working_days += 1
                 counted_days.add(date)
 
-        data['leaves_taken'] = len(leaves_taken) 
+        data['leaves_taken'] = len(leaves_taken)
         data['working_days'].append({
             'period_label': f"{period_start.strftime('%b %Y')} - {period_end.strftime('%b %Y')}",
             'working_days': total_working_days,
         })
         data['remaining_leave_days'] = remaining_leave_days
- 
+
         employee_data.append(data)
- 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'working_days.html', {
@@ -1923,7 +1934,6 @@ def working_days(request):
         'employee': employee,
         'notifications': notifications,
     })
-
 
 #------------------------------------------------------------- Company adding by staff #
 
@@ -2307,11 +2317,15 @@ def holiday_create(request):
 @login_required(login_url='/')
 @staff_member_required
 def holiday_view(request, pk):
-    holiday = get_object_or_404(Holiday, pk=pk)
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
+
+    # Secure: Only access holidays from the same company
+    holiday = get_object_or_404(Holiday, pk=pk, company=employee.company)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'holiday_view.html', {'holiday': holiday,'employee': employee,'notifications': notifications})
+    return render(request, 'holiday_view.html', {'holiday': holiday, 'employee': employee, 'notifications': notifications})
+
 
 @login_required(login_url='/')
 @staff_member_required

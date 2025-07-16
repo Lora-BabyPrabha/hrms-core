@@ -6,6 +6,7 @@ urlpatterns = [
 
     #  Welcome url #
     path('',views.indexview,name='index'),
+    path('login/',views.loginview,name='login'),
     path('company_check/', views.company_check, name='company_check'),
     path('company/<int:company_id>/', views.company_detail, name='company_detail'),
     path('base', views.base, name='base'),
@@ -134,7 +135,7 @@ urlpatterns = [
     path('company_edit/<int:pk>', views.company_edit, name='company_edit'),
     path('company_delete/<int:pk>', views.company_delete, name='company_delete'),
 
-    path('working_days', views.working_days, name='working_days'),
+    path('working_days/', views.working_days, name='working_days'),
 
     path('task_list', views.task_list, name='task_list'),
 
