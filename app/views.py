@@ -1797,11 +1797,27 @@ def performance_page(request):
 
 #------------------------------------------------------------- Working days #
 
+from datetime import timedelta, datetime
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from django.http import Http404
+from django.db.models import F
+import calendar
+
+from .models import (
+    CustomUser, Employee, TimeEntry, Muster,
+    Holiday, LeaveRequest, Notification
+)
+
+
 @login_required(login_url='/')
 @staff_member_required
 def working_days(request):
     today = timezone.localtime(timezone.now()).date()
 
+    # Build a list of 12 previous months for filter dropdown
     months = [today]
     for i in range(1, 12):
         previous_month = today.replace(day=1) - timedelta(days=i * 30)
@@ -1811,7 +1827,7 @@ def working_days(request):
 
     selected_month_year = request.GET.get('month_year', None)
     employee_id_filter = request.GET.get('employee_id', None)
- 
+
     if selected_month_year:
         try:
             selected_month, selected_year = map(int, selected_month_year.split('-'))
@@ -1822,18 +1838,25 @@ def working_days(request):
         selected_date = today
         selected_month, selected_year = selected_date.month, selected_date.year
 
+    # Define payroll period
     period_start = selected_date.replace(day=23)
     if selected_date.day < 23:
         period_start = (selected_date.replace(day=1) - timedelta(days=1)).replace(day=23)
     period_end = (period_start + timedelta(days=32)).replace(day=22)
 
+    # Get current user company
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
+    # Filter employees by company
     if employee_id_filter:
-        employees = CustomUser.objects.filter(employee_id=employee_id_filter)
+        employees = CustomUser.objects.filter(employee_id=employee_id_filter, company=company)
     else:
-        employees = CustomUser.objects.all()
+        employees = CustomUser.objects.filter(company=company)
 
     employee_data = []
- 
+
     for employee in employees:
         data = {'employee': employee, 'working_days': [], 'leaves_taken': 0}
 
@@ -1843,19 +1866,19 @@ def working_days(request):
             clock_in_time__lte=period_end,
             clock_out_time__lte=F('clock_in_time') + timedelta(hours=12)
         ).values('clock_in_time__date')
- 
+
         approved_musters = Muster.objects.filter(
             user=employee,
             date__gte=period_start,
             date__lte=period_end,
             status='approved'
         ).values('date')
- 
+
         holidays = Holiday.objects.filter(
             date__gte=period_start,
             date__lte=period_end
         ).values('date')
- 
+
         approved_leaves = LeaveRequest.objects.filter(
             employee=employee,
             start_date__gte=period_start,
@@ -1865,27 +1888,23 @@ def working_days(request):
 
         total_leave_days = 18
         remaining_leave_days = total_leave_days
-
-        combined_dates = set(time_entries.values_list('clock_in_time__date', flat=True)) | \
-                          set(approved_musters.values_list('date', flat=True)) | \
-                          set(holidays.values_list('date', flat=True))
-
-        total_working_days = 0
         counted_days = set()
-
         leaves_taken = set()
- 
+
         for leave in approved_leaves:
             leave_days = leave['days_requested']
-
             if remaining_leave_days > 0:
                 if leave_days <= remaining_leave_days:
                     remaining_leave_days -= leave_days
-                    total_working_days += leave_days 
+                    total_working_days = leave_days
                     leave_day = leave['start_date']
                     for i in range(leave_days):
                         current_leave_day = leave_day + timedelta(days=i)
                         leaves_taken.add(current_leave_day)
+
+        combined_dates = set(time_entries.values_list('clock_in_time__date', flat=True)) | \
+                         set(approved_musters.values_list('date', flat=True)) | \
+                         set(holidays.values_list('date', flat=True))
 
         standardized_dates = set()
         for date in combined_dates:
@@ -1896,22 +1915,21 @@ def working_days(request):
 
         working_dates = {date for date in standardized_dates if date.weekday() < 5}
 
+        total_working_days = 0
         for date in working_dates:
             if date not in counted_days:
                 total_working_days += 1
                 counted_days.add(date)
 
-        data['leaves_taken'] = len(leaves_taken) 
+        data['leaves_taken'] = len(leaves_taken)
         data['working_days'].append({
             'period_label': f"{period_start.strftime('%b %Y')} - {period_end.strftime('%b %Y')}",
             'working_days': total_working_days,
         })
         data['remaining_leave_days'] = remaining_leave_days
- 
+
         employee_data.append(data)
- 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'working_days.html', {
@@ -1923,7 +1941,6 @@ def working_days(request):
         'employee': employee,
         'notifications': notifications,
     })
-
 
 #------------------------------------------------------------- Company adding by staff #
 

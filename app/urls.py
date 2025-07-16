@@ -134,7 +134,7 @@ urlpatterns = [
     path('company_edit/<int:pk>', views.company_edit, name='company_edit'),
     path('company_delete/<int:pk>', views.company_delete, name='company_delete'),
 
-    path('working_days', views.working_days, name='working_days'),
+    path('working_days/', views.working_days, name='working_days'),
 
     path('task_list', views.task_list, name='task_list'),
 
