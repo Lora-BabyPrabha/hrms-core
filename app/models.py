@@ -6,6 +6,8 @@ from django.contrib.auth.models import AbstractUser
 from app.manager import UserManager
 from django.db.models import ImageField
 from .validators import StrongPasswordValidator
+from django.contrib.auth.models import User
+from django.conf import settings
 
 #------------------------------------------------------------- Company Check #
 
@@ -333,4 +335,96 @@ class Performance(models.Model):
         ordering = ['-date']
 
 
-#------------------------------------------------------------- Profile #
+#------------------------------------------------------------- HR4U #
+
+class EmployeeProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    employee_id = models.CharField(max_length=20, unique=True)
+    department = models.CharField(max_length=100)
+    position = models.CharField(max_length=100)
+    hire_date = models.DateField()
+    manager = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
+    phone = models.CharField(max_length=20)
+    address = models.TextField()
+    emergency_contact = models.CharField(max_length=100)
+    emergency_phone = models.CharField(max_length=20)
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} ({self.employee_id})"
+
+class Payroll(models.Model):
+    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
+    period_start = models.DateField()
+    period_end = models.DateField()
+    gross_pay = models.DecimalField(max_digits=10, decimal_places=2)
+    deductions = models.DecimalField(max_digits=10, decimal_places=2)
+    net_pay = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField()
+    
+    def __str__(self):
+        return f"Payroll {self.period_start} to {self.period_end} - {self.employee}"
+
+class Benefit(models.Model):
+    BENEFIT_TYPES = (
+        ('health', 'Health Insurance'),
+        ('dental', 'Dental Insurance'),
+        ('vision', 'Vision Insurance'),
+        ('retirement', 'Retirement Plan'),
+        ('other', 'Other'),
+    )
+    
+    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
+    benefit_type = models.CharField(max_length=20, choices=BENEFIT_TYPES)
+    provider = models.CharField(max_length=100)
+    policy_number = models.CharField(max_length=50)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    coverage_details = models.TextField()
+    
+    def __str__(self):
+        return f"{self.get_benefit_type_display()} - {self.employee}"
+
+class Skill(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    
+    def __str__(self):
+        return self.name
+
+class Training(models.Model):
+    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200)
+    provider = models.CharField(max_length=100)
+    date_completed = models.DateField()
+    skills = models.ManyToManyField(Skill)
+    certificate = models.FileField(upload_to='training_certificates/', null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.name} - {self.employee}"
+
+class HelpTicket(models.Model):
+    CATEGORY_CHOICES = (
+        ('hr', 'HR Questions'),
+        ('payroll', 'Payroll Issues'),
+        ('benefits', 'Benefits Enrollment'),
+        ('tech', 'Technical Support'),
+        ('other', 'Other'),
+    )
+    STATUS_CHOICES = (
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
+    )
+    
+    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
+    subject = models.CharField(max_length=200)
+    description = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolution = models.TextField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Ticket #{self.id} - {self.subject}"

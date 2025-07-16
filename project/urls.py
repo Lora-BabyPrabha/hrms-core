@@ -15,6 +15,8 @@ handler404 = 'project.urls.custom_404_view'
 urlpatterns = [
     path('adminsecure/', admin.site.urls),
     path('', include('app.urls')),
+    
+    
 ]
 
 # Serve media files (uploads) – this works for both DEBUG=True and False (only for local testing)
