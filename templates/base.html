@@ -12,6 +12,7 @@
         <link rel="stylesheet" href="{% static 'css/task_management.css' %}">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
         <link rel="stylesheet" href="{% static 'css/base.css' %}" >
+     
         <title>{% block title %}Dashboard{% endblock %} | LoRa IT Innovations Pvt Ltd</title>
     </head>
     <body>
@@ -183,7 +184,8 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div> 
+                     
 
                     <div class="navbar-collapse navbar">
 
@@ -976,91 +978,177 @@
 
 
         <!----  Chat Bot ---->
-        <script>
-            const API_KEY = "AIzaSyBfsdYfzhekMwIc5VNs7dsol3Uv6-ujs_4";
-            
-            const chatbotContainer = document.getElementById('chatbotContainer');
-            const chatIcon = document.getElementById('chatIcon');
-            const chatWindow = document.getElementById('chatWindow');
-            const closeChat = document.getElementById('closeChat');
-            const messagesContainer = document.getElementById('messagesContainer');
-            const chatInput = document.getElementById('chatInput');
-            const sendButton = document.getElementById('sendButton');
-    
-            let isOpen = false;
-    
-            function toggleChat() {
-                isOpen = !isOpen;
-                chatWindow.classList.toggle('hidden');
-                chatIcon.style.display = isOpen ? 'none' : 'block';
-            }
-    
-            function addMessage(text, isBot) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${isBot ? 'bot-message' : 'user-message'}`;
-                
-                const paragraph = document.createElement('p');
-                paragraph.textContent = text;
-                
-                messageDiv.appendChild(paragraph);
-                messagesContainer.appendChild(messageDiv);
-                
-                // Scroll to bottom
+<script>
+    // Element selectors
+    const chatbotContainer = document.getElementById('chatbotContainer');
+    const chatIcon = document.getElementById('chatIcon');
+    const chatWindow = document.getElementById('chatWindow');
+    const closeChat = document.getElementById('closeChat');
+    const resetChat = document.getElementById('resetChat');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const chatInput = document.getElementById('chatInput');
+    const sendButton = document.getElementById('sendButton');
+    const quickButtons = document.querySelectorAll('.quick-btn');
+
+    let isOpen = false;
+    let conversationHistory = [];
+
+    // Start chat with welcome messages
+    function initChat() {
+        conversationHistory = [];
+        addMessage("Hello! I'm your HR Assistant. How can I help you today?", true);
+        addMessage("Here are some things I can help with:\n- Leave requests and balances\n- Payroll and salary information\n- Company policies\n- Employee benefits\n- Onboarding assistance", true);
+    }
+
+    function toggleChat() {
+        isOpen = !isOpen;
+        chatWindow.classList.toggle('hidden');
+        chatIcon.style.display = isOpen ? 'none' : 'block';
+
+        if (isOpen) {
+            setTimeout(() => {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-    
-            async function handleSend() {
-                const inputText = chatInput.value.trim();
-                if (!inputText) return;
-    
-                // Add user message
-                addMessage(inputText, false);
-                chatInput.value = '';
-    
-                try {
-                    const response = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`,
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                contents: [{
-                                    parts: [{
-                                        text: inputText
-                                    }]
-                                }]
-                            })
-                        }
-                    );
-    
-                    const data = await response.json();
-                    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I didn't understand that.";
-                    
-                    addMessage(botReply, true);
-    
-                } catch (error) {
-                    console.error("Error fetching chatbot response:", error);
-                    addMessage("Something went wrong. Try again!", true);
-                }
-            }
-    
-            // Event Listeners
-            chatbotContainer.addEventListener('click', toggleChat);
-            closeChat.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleChat();
-            });
-    
-            sendButton.addEventListener('click', handleSend);
-            
-            chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    handleSend();
-                }
-            });
-        </script>
+                chatInput.focus();
+            }, 100);
+        }
+    }
+
+    function addMessage(text, isBot) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isBot ? 'bot-message' : 'user-message'}`;
+
+        const paragraph = document.createElement('p');
+        paragraph.textContent = text;
+        messageDiv.appendChild(paragraph);
+
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        conversationHistory.push({ role: isBot ? 'bot' : 'user', content: text });
+    }
+
+    function showTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'typing-indicator';
+        typingDiv.id = 'typingIndicator';
+
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'typing-dot';
+            typingDiv.appendChild(dot);
+        }
+
+        messagesContainer.appendChild(typingDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+
+    function getHRMSResponse(userMessage) {
+        const message = userMessage.toLowerCase();
+
+        if (message.includes('leave') || message.includes('pto') || message.includes('time off')) {
+            return "You can request time off through the HRMS portal. Go to 'Leave Management' > 'Request Leave'.";
+        }
+        if (message.includes('balance') || message.includes('remaining')) {
+            return "You have 12 days of PTO remaining this year.";
+        }
+        if (message.includes('pay') || message.includes('salary') || message.includes('payday')) {
+            return "Your last paycheck was credited on the 27th. The next payday is in two weeks.";
+        }
+        if (message.includes('policy') || message.includes('remote') || message.includes('work from home')) {
+            return "You can work remotely up to 3 days a week with manager approval.";
+        }
+        if (message.includes('benefit') || message.includes('insurance') || message.includes('health')) {
+            return "We offer medical, dental, vision, and 401(k) matching benefits.";
+        }
+        if (message.includes('onboard') || message.includes('new hire')) {
+            return "Please complete the onboarding checklist in your HRMS dashboard.";
+        }
+        if (message.includes('help') || message.includes('support') || message.includes('contact')) {
+            return "You can contact HR at hr@company.com or call extension 555.";
+        }
+        if (message.includes('thank you') || message.includes('thanks')) {
+            return "You're welcome! If you have any other questions, feel free to ask.";
+        }
+        if (message.includes('hi') || message.includes('hello') || message.includes('hey')) {
+            return "Hello! How can I assist you today?";
+        }
+
+        const defaultReplies = [
+            "Could you clarify your request?",
+            "Please ask about leave, payroll, benefits, or policies.",
+            "I'm your HR assistant. Try asking about PTO or payroll.",
+            "I'm here to help! Ask me about HR topics."
+        ];
+
+        return defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+    }
+
+    function handleSend() {
+        const inputText = chatInput.value.trim();
+        if (!inputText) return;
+
+        addMessage(inputText, false);
+        chatInput.value = '';
+        showTypingIndicator();
+
+        setTimeout(() => {
+            hideTypingIndicator();
+            const reply = getHRMSResponse(inputText);
+            addMessage(reply, true);
+        }, 800);
+    }
+
+    function resetConversation() {
+        messagesContainer.innerHTML = '';
+        initChat();
+    }
+
+    // Event Listeners
+    chatbotContainer.addEventListener('click', (e) => {
+        if (e.target === chatbotContainer || e.target === chatIcon) {
+            toggleChat();
+        }
+    });
+
+    closeChat.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleChat();
+    });
+
+    if (resetChat) {
+        resetChat.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetConversation();
+        });
+    }
+
+    sendButton.addEventListener('click', handleSend);
+
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSend();
+        }
+    });
+
+    quickButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const msg = button.getAttribute('data-msg');
+            chatInput.value = msg;
+            handleSend();
+        });
+    });
+
+    // Initialize on load
+    initChat();
+</script>
+
 
         <script>
             document.addEventListener("DOMContentLoaded", function () {
