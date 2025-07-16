@@ -356,16 +356,11 @@ class BankingInfoForm(forms.ModelForm):
         ]
 
 
-class ProfilePictureForm(forms.ModelForm):
+class EmployeeMediaForm(forms.ModelForm):
     class Meta:
-        model = Employee
-        fields = ['profile_picture']
+        model = EmployeeMedia
+        fields = ['profile_picture', 'cover_picture']
 
-
-class CoverPictureForm(forms.ModelForm):
-    class Meta:
-        model = Employee
-        fields = ['cover_picture']
 
 
 class TaskForm(forms.Form):

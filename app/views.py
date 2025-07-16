@@ -915,19 +915,17 @@ def reset_password(request):
     
 #------------------------------------------------------------- Profile #
 
-@login_required(login_url='/')
-def profile_view(request):
+@login_required
+def profile(request):
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    print('===', employee.name, '===')
-
+    employee = Employee.objects.filter(user=user).first()
+    employee_media = EmployeeMedia.objects.filter(employee=employee).first()
+    
     return render(request, 'profile.html', {
-        'user': user,
         'employee': employee,
-        'notifications': notifications,
-        }
-    )
+        'employee_media': employee_media,
+        'user': user,
+    })
 
 
 @login_required(login_url='/')
@@ -1006,49 +1004,7 @@ def edit_banking_info(request, employee_id):
     )
 
 
-@login_required(login_url='/')
-def edit_profile_picture(request):
-    employee = request.user.employee_user
-    
-    if request.method == 'POST':
-        form = ProfilePictureForm(request.POST, request.FILES, instance=employee)
-        if form.is_valid():
-            form.save()
-            new_picture_url = employee.profile_picture.url
-            return JsonResponse({'success': True, 'new_picture_url': new_picture_url})
-        else:
-            print(form.errors)
-            return JsonResponse({'success': False})
-    else:
-        form = ProfilePictureForm(instance=employee)
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
-    return render(request, 'profile.html', {'form': form})
-
-
-@login_required(login_url='/')
-def edit_cover_picture(request):
-    employee = request.user.employee_user
-    
-    if request.method == 'POST':
-        form = CoverPictureForm(request.POST, request.FILES, instance=employee)
-        if form.is_valid():
-            form.save()
-            new_cover_picture_url = employee.cover_picture.url
-            return JsonResponse({'success': True, 'new_cover_picture_url': new_cover_picture_url})
-        else:
-            return JsonResponse({'success': False})
-    else:
-        form = CoverPictureForm(instance=employee)
-
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
-    return render(request, 'profile.html', {'form': form})
 
 
 #------------------------------------------------------------- Task Management #
@@ -1496,24 +1452,17 @@ def user_list(request):
 @staff_member_required
 def user_create(request):
     user = request.user
-
-    try:
-        employee = Employee.objects.get(employee_id=user.employee_id)
-        company = employee.company
-    except Employee.DoesNotExist:
-        messages.error(request, "Your employee profile is incomplete.")
-        return redirect('dashboard')
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
 
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             new_user = form.save(commit=False)
-            new_user.company = company  # 🔥 Ensure field name matches your model
+            new_user.company = company  # Assign company
             new_user.save()
             messages.success(request, "User created successfully!")
             return redirect('user_list')
-        else:
-            messages.error(request, "Form is invalid. Please correct the errors.")
     else:
         form = UserCreationForm()
 
@@ -2156,38 +2105,42 @@ def employee_list(request):
 
 
 
-
-
-
-from django.db import IntegrityError
-
-
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
-    form = EmployeeProfileForm(request.POST or None, request.FILES or None)
-
     if request.method == 'POST':
+        form = EmployeeProfileForm(request.POST, request.FILES)
         if form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
+<<<<<<< HEAD
 
-                if not user.name:
+                if not user.company:
                     messages.error(request, "This user has no company assigned. Please assign it first.")
                 else:
                     employee = form.save(commit=False)
                     employee.user = user
-                    employee.company_name = user.company
+                    employee.company = user.company
                     employee.save()
+
+                    # Create empty EmployeeMedia
+                    EmployeeMedia.objects.create(employee=employee)
+
                     messages.success(request, 'Employee added successfully!')
                     return redirect('employee_list')
 
+=======
+                employee = form.save(commit=False)
+                employee.user = user
+                employee.save()
+                messages.success(request, 'Employee added successfully!')
+                return redirect('employee_list')
+>>>>>>> bb9be7678bcc9cf1644948fb834c9e8168d81270
             except CustomUser.DoesNotExist:
-                messages.error(request, 'No user found with that employee ID.')
-        else:
-            messages.error(request, 'Form is invalid.')
-            print("Form errors:", form.errors)
+                messages.error(request, 'No user found with the provided employee ID.')
+    else:
+        form = EmployeeProfileForm()
 
     current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
@@ -2197,6 +2150,79 @@ def employee_create(request):
         'employee': current_employee,
         'notifications': notifications
     })
+
+<<<<<<< HEAD
+@login_required
+def upload_employee_media(request):
+    employee = Employee.objects.get(user=request.user)
+    media, _ = EmployeeMedia.objects.get_or_create(employee=employee)
+
+    if request.method == 'POST':
+        form = EmployeeMediaForm(request.POST, request.FILES, instance=media)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Images updated!")
+            return redirect('profile')  # Or wherever you go
+    else:
+        form = EmployeeMediaForm(instance=media)
+
+    return render(request, 'upload_media.html', {'form': form})
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import EmployeeMedia, Employee
+from .forms import EmployeeMediaForm
+
+# --- Edit Profile Picture ---
+@login_required(login_url='/')
+def edit_profile_picture(request):
+    try:
+        employee = Employee.objects.get(user=request.user)
+        employee_media, _ = EmployeeMedia.objects.get_or_create(employee=employee)
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('profile')
+
+
+
+    if request.method == 'POST':
+        form = EmployeeMediaForm(request.POST, request.FILES, instance=employee_media)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile picture updated successfully!")
+            return redirect('profile')
+    else:
+        form = EmployeeMediaForm(instance=employee_media)
+
+    return render(request, 'profile.html', {'form': form})
+
+
+# --- Edit Cover Picture ---
+@login_required(login_url='/')
+def edit_cover_picture(request):
+    try:
+        employee = Employee.objects.get(user=request.user)
+        employee_media, _ = EmployeeMedia.objects.get_or_create(employee=employee)
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('profile')
+    
+
+    if request.method == 'POST':
+        form = EmployeeMediaForm(request.POST, request.FILES, instance=employee_media)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Cover picture updated successfully!")
+            return redirect('profile')
+    else:
+        form = EmployeeMediaForm(instance=employee_media)
+
+    return render(request, 'profile.html', {'form': form})
+=======
+>>>>>>> bb9be7678bcc9cf1644948fb834c9e8168d81270
+
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):

@@ -7,7 +7,7 @@ from app.forms import *
 
 admin.site.register(Company_check)
 admin.site.register(Muster)
-admin.site.register(Employee)
+
 admin.site.register(Salary)
 admin.site.register(TimeEntry)
 admin.site.register(Notification)
@@ -56,3 +56,17 @@ class CustomUserAdmin(UserAdmin):
 
 
 admin.site.register(CustomUser, CustomUserAdmin)
+
+from django.contrib import admin
+from .models import Employee, EmployeeMedia
+
+class EmployeeMediaInline(admin.StackedInline):
+    model = EmployeeMedia
+    extra = 0
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    inlines = [EmployeeMediaInline]
+
+
+admin.site.register(EmployeeMedia)

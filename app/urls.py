@@ -24,7 +24,9 @@ urlpatterns = [
     path('contact_us', views.contact_us, name='contact_us'),
     path('employee_requests/', views.employee_requests, name='employee_requests'),
     path('staff_notifications/', views.staff_notifications, name='staff_notifications'),
-    path('profile/', views.profile_view, name='profile'),  
+    path('profile/', views.profile, name='profile'),  
+    path('edit_profile_picture/', views.edit_profile_picture, name='edit_profile_picture'),
+    path('edit_cover_picture/', views.edit_cover_picture, name='edit_cover_picture'),
     
 
 
@@ -55,8 +57,7 @@ urlpatterns = [
     path('edit_personal_info/<int:employee_id>', views.edit_personal_info, name='edit_personal_info'),
     path('edit_professional_info/<int:employee_id>', views.edit_professional_info, name='edit_professional_info'),
     path('edit_banking_info/<int:employee_id>', views.edit_banking_info, name='edit_banking_info'),
-    path('edit_profile_picture', views.edit_profile_picture, name='edit_profile_picture'),
-    path('edit_cover_picture', views.edit_cover_picture, name='edit_cover_picture'),
+    path('upload_employee_media/', views.upload_employee_media, name='upload_employee_media'),
 
 
     #  Task #
