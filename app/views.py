@@ -314,69 +314,49 @@ def dashboard(request):
     
 
 #------------------------------------------------------------- Employee requests - Notifications  #
-
 @login_required(login_url='/')
 @staff_member_required
 def employee_requests(request):
     user = request.user
-    muster_requests = Muster.objects.all()
-    leave_requests = LeaveRequest.objects.all()
-    expense_claims = ExpenseClaim.objects.all()
-    loan_requests = LoanRequest.objects.all()
-    time_entries = TimeEntry.objects.all()
-    employees = CustomUser.objects.all()
+    company = user.company  # Get logged-in user's company
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
+    # Initial filtering by company
+    muster_requests = Muster.objects.filter(user__company=company)
+    leave_requests = LeaveRequest.objects.filter(employee__company=company)
+    expense_claims = ExpenseClaim.objects.filter(employee__company=company)
+    loan_requests = LoanRequest.objects.filter(employee__company=company)
+    time_entries = TimeEntry.objects.filter(user__company=company)
+    employees = CustomUser.objects.filter(company=company)
 
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
         selected_request_type = request.POST.get('request_type')
 
+        employee = None
         if employee_id_input:
             try:
-                employee = CustomUser.objects.get(employee_id=employee_id_input)
+                employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
             except CustomUser.DoesNotExist:
                 employee = None
-        else:
-            employee = None
- 
-        if selected_request_type == 'muster' or selected_request_type == '':
-            if employee:
-                muster_requests = Muster.objects.filter(user_id=employee.id)
-                time_entries = TimeEntry.objects.filter(user_id=employee.id)
-            else:
-                muster_requests = Muster.objects.all()
-                time_entries = TimeEntry.objects.all()
- 
-        if selected_request_type == 'leave' or selected_request_type == '':
-            if employee:
-                leave_requests = LeaveRequest.objects.filter(employee_id=employee.id)
-            else:
-                leave_requests = LeaveRequest.objects.all()
- 
-        if selected_request_type == 'expense' or selected_request_type == '':
-            if employee:
-                expense_claims = ExpenseClaim.objects.filter(employee_id=employee.id)
-            else:
-                expense_claims = ExpenseClaim.objects.all()
- 
-        if selected_request_type == 'loan' or selected_request_type == '':
-            if employee:
-                loan_requests = LoanRequest.objects.filter(employee_id=employee.id)
-            else:
-                loan_requests = LoanRequest.objects.all()
- 
-        if selected_request_type == 'time_entry' or selected_request_type == '':
-            if employee:
-                time_entries = TimeEntry.objects.filter(user_id=employee.id)
-            else:
-                time_entries = TimeEntry.objects.all()
- 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    employee = Employee.objects.get(employee_id=user.employee_id)
 
-    if user.role == 'HR' or user.role == 'Manager' or user.is_superuser:
-        user = request.user
-        notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-        
+        if selected_request_type in ['muster', ''] and employee:
+            muster_requests = Muster.objects.filter(user=employee)
+            time_entries = TimeEntry.objects.filter(user=employee)
+
+        if selected_request_type in ['leave', ''] and employee:
+            leave_requests = LeaveRequest.objects.filter(employee=employee)
+
+        if selected_request_type in ['expense', ''] and employee:
+            expense_claims = ExpenseClaim.objects.filter(employee=employee)
+
+        if selected_request_type in ['loan', ''] and employee:
+            loan_requests = LoanRequest.objects.filter(employee=employee)
+
+        if selected_request_type in ['time_entry', ''] and employee:
+            time_entries = TimeEntry.objects.filter(user=employee)
+
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'employee_data.html', {
         'employees': employees,
@@ -396,19 +376,17 @@ def employee_requests(request):
 @staff_member_required
 def staff_notifications(request):
     user = request.user
+    company = user.company  # Get company of logged-in staff
     employee = Employee.objects.get(employee_id=user.employee_id)
 
-    musters = Muster.objects.filter(status='Pending')
-    leaves = LeaveRequest.objects.filter(status='pending')
-    expenses = ExpenseClaim.objects.filter(status='pending')
-    pendings_loan = LoanRequest.objects.filter(status='pending')
+    # Filter only pending requests for this company
+    musters = Muster.objects.filter(status='Pending', user__company=company)
+    leaves = LeaveRequest.objects.filter(status='pending', employee__company=company)
+    expenses = ExpenseClaim.objects.filter(status='pending', employee__company=company)
+    pendings_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
-    if user.role == 'HR' or user.role == 'Manager' or user.is_superuser:
-        user = request.user
-        notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-        
+    # Notifications for logged-in user
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'staff_notifications.html', {
         'employee': employee,
@@ -2307,11 +2285,15 @@ def holiday_create(request):
 @login_required(login_url='/')
 @staff_member_required
 def holiday_view(request, pk):
-    holiday = get_object_or_404(Holiday, pk=pk)
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
+
+    # Secure: Only access holidays from the same company
+    holiday = get_object_or_404(Holiday, pk=pk, company=employee.company)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'holiday_view.html', {'holiday': holiday,'employee': employee,'notifications': notifications})
+    return render(request, 'holiday_view.html', {'holiday': holiday, 'employee': employee, 'notifications': notifications})
+
 
 @login_required(login_url='/')
 @staff_member_required
