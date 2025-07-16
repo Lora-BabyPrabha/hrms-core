@@ -106,8 +106,7 @@ class Employee(models.Model):
     bank_name = models.CharField(max_length=100, null=True, blank=True)
     ifsc_code = models.CharField(max_length=11, null=True, blank=True)
     aadhar_number = models.CharField(max_length=12, unique=True, null=True, blank=True)
-    profile_picture = ImageField(upload_to='profile_pictures/', null=True, blank=True, default='profile_pictures/default_profile.jpg')
-    cover_picture = ImageField(upload_to='cover_pictures/', null=True, blank=True, default='cover_pictures/default_cover.jpg')
+    
 
     def save(self, *args, **kwargs):
         if not self.employee_id and self.user:
@@ -331,3 +330,17 @@ class Performance(models.Model):
 
     class Meta:
         ordering = ['-date']
+
+
+
+from django.db import models
+from django.conf import settings
+
+class EmployeeMedia(models.Model):
+    employee = models.OneToOneField('Employee', on_delete=models.CASCADE, related_name='media')
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True, default='profile_pictures/default_profile.jpg')
+    cover_picture = models.ImageField(upload_to='cover_pictures/', null=True, blank=True, default='cover_pictures/default_cover.jpg')
+
+    def __str__(self):
+        return f"{self.employee.name} - Media"
+
