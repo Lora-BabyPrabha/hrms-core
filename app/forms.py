@@ -242,11 +242,13 @@ class SalaryForm(forms.ModelForm):
 class EmployeeProfileForm(forms.ModelForm):
     class Meta:
         model = Employee
-        fields = '__all__'
+        exclude = ['user', 'company_name']  # ❗ exclude fields set in view or model
 
     date_of_birth = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
+
+
 
 class Company_checkForm(forms.ModelForm):
     class Meta:
@@ -271,12 +273,16 @@ from django import forms
 from .models import Leave, CustomUser
 
 class LeaveForm(forms.ModelForm):
-    employee_id = forms.CharField(max_length=100, label='Employee ID', required=True)
+    employee = forms.ModelChoiceField(
+        queryset=CustomUser.objects.all(),
+        label='Employee',
+        required=True
+    )
 
     class Meta:
         model = Leave
-        fields = ['employee_id', 'advance_privilege_leave', 'sick_leave', 'casual_leave']
-    
+        fields = ['employee', 'advance_privilege_leave', 'sick_leave', 'casual_leave']
+
     def clean_employee_id(self):
         employee_id = self.cleaned_data.get('employee_id')
         try:

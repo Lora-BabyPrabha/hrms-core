@@ -1496,17 +1496,24 @@ def user_list(request):
 @staff_member_required
 def user_create(request):
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = employee.company
+
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+        company = employee.company
+    except Employee.DoesNotExist:
+        messages.error(request, "Your employee profile is incomplete.")
+        return redirect('dashboard')
 
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             new_user = form.save(commit=False)
-            new_user.company = company  # Assign company
+            new_user.company = company  # 🔥 Ensure field name matches your model
             new_user.save()
             messages.success(request, "User created successfully!")
             return redirect('user_list')
+        else:
+            messages.error(request, "Form is invalid. Please correct the errors.")
     else:
         form = UserCreationForm()
 
@@ -2149,24 +2156,38 @@ def employee_list(request):
 
 
 
+
+
+
+from django.db import IntegrityError
+
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
+    form = EmployeeProfileForm(request.POST or None, request.FILES or None)
+
     if request.method == 'POST':
-        form = EmployeeProfileForm(request.POST, request.FILES)
         if form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
-                employee = form.save(commit=False)
-                employee.user = user
-                employee.save()
-                messages.success(request, 'Employee added successfully!')
-                return redirect('employee_list')
+
+                if not user.name:
+                    messages.error(request, "This user has no company assigned. Please assign it first.")
+                else:
+                    employee = form.save(commit=False)
+                    employee.user = user
+                    employee.company_name = user.company
+                    employee.save()
+                    messages.success(request, 'Employee added successfully!')
+                    return redirect('employee_list')
+
             except CustomUser.DoesNotExist:
-                messages.error(request, 'No user found with the provided employee ID.')
-    else:
-        form = EmployeeProfileForm()
+                messages.error(request, 'No user found with that employee ID.')
+        else:
+            messages.error(request, 'Form is invalid.')
+            print("Form errors:", form.errors)
 
     current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
@@ -2176,9 +2197,6 @@ def employee_create(request):
         'employee': current_employee,
         'notifications': notifications
     })
-
-
-
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
@@ -2235,27 +2253,41 @@ def employee_delete(request, pk):
 @login_required(login_url='/')
 @staff_member_required
 def holidays_list(request):
-    holidays = Holiday.objects.all().order_by('date')
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
+    holidays = Holiday.objects.filter(company=employee.company).order_by('date')  # ✅ Filter here
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'holidays_list.html', {'holidays': holidays, 'employee': employee, 'notifications': notifications})
+    return render(request, 'holidays_list.html', {
+        'holidays': holidays,
+        'employee': employee,
+        'notifications': notifications
+    })
+
 
 @login_required(login_url='/')
 @staff_member_required
 def holiday_create(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+
     if request.method == 'POST':
         form = HolidaysForm(request.POST)
         if form.is_valid():
-            form.save()
+            holiday = form.save(commit=False)
+            holiday.company = employee.company  # ✅ Set current company
+            holiday.save()
             return redirect('holidays_list')
     else:
         form = HolidaysForm()
-    
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'holiday_form.html', {'form': form,'employee': employee,'notifications': notifications})
+    return render(request, 'holiday_form.html', {
+        'form': form,
+        'employee': employee,
+        'notifications': notifications
+    })
+
 
 @login_required(login_url='/')
 @staff_member_required
@@ -2335,26 +2367,14 @@ def leave_create(request):
     if request.method == 'POST':
         form = LeaveForm(request.POST)
         if form.is_valid():
-            employee_id = form.cleaned_data['employee_id']
-            try:
-                custom_user = CustomUser.objects.get(employee_id=employee_id)
-                leave_balance, created = Leave.objects.get_or_create(employee=custom_user)
-
-                leave_balance.advance_privilege_leave = form.cleaned_data.get('advance_privilege_leave', leave_balance.advance_privilege_leave)
-                leave_balance.sick_leave = form.cleaned_data.get('sick_leave', leave_balance.sick_leave)
-                leave_balance.casual_leave = form.cleaned_data.get('casual_leave', leave_balance.casual_leave)
-                
-                # Assign the company from the logged-in user's company
-                leave_balance.company = employee.company
-                leave_balance.save()
-
-                return redirect('leave_list')
-            except CustomUser.DoesNotExist:
-                return JsonResponse({'status': 'error', 'message': 'Employee with the given ID does not exist.'}, status=400)
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid form submission.'}, status=400)
+            leave = form.save(commit=False)
+            leave.company = employee.company  # ✅ Assign company
+            leave.save()
+            return redirect('leave_list')
     else:
         form = LeaveForm()
+        # Optional: Filter employees by company
+        form.fields['employee'].queryset = CustomUser.objects.filter(company=employee.company)
 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
@@ -2365,6 +2385,7 @@ def leave_create(request):
         'employee': employee,
         'notifications': notifications
     })
+
 
 @login_required(login_url='/')
 @staff_member_required
