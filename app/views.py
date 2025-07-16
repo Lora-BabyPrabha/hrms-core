@@ -1495,24 +1495,17 @@ def user_list(request):
 @staff_member_required
 def user_create(request):
     user = request.user
-
-    try:
-        employee = Employee.objects.get(employee_id=user.employee_id)
-        company = employee.company
-    except Employee.DoesNotExist:
-        messages.error(request, "Your employee profile is incomplete.")
-        return redirect('dashboard')
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
 
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             new_user = form.save(commit=False)
-            new_user.company = company  # 🔥 Ensure field name matches your model
+            new_user.company = company  # Assign company
             new_user.save()
             messages.success(request, "User created successfully!")
             return redirect('user_list')
-        else:
-            messages.error(request, "Form is invalid. Please correct the errors.")
     else:
         form = UserCreationForm()
 
@@ -2155,38 +2148,24 @@ def employee_list(request):
 
 
 
-
-
-
-from django.db import IntegrityError
-
-
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
-    form = EmployeeProfileForm(request.POST or None, request.FILES or None)
-
     if request.method == 'POST':
+        form = EmployeeProfileForm(request.POST, request.FILES)
         if form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
-
-                if not user.name:
-                    messages.error(request, "This user has no company assigned. Please assign it first.")
-                else:
-                    employee = form.save(commit=False)
-                    employee.user = user
-                    employee.company_name = user.company
-                    employee.save()
-                    messages.success(request, 'Employee added successfully!')
-                    return redirect('employee_list')
-
+                employee = form.save(commit=False)
+                employee.user = user
+                employee.save()
+                messages.success(request, 'Employee added successfully!')
+                return redirect('employee_list')
             except CustomUser.DoesNotExist:
-                messages.error(request, 'No user found with that employee ID.')
-        else:
-            messages.error(request, 'Form is invalid.')
-            print("Form errors:", form.errors)
+                messages.error(request, 'No user found with the provided employee ID.')
+    else:
+        form = EmployeeProfileForm()
 
     current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
@@ -2196,6 +2175,9 @@ def employee_create(request):
         'employee': current_employee,
         'notifications': notifications
     })
+
+
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
