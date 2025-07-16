@@ -242,11 +242,13 @@ class SalaryForm(forms.ModelForm):
 class EmployeeProfileForm(forms.ModelForm):
     class Meta:
         model = Employee
-        fields = '__all__'
+        exclude = ['user', 'company_name']  # ❗ exclude fields set in view or model
 
     date_of_birth = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
+
+
 
 class Company_checkForm(forms.ModelForm):
     class Meta:
