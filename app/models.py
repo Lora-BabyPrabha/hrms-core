@@ -334,6 +334,18 @@ class Performance(models.Model):
         ordering = ['-date']
 
 
+from django.db import models
+from django.conf import settings
+ 
+class EmployeeMedia(models.Model):
+    employee = models.OneToOneField('Employee', on_delete=models.CASCADE, related_name='media')
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True, default='profile_pictures/default_profile.jpg')
+    cover_picture = models.ImageField(upload_to='cover_pictures/', null=True, blank=True, default='cover_pictures/default_cover.jpg')
+ 
+    def __str__(self):
+        return f"{self.employee.name} - Media"
+ 
+
 #------------------------------------------------------------- HR4U #
 
 class EmployeeProfile(models.Model):
