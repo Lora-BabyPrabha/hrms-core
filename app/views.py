@@ -1007,16 +1007,20 @@ def edit_banking_info(request, employee_id):
 
 
 #------------------------------------------------------------- Task Management #
-
 @login_required(login_url='/')
 def task_management(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    pending_musters = Muster.objects.filter(status='Pending')
-    pending_leave_request = LeaveRequest.objects.filter(status='pending')
-    pending_expense = ExpenseClaim.objects.filter(status='pending')
-    pending_loan = LoanRequest.objects.filter(status='pending')
+    company = user.company  # get the logged-in user's company
+
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+
+    # Filter only data belonging to the same company
+    pending_musters = Muster.objects.filter(status='Pending', user__company=company)
+    pending_leave_request = LeaveRequest.objects.filter(status='pending', employee__company=company)
+    pending_expense = ExpenseClaim.objects.filter(status='pending', employee__company=company)
+    pending_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
+
     return render(request, 'task_management.html', {
         'employee_id': user.employee_id,
         'employee': employee,
@@ -1025,11 +1029,19 @@ def task_management(request):
         'pending_leave_request': pending_leave_request,
         'pending_expense': pending_expense,
         'pending_loan': pending_loan
-        }
-    )
+    })
+    
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from .models import CustomUser, Employee, Task, Notification
 
-
+@login_required(login_url='/')
 def assign_task(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user.company  # Get the company of the logged-in HR/Manager
+
     if request.method == 'POST':
         try:
             task_name = request.POST['task_name']
@@ -1038,30 +1050,37 @@ def assign_task(request):
 
             employee_input_list = [input.strip() for input in employee_input.split(",")]
 
-            users = CustomUser.objects.filter(email__in=employee_input_list) | CustomUser.objects.filter(employee_id__in=employee_input_list)
-            
+            # Filter only users in the same company
+            users = CustomUser.objects.filter(
+                company=company
+            ).filter(
+                email__in=employee_input_list
+            ) | CustomUser.objects.filter(
+                company=company,
+                employee_id__in=employee_input_list
+            )
+
             if users.exists():
-                task = Task.objects.create(name=task_name, due_date=due_date, created_by=request.user)
+                task = Task.objects.create(name=task_name, due_date=due_date, created_by=user)
                 task.assigned_to.set(users)
 
-                for user in users:
+                for user_obj in users:
                     notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
-                    Notification.objects.create(recipient=user, message=notification_message)
+                    Notification.objects.create(recipient=user_obj, message=notification_message)
                 
                 task.save()
                 return JsonResponse({'status': 'success', 'message': 'Task assigned successfully!'})
             else:
-                return JsonResponse({'status': 'error', 'message': 'No users found with the provided emails or IDs.'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'No users found with the provided emails or IDs in your company.'}, status=400)
 
         except KeyError as e:
             return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
-    
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
+
     return render(request, 'task_management.html', {'employee': employee})
+
 
 
 @login_required
@@ -1613,10 +1632,12 @@ def terms_of_service(request):
 @staff_member_required
 def create_salary(request):
     user = request.user
-    employee = None
-    
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user.company  # Get the logged-in user's company
+
     employee_id_filter = request.GET.get('employee_id', '')
     month_filter = request.GET.get('month', '')
+    filtered_employee = None
 
     if month_filter:
         try:
@@ -1624,20 +1645,30 @@ def create_salary(request):
         except ValueError:
             month_filter = None
 
+    # Only allow filtering by employee in same company
     if employee_id_filter:
-        employee = Employee.objects.filter(employee_id=employee_id_filter).first()
+        filtered_employee = Employee.objects.filter(employee_id=employee_id_filter, company=company).first()
+        if not filtered_employee:
+            messages.error(request, "No employee found with that ID in your company.")
+            return redirect('create_salary')
 
     if request.method == 'POST':
         form = SalaryForm(request.POST)
         if form.is_valid():
-            form.save()
+            salary_instance = form.save(commit=False)
+
+            # Ensure the employee belongs to the same company before saving
+            if salary_instance.employee.company != company:
+                messages.error(request, "You cannot assign salary for an employee outside your company.")
+                return redirect('create_salary')
+
+            salary_instance.save()
+            messages.success(request, "Salary created successfully.")
             return redirect('salary_list')
     else:
         form = SalaryForm()
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'create_salary.html', {
         'form': form,
