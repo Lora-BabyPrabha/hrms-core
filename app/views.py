@@ -646,7 +646,6 @@ def holidays(request):
     })
 
 #------------------------------------------------------------- Salary details #
-    
 @login_required(login_url='/')
 def salary_details(request):
     user = request.user
@@ -688,17 +687,18 @@ def salary_details(request):
         'from_month': from_month[:7] if from_month else None,
         'to_month': to_month[:7] if to_month else None,
     })
- 
- 
+    
+@login_required(login_url='/')
 def generate_payslip_pdf(request, employee_id):
-    employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
+    user = request.user
+    employee = get_object_or_404(Employee, employee_id=user.employee_id)
+    company = employee.company  # restrict to logged-in user's company
 
     from_month = request.GET.get('from_month')
     to_month = request.GET.get('to_month')
 
     if not from_month and not to_month:
-        latest_payslip = Salary.objects.filter(employee=employee).order_by('-month').first()
- 
+        latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
@@ -708,17 +708,21 @@ def generate_payslip_pdf(request, employee_id):
 
     if to_month:
         to_month_date = datetime.strptime(f"{to_month}-01", '%Y-%m-%d')
-        last_day_of_month = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
-        to_month = f"{to_month}-{last_day_of_month}"
+        last_day = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
+        to_month = f"{to_month}-{last_day}"
 
     if from_month and to_month:
         payslips = Salary.objects.filter(
             employee=employee,
+            employee__company=company,
             month__gte=from_month,
             month__lte=to_month
         ).order_by('-month')
     else:
-        payslips = Salary.objects.filter(employee=employee).order_by('-month')[:1]
+        payslips = Salary.objects.filter(
+            employee=employee,
+            employee__company=company
+        ).order_by('-month')[:1]
 
     logo_url = request.build_absolute_uri(static('salary_logo_40.png'))
 
@@ -731,8 +735,9 @@ def generate_payslip_pdf(request, employee_id):
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
- 
+
     return response
+
 
 
 #------------------------------------------------------------- Tax Deduction #
@@ -1694,27 +1699,54 @@ def delete_salary(request, salary_id):
     return render(request, 'delete_salary.html')
 
 
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from datetime import datetime
+from .models import Salary, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def salary_list(request):
+    user = request.user
+
+    # Get the current user's company from CustomUser model
+    user_company = user.company
+
+    # Get the associated employee record (if needed for context)
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+    except Employee.DoesNotExist:
+        employee = None
+
+    # Filters
     employee_id_filter = request.GET.get('employee_id')
     month_filter = request.GET.get('month')
 
-    salary_query = Salary.objects.all()
+    # Start salary query limited to this user's company
+    salary_query = Salary.objects.filter(employee__company=user_company)
 
+    # Filter by employee ID (within the same company)
     if employee_id_filter:
         salary_query = salary_query.filter(employee__employee_id=employee_id_filter)
 
+    # Filter by month (safe parsing)
     if month_filter:
         try:
             month_date = datetime.strptime(month_filter, '%Y-%m')
-            salary_query = salary_query.filter(month__year=month_date.year, month__month=month_date.month)
+            salary_query = salary_query.filter(
+                month__year=month_date.year,
+                month__month=month_date.month
+            )
         except ValueError:
-            salary_query = salary_query.none()
+            salary_query = Salary.objects.none()  # Invalid month format
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    # Get unread notifications (only from this user's company if needed)
+    notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).order_by('-created_at')[:5]
+
     return render(request, 'salary_list.html', {
         'salaries': salary_query,
         'employee': employee,
@@ -1722,6 +1754,7 @@ def salary_list(request):
         'employee_id_filter': employee_id_filter,
         'month_filter': month_filter,
     })
+
 
 #------------------------------------------------------------- Performance #
 
