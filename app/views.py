@@ -297,49 +297,41 @@ def base(request):
 
 #------------------------------------------------------------- Dashboard #
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from datetime import datetime
+from .models import Employee, Notification
+
 @login_required(login_url='/')
 def dashboard(request):
-    if request.user.is_authenticated:
-        user = request.user
+    user = request.user
 
-        if user.role == 'Employee':
+    if not user.is_authenticated:
+        return render(request, 'index.html')
 
-            # request for user #
-            user = request.user
-            employee = Employee.objects.get(employee_id=user.employee_id)
+    today = datetime.now().date()
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user.company  # get company from CustomUser
 
-            # birthdays #
-            today = datetime.now().date()
-            today_month_day = today.strftime('%m-%d')
-            employees_with_birthday = Employee.objects.filter(date_of_birth__month=today.month, date_of_birth__day=today.day)
+    # birthdays filtered by company
+    employees_with_birthday = Employee.objects.filter(
+        date_of_birth__month=today.month,
+        date_of_birth__day=today.day,
+        company=company
+    )
 
-            # notifications #
-            notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).order_by('-created_at')[:5]
 
-            return render(request, 'dashboard.html', {'employee': employee , 'notifications': notifications, 'employees_with_birthday': employees_with_birthday, 'today': today})
-        
-        elif user.role == 'HR' or user.role == 'Manager' or user.is_superuser:
+    return render(request, 'dashboard.html', {
+        'employee': employee,
+        'employees_with_birthday': employees_with_birthday,
+        'today': today,
+        'notifications': notifications,
+    })
 
-            user = request.user
-            notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-            today = datetime.now().date()
-            today_month_day = today.strftime('%m-%d')
-            employees_with_birthday = Employee.objects.filter(date_of_birth__month=today.month, date_of_birth__day=today.day)
-
-            employee = Employee.objects.get(employee_id=user.employee_id)
-            return render(request, 'dashboard.html', {
-                'employee': employee,
-                'employees_with_birthday': employees_with_birthday,
-                'today': today,
-                'notifications': notifications,
-                
-                }
-            )
-
-        return render(request, 'dashboard.html')
-    
-    else:
-        return render(request,'index.html')
     
 
 #------------------------------------------------------------- Employee requests - Notifications  #
@@ -397,6 +389,7 @@ def employee_requests(request):
         'time_entries': time_entries,
         'notifications': notifications,
     })
+
 
 
 #------------------------------------------------------------- Mark as read -- Notifications  #
@@ -642,24 +635,24 @@ def leave_request(request):
 
 #------------------------------------------------------------- Holidays #
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Holiday, Employee, Notification
+
 @login_required(login_url='/')
 def holidays(request):
-    if request.user.is_authenticated:
-        h = Holiday.objects.all()
-        user = request.user
-        employee = Employee.objects.get(employee_id=user.employee_id)
-        notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-        
-        return render(request, 'holidays.html',{
-            'h': h,
-            'employee': employee,
-            'notifications': notifications,
-            }
-        )
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    holidays = Holiday.objects.filter(company=employee.company)
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
+    return render(request, 'holidays.html', {
+        'h': holidays,
+        'employee': employee,
+        'notifications': notifications,
+    })
 
 #------------------------------------------------------------- Salary details #
-    
 @login_required(login_url='/')
 def salary_details(request):
     user = request.user
@@ -701,17 +694,18 @@ def salary_details(request):
         'from_month': from_month[:7] if from_month else None,
         'to_month': to_month[:7] if to_month else None,
     })
- 
- 
+    
+@login_required(login_url='/')
 def generate_payslip_pdf(request, employee_id):
-    employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
+    user = request.user
+    employee = get_object_or_404(Employee, employee_id=user.employee_id)
+    company = employee.company  # restrict to logged-in user's company
 
     from_month = request.GET.get('from_month')
     to_month = request.GET.get('to_month')
 
     if not from_month and not to_month:
-        latest_payslip = Salary.objects.filter(employee=employee).order_by('-month').first()
- 
+        latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
@@ -721,17 +715,21 @@ def generate_payslip_pdf(request, employee_id):
 
     if to_month:
         to_month_date = datetime.strptime(f"{to_month}-01", '%Y-%m-%d')
-        last_day_of_month = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
-        to_month = f"{to_month}-{last_day_of_month}"
+        last_day = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
+        to_month = f"{to_month}-{last_day}"
 
     if from_month and to_month:
         payslips = Salary.objects.filter(
             employee=employee,
+            employee__company=company,
             month__gte=from_month,
             month__lte=to_month
         ).order_by('-month')
     else:
-        payslips = Salary.objects.filter(employee=employee).order_by('-month')[:1]
+        payslips = Salary.objects.filter(
+            employee=employee,
+            employee__company=company
+        ).order_by('-month')[:1]
 
     logo_url = request.build_absolute_uri(static('salary_logo_40.png'))
 
@@ -744,8 +742,9 @@ def generate_payslip_pdf(request, employee_id):
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
- 
+
     return response
+
 
 
 #------------------------------------------------------------- Tax Deduction #
@@ -1015,16 +1014,20 @@ def edit_banking_info(request, employee_id):
 
 
 #------------------------------------------------------------- Task Management #
-
 @login_required(login_url='/')
 def task_management(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    pending_musters = Muster.objects.filter(status='Pending')
-    pending_leave_request = LeaveRequest.objects.filter(status='pending')
-    pending_expense = ExpenseClaim.objects.filter(status='pending')
-    pending_loan = LoanRequest.objects.filter(status='pending')
+    company = user.company  # get the logged-in user's company
+
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+
+    # Filter only data belonging to the same company
+    pending_musters = Muster.objects.filter(status='Pending', user__company=company)
+    pending_leave_request = LeaveRequest.objects.filter(status='pending', employee__company=company)
+    pending_expense = ExpenseClaim.objects.filter(status='pending', employee__company=company)
+    pending_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
+
     return render(request, 'task_management.html', {
         'employee_id': user.employee_id,
         'employee': employee,
@@ -1033,11 +1036,24 @@ def task_management(request):
         'pending_leave_request': pending_leave_request,
         'pending_expense': pending_expense,
         'pending_loan': pending_loan
-        }
-    )
+    })
+    
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from .models import CustomUser, Employee, Task, Notification
 
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
 
+@login_required(login_url='/')
 def assign_task(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user.company  # Get the company of the logged-in HR/Manager
+
     if request.method == 'POST':
         try:
             task_name = request.POST['task_name']
@@ -1045,31 +1061,42 @@ def assign_task(request):
             due_date = request.POST['due_date']
 
             employee_input_list = [input.strip() for input in employee_input.split(",")]
-
             users = CustomUser.objects.filter(email__in=employee_input_list) | CustomUser.objects.filter(employee_id__in=employee_input_list)
-            
-            if users.exists():
-                task = Task.objects.create(name=task_name, due_date=due_date, created_by=request.user)
-                task.assigned_to.set(users)
 
-                for user in users:
-                    notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
-                    Notification.objects.create(recipient=user, message=notification_message)
-                
-                task.save()
-                return JsonResponse({'status': 'success', 'message': 'Task assigned successfully!'})
-            else:
+            if not users.exists():
                 return JsonResponse({'status': 'error', 'message': 'No users found with the provided emails or IDs.'}, status=400)
+
+            # Check if all selected employees are in the same company as the current user
+            current_company = request.user.company_id  # Assuming your CustomUser model has company_id field
+            for user in users:
+                if user.company_id != current_company:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'You cannot assign tasks to employees from another company.'
+                    }, status=403)
+
+            # Proceed to assign task
+            task = Task.objects.create(name=task_name, due_date=due_date, created_by=request.user)
+            task.assigned_to.set(users)
+            for user in users:
+                Notification.objects.create(
+                    recipient=user,
+                    message=f"You have been assigned a task: {task_name}, with a due date of {due_date}."
+                )
+            task.save()
+
+            return JsonResponse({'status': 'success', 'message': 'Task assigned successfully!'})
 
         except KeyError as e:
             return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
         except Exception as e:
-            print(f"Error: {e}")
             return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
-    
+
+    # GET method
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     return render(request, 'task_management.html', {'employee': employee})
+
 
 
 @login_required
@@ -1621,10 +1648,12 @@ def terms_of_service(request):
 @staff_member_required
 def create_salary(request):
     user = request.user
-    employee = None
-    
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user.company  # Get the logged-in user's company
+
     employee_id_filter = request.GET.get('employee_id', '')
     month_filter = request.GET.get('month', '')
+    filtered_employee = None
 
     if month_filter:
         try:
@@ -1632,20 +1661,30 @@ def create_salary(request):
         except ValueError:
             month_filter = None
 
+    # Only allow filtering by employee in same company
     if employee_id_filter:
-        employee = Employee.objects.filter(employee_id=employee_id_filter).first()
+        filtered_employee = Employee.objects.filter(employee_id=employee_id_filter, company=company).first()
+        if not filtered_employee:
+            messages.error(request, "No employee found with that ID in your company.")
+            return redirect('create_salary')
 
     if request.method == 'POST':
         form = SalaryForm(request.POST)
         if form.is_valid():
-            form.save()
+            salary_instance = form.save(commit=False)
+
+            # Ensure the employee belongs to the same company before saving
+            if salary_instance.employee.company != company:
+                messages.error(request, "You cannot assign salary for an employee outside your company.")
+                return redirect('create_salary')
+
+            salary_instance.save()
+            messages.success(request, "Salary created successfully.")
             return redirect('salary_list')
     else:
         form = SalaryForm()
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'create_salary.html', {
         'form': form,
@@ -1707,27 +1746,54 @@ def delete_salary(request, salary_id):
     return render(request, 'delete_salary.html')
 
 
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from datetime import datetime
+from .models import Salary, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def salary_list(request):
+    user = request.user
+
+    # Get the current user's company from CustomUser model
+    user_company = user.company
+
+    # Get the associated employee record (if needed for context)
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+    except Employee.DoesNotExist:
+        employee = None
+
+    # Filters
     employee_id_filter = request.GET.get('employee_id')
     month_filter = request.GET.get('month')
 
-    salary_query = Salary.objects.all()
+    # Start salary query limited to this user's company
+    salary_query = Salary.objects.filter(employee__company=user_company)
 
+    # Filter by employee ID (within the same company)
     if employee_id_filter:
         salary_query = salary_query.filter(employee__employee_id=employee_id_filter)
 
+    # Filter by month (safe parsing)
     if month_filter:
         try:
             month_date = datetime.strptime(month_filter, '%Y-%m')
-            salary_query = salary_query.filter(month__year=month_date.year, month__month=month_date.month)
+            salary_query = salary_query.filter(
+                month__year=month_date.year,
+                month__month=month_date.month
+            )
         except ValueError:
-            salary_query = salary_query.none()
+            salary_query = Salary.objects.none()  # Invalid month format
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    # Get unread notifications (only from this user's company if needed)
+    notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).order_by('-created_at')[:5]
+
     return render(request, 'salary_list.html', {
         'salaries': salary_query,
         'employee': employee,
@@ -1735,6 +1801,7 @@ def salary_list(request):
         'employee_id_filter': employee_id_filter,
         'month_filter': month_filter,
     })
+
 
 #------------------------------------------------------------- Performance #
 
@@ -1749,23 +1816,37 @@ def performance_entry(request):
         'employee': employee,
         'notifications': notifications
         })
- 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def submit_performance(request):
     employee_id = request.data.get('employee_id')
     performance_score = request.data.get('performance_score')
- 
+
     if not employee_id or performance_score is None:
         return Response({'error': 'Missing fields'}, status=400)
- 
+
     try:
-        employee = Employee.objects.get(employee_id=employee_id)
+        # Get the employee that is being submitted
+        target_employee = Employee.objects.get(employee_id=employee_id)
     except Employee.DoesNotExist:
         return Response({'error': 'Employee not found'}, status=404)
- 
-    Performance.objects.create(employee=employee, performance_score=performance_score)
+
+    try:
+        # Get the logged-in user’s employee instance
+        logged_in_employee = Employee.objects.get(employee_id=request.user.employee_id)
+    except Employee.DoesNotExist:
+        return Response({'error': 'Unauthorized access'}, status=403)
+
+    # Check if both employees belong to the same company
+    if target_employee.company != logged_in_employee.company:
+        return Response({'error': 'You can only submit performance for employees in your company'}, status=403)
+
+    Performance.objects.create(employee=target_employee, performance_score=performance_score)
     return Response({'message': 'Performance submitted successfully'})
+
  
  
 @api_view(['GET'])
@@ -1789,17 +1870,20 @@ def best_monthly_performer(request):
 
 @login_required(login_url='/')
 def performance_page(request):
-    performance_data = Performance.objects.select_related('employee').all()
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
+    
+    # Filter only performances in user's company
+    performance_data = Performance.objects.filter(employee__company=employee.company)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'performance_page.html', {
         'performance_data': performance_data,
         'employee': employee,
         'notifications': notifications,
-        }
-    )
+    })
+
 
 
 #------------------------------------------------------------- Working days #
@@ -2008,19 +2092,28 @@ def company_delete(request, pk):
 
 #------------------------------------------------------------- Task list by staff #
 
+from datetime import datetime, timedelta
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from .models import Task, Employee, Notification, CustomUser  # adjust if needed
 @login_required(login_url='/')
 @staff_member_required
 def task_list(request):
-    tasks = Task.objects.all()
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
+    # Only get tasks assigned to employees of the same company
+    tasks = Task.objects.filter(assigned_to__employee__company=company).distinct()
+
     employee_id = request.GET.get('employee_id', '')
     month = request.GET.get('month', '')
 
     if employee_id:
-
         try:
-            employee = CustomUser.objects.get(employee_id=employee_id)
-            tasks = tasks.filter(assigned_to=employee)
-
+            emp = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
+            tasks = tasks.filter(assigned_to=emp)
         except CustomUser.DoesNotExist:
             tasks = tasks.none()
 
@@ -2038,9 +2131,8 @@ def task_list(request):
         for i in range(1, 13)
     ]
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+
     return render(request, 'task_list.html', {
         'tasks': tasks,
         'months': months,
@@ -2052,6 +2144,13 @@ def task_list(request):
 
 #------------------------------------------------------------- Company adding by staff #
 
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Performance, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def performance_list(request):
@@ -2060,26 +2159,44 @@ def performance_list(request):
     last_day_of_month = first_day_of_month + timedelta(days=31)
     last_day_of_month = last_day_of_month.replace(day=1) - timedelta(days=1)
 
-    performance_data = Performance.objects.filter(date__range=[first_day_of_month, last_day_of_month])
-
-    employee_id = request.GET.get('employee_id')
-    month = request.GET.get('month')
- 
-    if employee_id:
-        performance_data = performance_data.filter(employee__employee_id=employee_id)
- 
-    if month:
-        month_start = timezone.datetime.strptime(month, '%Y-%m').date()
-        month_end = month_start.replace(day=28) + timedelta(days=4)
-        performance_data = performance_data.filter(date__range=[month_start, month_end])
-
-    employees = Employee.objects.all()
-
-    months = [(timezone.datetime(today.year, m, 1).strftime('%Y-%m'), timezone.datetime(today.year, m, 1).strftime('%B')) for m in range(1, 13)]
- 
+    # Get current logged-in employee's company
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    company = employee.company
+
+    # Filter performance data by current month AND company
+    performance_data = Performance.objects.filter(
+        date__range=[first_day_of_month, last_day_of_month],
+        employee__company=company
+    )
+
+    # Filters (by employee_id and month) while respecting the company
+    employee_id = request.GET.get('employee_id')
+    month = request.GET.get('month')
+
+    if employee_id:
+        performance_data = performance_data.filter(employee__employee_id=employee_id, employee__company=company)
+
+    if month:
+        month_start = timezone.datetime.strptime(month, '%Y-%m').date()
+        month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        performance_data = performance_data.filter(date__range=[month_start, month_end], employee__company=company)
+
+    # Get employees of that company only
+    employees = Employee.objects.filter(company=company)
+
+    months = [
+        (timezone.datetime(today.year, m, 1).strftime('%Y-%m'),
+         timezone.datetime(today.year, m, 1).strftime('%B'))
+        for m in range(1, 13)
+    ]
+
+    # Notifications
+    notifications = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).order_by('-created_at')[:5]
+
     return render(request, 'performance_list.html', {
         'performance_data': performance_data,
         'employees': employees,
@@ -2089,6 +2206,7 @@ def performance_list(request):
         'employee': employee,
         'notifications': notifications
     })
+
 
 
 #------------------------------------------------------------- Company adding by staff #
@@ -2289,7 +2407,6 @@ def employee_delete(request, pk):
 
 #------------------------------------------------------------- Holidays adding by staff #
 
-@login_required(login_url='/')
 @staff_member_required
 def holidays_list(request):
     user = request.user
@@ -2301,7 +2418,7 @@ def holidays_list(request):
         'holidays': holidays,
         'employee': employee,
         'notifications': notifications
-    })
+})
 
 
 @login_required(login_url='/')
