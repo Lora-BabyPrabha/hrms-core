@@ -41,7 +41,8 @@
 }
 
 #muster-table tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: #FFFFFF
+;
     transform: scale(1.002);
    
 }
@@ -106,7 +107,8 @@
 }
 
 #table-responsive-container::-webkit-scrollbar-track {
-    background: #f8f9fa;
+    background: #FFFFFF
+;
 }
 
 #table-responsive-container::-webkit-scrollbar-thumb {
@@ -124,7 +126,8 @@
 
 /* Header Styling */
 #muster-table-header tr {
-    background: #f8f9fa;
+    background: #FFFFFF
+;
     border: 1px solid #e2e8f0;
 }
 
@@ -137,7 +140,8 @@
     text-align: center;
     border: 1px solid #e2e8f0;
     letter-spacing: 0.5px;
-    background: #f8f9fa;
+    background: #FFFFFF
+;
 }
 
 /* Table Body Styling */
@@ -228,7 +232,8 @@
     }
     
     #muster-table th {
-        background-color: #f8f9fa !important;
+        background-color: #FFFFFF
+ !important;
         color: #2c3e50 !important;
     }
     

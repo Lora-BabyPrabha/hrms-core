@@ -122,11 +122,11 @@ footer {
 .form input {
     border: none;
     border-radius: 7px;
-    border: 2px solid #CF8B60;
+    border: 2px solid #E0E0E0;
 }
 
 .form label{
-    color: #CF8B60;
+    color: #333333;
 }
 
 
@@ -182,7 +182,7 @@ footer {
     border: 2px  rgb(155, 221, 31);
     border-radius: 12px;
     color: white;
-    background-color:  #CF8B60;
+    background-color:  #0191B4;
     transition: all 0.3s ease;
     cursor: pointer;
     outline: none;
@@ -190,7 +190,7 @@ footer {
 
 .btn:hover {
     color: #fff;
-    background-color:rgb(99, 155, 9);
+    background-color:#017A98;
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
     transform: translateY(-2px);
 }

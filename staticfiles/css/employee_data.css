@@ -29,7 +29,8 @@
     .table th {
         position: sticky;
         top: 0;
-        background-color: #f8f9fa;
+        background-color: #FFFFFF
+;
         font-weight: 600;
         text-align: left;
        
@@ -110,7 +111,8 @@
     .table th {
         position: sticky;
         top: 0;
-        background-color: #f8f9fa;
+        background-color: #FFFFFF
+;
     }
 
     /* Ensure the table does not overflow the screen */
@@ -153,8 +155,10 @@
         }
 
         .bb{
-            background-color:#CF8B60;
-            border-color:#CF8B60;
+            background-color:#0191B4
+;
+            border-color:#0191B4
+;
         }
 
         .bb:hover{

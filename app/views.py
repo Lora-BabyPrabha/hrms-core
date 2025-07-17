@@ -48,6 +48,8 @@ from django.utils import timezone
 import zoneinfo
 from django.http import JsonResponse
 from .models import EmployeeProfile, Payroll, Benefit, Training, HelpTicket
+from django.http import JsonResponse
+from .models import Company_check
 
 CustomUser = get_user_model()
 
@@ -59,22 +61,34 @@ CustomUser = get_user_model()
 
 def indexview(request):
     if request.user.is_authenticated:
-        return redirect('dashboard')  # If already logged in, redirect to dashboard
+        return redirect('dashboard')
+
+    error_message = None
 
     if request.method == "POST":
         company_name = request.POST.get('company_name', '').strip()
 
         if company_name:
-            # Case-insensitive exact match
-            company = Company_check.objects.filter(company_name__iexact=company_name).first()
-
-            if company:
-                # Redirect to login with company ID as a GET parameter
+            try:
+                # Case-sensitive match
+                company = Company_check.objects.get(company_name__exact=company_name)
                 return redirect(f'/login/?company_id={company.id}')
-            else:
-                return render(request, 'index.html', {'message': 'No records found for the company.'})
+            except Company_check.DoesNotExist:
+                error_message = (
+                    "Company name not found. Please check capitalization. "
+                    "Example: 'Tech' is different from 'tech'."
+                )
+        else:
+            error_message = "Please enter a company name."
 
-    return render(request, 'index.html')
+    return render(request, 'index.html', {
+        'message': error_message
+    })
+#------------------------------------------------------------- company_filter #
+def company_autocomplete(request):
+    term = request.GET.get('term', '')
+    companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
+    return JsonResponse(list(companies), safe=False)
 
 
 #------------------------------------------------------------- Login #
@@ -375,6 +389,7 @@ def employee_requests(request):
         'time_entries': time_entries,
         'notifications': notifications,
     })   
+
 
 #------------------------------------------------------------- Mark as read -- Notifications  #
 
@@ -1027,6 +1042,11 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from .models import CustomUser, Employee, Task, Notification
 
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
+
 @login_required(login_url='/')
 def assign_task(request):
     user = request.user
@@ -1040,36 +1060,40 @@ def assign_task(request):
             due_date = request.POST['due_date']
 
             employee_input_list = [input.strip() for input in employee_input.split(",")]
+            users = CustomUser.objects.filter(email__in=employee_input_list) | CustomUser.objects.filter(employee_id__in=employee_input_list)
 
-            # Filter only users in the same company
-            users = CustomUser.objects.filter(
-                company=company
-            ).filter(
-                email__in=employee_input_list
-            ) | CustomUser.objects.filter(
-                company=company,
-                employee_id__in=employee_input_list
-            )
+            if not users.exists():
+                return JsonResponse({'status': 'error', 'message': 'No users found with the provided emails or IDs.'}, status=400)
 
-            if users.exists():
-                task = Task.objects.create(name=task_name, due_date=due_date, created_by=user)
-                task.assigned_to.set(users)
+            # Check if all selected employees are in the same company as the current user
+            current_company = request.user.company_id  # Assuming your CustomUser model has company_id field
+            for user in users:
+                if user.company_id != current_company:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'You cannot assign tasks to employees from another company.'
+                    }, status=403)
 
-                for user_obj in users:
-                    notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
-                    Notification.objects.create(recipient=user_obj, message=notification_message)
-                
-                task.save()
-                return JsonResponse({'status': 'success', 'message': 'Task assigned successfully!'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'No users found with the provided emails or IDs in your company.'}, status=400)
+            # Proceed to assign task
+            task = Task.objects.create(name=task_name, due_date=due_date, created_by=request.user)
+            task.assigned_to.set(users)
+            for user in users:
+                Notification.objects.create(
+                    recipient=user,
+                    message=f"You have been assigned a task: {task_name}, with a due date of {due_date}."
+                )
+            task.save()
+
+            return JsonResponse({'status': 'success', 'message': 'Task assigned successfully!'})
 
         except KeyError as e:
             return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
         except Exception as e:
-            print(f"Error: {e}")
             return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
 
+    # GET method
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
     return render(request, 'task_management.html', {'employee': employee})
 
 
@@ -1791,23 +1815,37 @@ def performance_entry(request):
         'employee': employee,
         'notifications': notifications
         })
- 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def submit_performance(request):
     employee_id = request.data.get('employee_id')
     performance_score = request.data.get('performance_score')
- 
+
     if not employee_id or performance_score is None:
         return Response({'error': 'Missing fields'}, status=400)
- 
+
     try:
-        employee = Employee.objects.get(employee_id=employee_id)
+        # Get the employee that is being submitted
+        target_employee = Employee.objects.get(employee_id=employee_id)
     except Employee.DoesNotExist:
         return Response({'error': 'Employee not found'}, status=404)
- 
-    Performance.objects.create(employee=employee, performance_score=performance_score)
+
+    try:
+        # Get the logged-in user’s employee instance
+        logged_in_employee = Employee.objects.get(employee_id=request.user.employee_id)
+    except Employee.DoesNotExist:
+        return Response({'error': 'Unauthorized access'}, status=403)
+
+    # Check if both employees belong to the same company
+    if target_employee.company != logged_in_employee.company:
+        return Response({'error': 'You can only submit performance for employees in your company'}, status=403)
+
+    Performance.objects.create(employee=target_employee, performance_score=performance_score)
     return Response({'message': 'Performance submitted successfully'})
+
  
  
 @api_view(['GET'])
@@ -1831,17 +1869,20 @@ def best_monthly_performer(request):
 
 @login_required(login_url='/')
 def performance_page(request):
-    performance_data = Performance.objects.select_related('employee').all()
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
+    
+    # Filter only performances in user's company
+    performance_data = Performance.objects.filter(employee__company=employee.company)
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'performance_page.html', {
         'performance_data': performance_data,
         'employee': employee,
         'notifications': notifications,
-        }
-    )
+    })
+
 
 
 #------------------------------------------------------------- Working days #
@@ -2050,19 +2091,28 @@ def company_delete(request, pk):
 
 #------------------------------------------------------------- Task list by staff #
 
+from datetime import datetime, timedelta
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from .models import Task, Employee, Notification, CustomUser  # adjust if needed
 @login_required(login_url='/')
 @staff_member_required
 def task_list(request):
-    tasks = Task.objects.all()
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
+    # Only get tasks assigned to employees of the same company
+    tasks = Task.objects.filter(assigned_to__employee__company=company).distinct()
+
     employee_id = request.GET.get('employee_id', '')
     month = request.GET.get('month', '')
 
     if employee_id:
-
         try:
-            employee = CustomUser.objects.get(employee_id=employee_id)
-            tasks = tasks.filter(assigned_to=employee)
-
+            emp = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
+            tasks = tasks.filter(assigned_to=emp)
         except CustomUser.DoesNotExist:
             tasks = tasks.none()
 
@@ -2080,9 +2130,8 @@ def task_list(request):
         for i in range(1, 13)
     ]
 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+
     return render(request, 'task_list.html', {
         'tasks': tasks,
         'months': months,

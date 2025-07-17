@@ -21,7 +21,8 @@
         transform: translateX(-50%);
         width: 100px;
         height: 4px;
-        background: #CF8B60;
+        background: #0191B4
+;
         border-radius: 2px;
     }
 
@@ -51,13 +52,15 @@
 
     #monthYearSelect:focus,
     #employeeIdInput:focus {
-        border-color: #CF8B60;
+        border-color: #0191B4
+;
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         outline: none;
     }
 
     #filterSubmitBtn {
-        background-color: #CF8B60;
+        background-color: #0191B4
+;
         border: none;
         padding: 0.75rem 1.5rem;
         font-weight: 500;
@@ -87,7 +90,8 @@
     }
 
     #workingDaysTable thead th {
-        background-color: #CF8B60;
+        background-color: #0191B4
+;
         color: white;
         font-weight: 500;
         padding: 1rem;

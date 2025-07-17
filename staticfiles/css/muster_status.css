@@ -25,13 +25,15 @@
     .table th {
         position: sticky;
         top: 0;
-        background-color: #f8f9fa;
+        background-color: #FFFFFF
+;
         font-weight: 600;
         text-align: left;
     }
     
     .table tbody tr:hover {
-        background-color: #f8f9fa;
+        background-color: #FFFFFF
+;
     }
     
     @media (max-width: 768px) {
