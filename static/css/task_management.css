@@ -453,4 +453,61 @@ body {
         transform: translateY(1px);
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
-      
+/* Alert Popup Box */
+.custom-alert {
+  display: none;
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  border-radius: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.custom-alert.show {
+  display: block;
+}
+
+.custom-alert-content {
+  padding: 20px;
+  text-align: center;
+}
+
+.custom-alert-content p {
+  margin: 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.custom-alert-btn {
+  margin-top: 15px;
+  padding: 8px 20px;
+  font-size: 14px;
+  color: white;
+  background: linear-gradient(to right, #6366f1, #3b82f6);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.custom-alert-btn:hover {
+  background: linear-gradient(to right, #4f46e5, #2563eb);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -30%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}

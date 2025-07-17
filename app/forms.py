@@ -193,45 +193,33 @@ from django import forms
 from .models import Employee, Salary
 
 class SalaryForm(forms.ModelForm):
-    employee_id = forms.CharField(max_length=50, required=True, label='Employee ID')  # Text input for employee ID
+    employee_id = forms.CharField(max_length=50, required=True, label='Employee ID')
+
     month = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date'}),  # This makes the field a date input
+        widget=forms.DateInput(attrs={'type': 'date'}),
         required=True,
         label='Month'
     )
 
     class Meta:
         model = Salary
-        fields = ['employee_id', 'month', 'current_month_calculated_days', 'current_month_paid_days', 
-                  'basic_salary', 'house_rent_allowance', 'special_allowance', 'conveyance_allowance', 'total_fixed_salary',
-                  'pf_contribution', 'professional_tax', 'income_tax', 'performance_bonus', 
-                  'other_incentives', 'medical_insurance', 'stationery_misc', 'deductions', 
-                  'gross_salary', 'net_salary', 'total_variable_pay', 'per_day_salary', 'actual_salary', 
-                  'loan_deductions']
-        exclude = []  # We include the 'employee' field here, so it can be saved in the model
+        exclude = ['employee']  # We're setting it manually based on employee_id
 
     def clean_employee_id(self):
         employee_id = self.cleaned_data['employee_id']
         try:
-            employee = Employee.objects.get(employee_id=employee_id)  # Check if the employee exists
+            employee = Employee.objects.get(employee_id=employee_id)
         except Employee.DoesNotExist:
             raise forms.ValidationError("Employee with this ID does not exist.")
-        return employee
+        self.cleaned_data['employee'] = employee  # Add it for use later
+        return employee_id
 
-    # Override the save method to assign the employee
     def save(self, commit=True):
-        # Get the employee from cleaned data
-        employee = self.cleaned_data.get('employee_id')
-        
-        # Create the Salary instance
-        salary_instance = super().save(commit=False)
-        
-        # Assign the employee instance to the salary
-        salary_instance.employee = employee
-
+        salary = super().save(commit=False)
+        salary.employee = self.cleaned_data['employee']  # Assign actual Employee instance
         if commit:
-            salary_instance.save()
-        return salary_instance
+            salary.save()
+        return salary
 
 
 # class EmployeeProfileForm(forms.ModelForm):
