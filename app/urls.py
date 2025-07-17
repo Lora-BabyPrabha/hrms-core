@@ -70,7 +70,7 @@ urlpatterns = [
 
 
     #  Salaries #
-    path('salary_details', views.salary_details, name='salary_details'),
+    path('salary_details/', views.salary_details, name='salary_details'),
     path('generate_payslip_pdf/<int:employee_id>/', views.generate_payslip_pdf, name='generate_payslip_pdf'),
 
 
@@ -167,7 +167,7 @@ urlpatterns = [
 
     #  HR4U #
     path('HR4U/', views.hr4u_dashboard, name='hr_dashboard'),
-    path('employee_self_service', views.employee_self_service, name='employee_self_service'),
+    path('employee_self_service/', views.employee_self_service, name='employee_self_service'),
     path('benefits_compensation', views.benefits_compensation, name='benefits_compensation'),
     path('career_development', views.career_development, name='career_development'),
     path('help_desk', views.help_desk, name='help_desk'),
