@@ -283,49 +283,41 @@ def base(request):
 
 #------------------------------------------------------------- Dashboard #
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from datetime import datetime
+from .models import Employee, Notification
+
 @login_required(login_url='/')
 def dashboard(request):
-    if request.user.is_authenticated:
-        user = request.user
+    user = request.user
 
-        if user.role == 'Employee':
+    if not user.is_authenticated:
+        return render(request, 'index.html')
 
-            # request for user #
-            user = request.user
-            employee = Employee.objects.get(employee_id=user.employee_id)
+    today = datetime.now().date()
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user.company  # get company from CustomUser
 
-            # birthdays #
-            today = datetime.now().date()
-            today_month_day = today.strftime('%m-%d')
-            employees_with_birthday = Employee.objects.filter(date_of_birth__month=today.month, date_of_birth__day=today.day)
+    # birthdays filtered by company
+    employees_with_birthday = Employee.objects.filter(
+        date_of_birth__month=today.month,
+        date_of_birth__day=today.day,
+        company=company
+    )
 
-            # notifications #
-            notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).order_by('-created_at')[:5]
 
-            return render(request, 'dashboard.html', {'employee': employee , 'notifications': notifications, 'employees_with_birthday': employees_with_birthday, 'today': today})
-        
-        elif user.role == 'HR' or user.role == 'Manager' or user.is_superuser:
+    return render(request, 'dashboard.html', {
+        'employee': employee,
+        'employees_with_birthday': employees_with_birthday,
+        'today': today,
+        'notifications': notifications,
+    })
 
-            user = request.user
-            notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-            today = datetime.now().date()
-            today_month_day = today.strftime('%m-%d')
-            employees_with_birthday = Employee.objects.filter(date_of_birth__month=today.month, date_of_birth__day=today.day)
-
-            employee = Employee.objects.get(employee_id=user.employee_id)
-            return render(request, 'dashboard.html', {
-                'employee': employee,
-                'employees_with_birthday': employees_with_birthday,
-                'today': today,
-                'notifications': notifications,
-                
-                }
-            )
-
-        return render(request, 'dashboard.html')
-    
-    else:
-        return render(request,'index.html')
     
 
 #------------------------------------------------------------- Employee requests - Notifications  #
