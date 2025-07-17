@@ -31,3 +31,4 @@ def common_data(request):
         'pending_expense': pending_expense,
         'pending_loan': pending_loan
     }
+
