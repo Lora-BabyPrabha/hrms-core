@@ -374,8 +374,7 @@ def employee_requests(request):
         'loan_requests': loan_requests,
         'time_entries': time_entries,
         'notifications': notifications,
-    })
-
+    })   
 
 #------------------------------------------------------------- Mark as read -- Notifications  #
 
