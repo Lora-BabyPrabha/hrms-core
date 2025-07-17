@@ -330,6 +330,8 @@ class Performance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     performance_score = models.IntegerField()
     date = models.DateField(auto_now_add=True)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='performance')
+
 
     class Meta:
         ordering = ['-date']
