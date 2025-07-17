@@ -107,6 +107,7 @@ class UserCreationForm(forms.ModelForm):
     class Meta:
         model = CustomUser
         fields = '__all__'
+        exclude = ['company']  # Exclude fields not needed in the form
 
     def clean_password(self):
         password = self.cleaned_data.get("password")
@@ -259,7 +260,7 @@ class Company_checkForm(forms.ModelForm):
 class HolidaysForm(forms.ModelForm):
     class Meta:
         model = Holiday
-        fields = '__all__'
+        exclude = ['company']
     date=forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'}),
     )

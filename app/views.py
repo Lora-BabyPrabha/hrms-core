@@ -628,21 +628,22 @@ def leave_request(request):
 
 #------------------------------------------------------------- Holidays #
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Holiday, Employee, Notification
+
 @login_required(login_url='/')
 def holidays(request):
-    if request.user.is_authenticated:
-        h = Holiday.objects.all()
-        user = request.user
-        employee = Employee.objects.get(employee_id=user.employee_id)
-        notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-        
-        return render(request, 'holidays.html',{
-            'h': h,
-            'employee': employee,
-            'notifications': notifications,
-            }
-        )
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    holidays = Holiday.objects.filter(company=employee.company)
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
+    return render(request, 'holidays.html', {
+        'h': holidays,
+        'employee': employee,
+        'notifications': notifications,
+    })
 
 #------------------------------------------------------------- Salary details #
 @login_required(login_url='/')
@@ -2071,6 +2072,13 @@ def task_list(request):
 
 #------------------------------------------------------------- Company adding by staff #
 
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Performance, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def performance_list(request):
@@ -2079,26 +2087,44 @@ def performance_list(request):
     last_day_of_month = first_day_of_month + timedelta(days=31)
     last_day_of_month = last_day_of_month.replace(day=1) - timedelta(days=1)
 
-    performance_data = Performance.objects.filter(date__range=[first_day_of_month, last_day_of_month])
-
-    employee_id = request.GET.get('employee_id')
-    month = request.GET.get('month')
- 
-    if employee_id:
-        performance_data = performance_data.filter(employee__employee_id=employee_id)
- 
-    if month:
-        month_start = timezone.datetime.strptime(month, '%Y-%m').date()
-        month_end = month_start.replace(day=28) + timedelta(days=4)
-        performance_data = performance_data.filter(date__range=[month_start, month_end])
-
-    employees = Employee.objects.all()
-
-    months = [(timezone.datetime(today.year, m, 1).strftime('%Y-%m'), timezone.datetime(today.year, m, 1).strftime('%B')) for m in range(1, 13)]
- 
+    # Get current logged-in employee's company
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    company = employee.company
+
+    # Filter performance data by current month AND company
+    performance_data = Performance.objects.filter(
+        date__range=[first_day_of_month, last_day_of_month],
+        employee__company=company
+    )
+
+    # Filters (by employee_id and month) while respecting the company
+    employee_id = request.GET.get('employee_id')
+    month = request.GET.get('month')
+
+    if employee_id:
+        performance_data = performance_data.filter(employee__employee_id=employee_id, employee__company=company)
+
+    if month:
+        month_start = timezone.datetime.strptime(month, '%Y-%m').date()
+        month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        performance_data = performance_data.filter(date__range=[month_start, month_end], employee__company=company)
+
+    # Get employees of that company only
+    employees = Employee.objects.filter(company=company)
+
+    months = [
+        (timezone.datetime(today.year, m, 1).strftime('%Y-%m'),
+         timezone.datetime(today.year, m, 1).strftime('%B'))
+        for m in range(1, 13)
+    ]
+
+    # Notifications
+    notifications = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).order_by('-created_at')[:5]
+
     return render(request, 'performance_list.html', {
         'performance_data': performance_data,
         'employees': employees,
@@ -2108,6 +2134,7 @@ def performance_list(request):
         'employee': employee,
         'notifications': notifications
     })
+
 
 
 #------------------------------------------------------------- Company adding by staff #
@@ -2308,7 +2335,6 @@ def employee_delete(request, pk):
 
 #------------------------------------------------------------- Holidays adding by staff #
 
-@login_required(login_url='/')
 @staff_member_required
 def holidays_list(request):
     user = request.user
@@ -2320,7 +2346,7 @@ def holidays_list(request):
         'holidays': holidays,
         'employee': employee,
         'notifications': notifications
-    })
+})
 
 
 @login_required(login_url='/')
