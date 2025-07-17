@@ -4,7 +4,6 @@
 {% block title %}Working Days{% endblock %}
 
 {% block sidebar %}
-
 <link rel="stylesheet" href="{% static 'css/working_days.css' %}">
 
 <li class="sidebar-item">
@@ -19,14 +18,13 @@
 
 {% block content %}
 
-</head>
-<body id="workingDaysPage">
 <div id="workingDaysContainer">
     <h1 id="workingDaysTitle">Employee Working Days Overview</h1>
 
+    <!-- Filter Form -->
     <div id="workingDaysFilterForm">
         <form method="GET" action="{% url 'working_days' %}" class="d-flex gap-4">
-            <div id="filterFormGroup" class="flex-grow-1">
+            <div class="flex-grow-1">
                 <label for="monthYearSelect">Select Month and Year</label>
                 <select name="month_year" id="monthYearSelect">
                     {% for month_num, year, month_year in months %}
@@ -37,17 +35,19 @@
                 </select>
             </div>
 
-            <div id="filterFormGroup" class="flex-grow-1">
+            <div class="flex-grow-1">
                 <label for="employeeIdInput">Employee ID</label>
                 <input type="text" name="employee_id" id="employeeIdInput" value="{{ employee_id_filter }}" placeholder="Enter Employee ID">
             </div>
 
-            <div id="filterButtonGroup">
+            <div>
+                <label>&nbsp;</label><br>
                 <button type="submit" id="filterSubmitBtn">Apply Filters</button>
             </div>
         </form>
     </div>
 
+    <!-- Working Days Table -->
     <div id="workingDaysTableContainer">
         <div id="tableResponsiveWrapper">
             <table id="workingDaysTable">
@@ -58,7 +58,6 @@
                         <th>Working Days</th>
                         <th>Remaining Leaves</th>
                         <th>Leaves Taken</th>
-     
                     </tr>
                 </thead>
                 <tbody>
@@ -67,15 +66,12 @@
                             <td>{{ data.employee.employee_id }}</td>
                             <td>{{ data.employee.get_full_name }}</td>
                             <td>{{ data.working_days.0.working_days }}</td>
-                            <td>{{ data.remaining_leave_days }}</td>  <!-- Display remaining leaves -->
-                            <td>
-                                {% if data.leaves_taken %}
-                                    {{ data.leaves_taken }}
-                                {% else %}
-                                    0
-                                {% endif %}
-                            </td>
-     
+                            <td>{{ data.remaining_leave_days }}</td>
+                            <td>{{ data.leaves_taken|default:"0" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center;">No records found for selected filters.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
