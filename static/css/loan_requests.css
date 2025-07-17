@@ -26,7 +26,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 .form-controls {
-    background-color: #f8f9fa !important;
+    background-color: #FFFFFF
+ !important;
     border: 1px solid rgba(0, 0, 0, 0.15) !important;
     border-radius: 10px !important;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -208,7 +209,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 /* Dropdown hover and focus states */
 .form-controls.text-center:hover {
-    background-color: #f8f9fa;
+    background-color: #FFFFFF
+;
     border-color: #666 !important;
 }
 
@@ -228,7 +230,8 @@ select.form-controls option {
 
 select.form-controls option:hover,
 select.form-controls option:checked {
-    background-color: #f8f9fa;
+    background-color: #FFFFFF
+;
 }
 
 /* First option (placeholder) styling */

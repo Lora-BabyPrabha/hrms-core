@@ -1079,6 +1079,9 @@
         if (message.includes('hi') || message.includes('hello') || message.includes('hey')) {
             return "Hello! How can I assist you today?";
         }
+        if (message.includes('goodbye') || message.includes('bye')) {
+            return "Goodbye! Have a great day!";
+        }
 
         const defaultReplies = [
             "Could you clarify your request?",

@@ -48,6 +48,8 @@ from django.utils import timezone
 import zoneinfo
 from django.http import JsonResponse
 from .models import EmployeeProfile, Payroll, Benefit, Training, HelpTicket
+from django.http import JsonResponse
+from .models import Company_check
 
 CustomUser = get_user_model()
 
@@ -59,22 +61,34 @@ CustomUser = get_user_model()
 
 def indexview(request):
     if request.user.is_authenticated:
-        return redirect('dashboard')  # If already logged in, redirect to dashboard
+        return redirect('dashboard')
+
+    error_message = None
 
     if request.method == "POST":
         company_name = request.POST.get('company_name', '').strip()
 
         if company_name:
-            # Case-insensitive exact match
-            company = Company_check.objects.filter(company_name__iexact=company_name).first()
-
-            if company:
-                # Redirect to login with company ID as a GET parameter
+            try:
+                # Case-sensitive match
+                company = Company_check.objects.get(company_name__exact=company_name)
                 return redirect(f'/login/?company_id={company.id}')
-            else:
-                return render(request, 'index.html', {'message': 'No records found for the company.'})
+            except Company_check.DoesNotExist:
+                error_message = (
+                    "Company name not found. Please check capitalization. "
+                    "Example: 'Tech' is different from 'tech'."
+                )
+        else:
+            error_message = "Please enter a company name."
 
-    return render(request, 'index.html')
+    return render(request, 'index.html', {
+        'message': error_message
+    })
+#------------------------------------------------------------- company_filter #
+def company_autocomplete(request):
+    term = request.GET.get('term', '')
+    companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
+    return JsonResponse(list(companies), safe=False)
 
 
 #------------------------------------------------------------- Login #
