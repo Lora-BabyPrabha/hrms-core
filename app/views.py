@@ -1829,7 +1829,7 @@ def submit_performance(request):
 
     try:
         # Get the employee that is being submitted
-        target_employee = Employee.objects.get(employee_id=employee_id)
+        employee_id = Employee.objects.get(employee_id=employee_id)
     except Employee.DoesNotExist:
         return Response({'error': 'Employee not found'}, status=404)
 
@@ -1840,10 +1840,10 @@ def submit_performance(request):
         return Response({'error': 'Unauthorized access'}, status=403)
 
     # Check if both employees belong to the same company
-    if target_employee.company != logged_in_employee.company:
+    if employee_id.company != logged_in_employee.company:
         return Response({'error': 'You can only submit performance for employees in your company'}, status=403)
 
-    Performance.objects.create(employee=target_employee, performance_score=performance_score)
+    Performance.objects.create(employee=employee_id, performance_score=performance_score)
     return Response({'message': 'Performance submitted successfully'})
 
  
@@ -1903,6 +1903,7 @@ from .models import (
 
 
 @login_required(login_url='/')
+@login_required(login_url='/')
 @staff_member_required
 def working_days(request):
     today = timezone.localtime(timezone.now()).date()
@@ -1936,8 +1937,8 @@ def working_days(request):
 
     # Get current user company
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = employee.company
+    current_employee = Employee.objects.get(employee_id=user.employee_id)  # Changed variable name
+    company = current_employee.company
 
     # Filter employees by company
     if employee_id_filter:
@@ -1947,18 +1948,18 @@ def working_days(request):
 
     employee_data = []
 
-    for employee in employees:
-        data = {'employee': employee, 'working_days': [], 'leaves_taken': 0}
+    for emp in employees:  # Changed variable name to 'emp' to avoid conflict
+        data = {'employee': emp, 'working_days': [], 'leaves_taken': 0}
 
         time_entries = TimeEntry.objects.filter(
-            user=employee,
+            user=emp,
             clock_in_time__gte=period_start,
             clock_in_time__lte=period_end,
             clock_out_time__lte=F('clock_in_time') + timedelta(hours=12)
         ).values('clock_in_time__date')
 
         approved_musters = Muster.objects.filter(
-            user=employee,
+            user=emp,
             date__gte=period_start,
             date__lte=period_end,
             status='approved'
@@ -1970,7 +1971,7 @@ def working_days(request):
         ).values('date')
 
         approved_leaves = LeaveRequest.objects.filter(
-            employee=employee,
+            employee=emp,
             start_date__gte=period_start,
             end_date__lte=period_end,
             status='approved'
@@ -2028,7 +2029,7 @@ def working_days(request):
         'selected_month': selected_month,
         'selected_year': selected_year,
         'employee_id_filter': employee_id_filter,
-        'employee': employee,
+        'employee_id': current_employee,  # Changed to use the preserved variable
         'notifications': notifications,
     })
 

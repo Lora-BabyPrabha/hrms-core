@@ -1,230 +1,142 @@
 <!DOCTYPE html>
 <html>
 <head>
-   <title>Payslip</title>
-   {% load static %}
-   <!-- <link rel="stylesheet" href="{% static 'css/all_payslips.css' %}" > -->
-   <style>
-    @page {
-    size: A4;
-    margin: 20mm; 
-    background: url("{{ logo_url }}") no-repeat center;
-    background-size: 40%;
-    background-opacity: 1;
-    z-index: 1000;
-}
+    <title>Payslip</title>
+    {% load static %}
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+            background: url('{{ logo_url }}') no-repeat center center;
+            background-size: 40%;
+        }
 
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-}
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
-.payslip-header {
-    display: flex;
-    align-items: center;  
-    margin-bottom: 10px;
-}
-#imgg{
-  height:50px;
-  margin-top:-20px
-}
-#texxt{
-  font-size:25px;
-  margin-left:20px;
-  margin-top:-20px
-}
+        .payslip-header {
+            display: flex;
+            align-items: center;
+            padding-top: 10px;
+            margin-bottom: 20px;
+        }
 
-h3 {
-    text-align: center;
-    width: 100%;
-    margin-top: 20px;  
-}
+        .payslip-logo {
+            height: 50px;
+            margin-right: 15px;
+        }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0; 
-}
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
 
-th, td {
-    border: 1px solid rgb(0, 0, 0);
-    padding: 4px; 
-    text-align: left;
-}
+        h3 {
+            text-align: center;
+            width: 100%;
+            margin-top: 20px;
+        }
 
-.payslip-details {
-    width: 100%;
-}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
 
-.payslip-details th {
-    text-align: left;
-}
+        th, td {
+            border: 1px solid #000;
+            padding: 4px;
+            text-align: left;
+        }
 
-.payslip-details td {
-    text-align: left;
-}
+        .payslip-footer {
+            page-break-inside: avoid;
+        }
 
-.page-break {
-    page-break-before: always;
-}
+        .payslip-footer small {
+            font-size: 11px;
+        }
 
-@media print {
-    .no-print {
-        display: none;
-    }
+        @media print {
+            .no-print {
+                display: none;
+            }
 
-    table {
-        margin-top: 0;
-    }
+            .payslip-section {
+                page-break-before: always;
+            }
 
-    .payslip-section {
-        page-break-before: always;
-    }
-    .payslip-footer {
-        page-break-inside: avoid;
-    }
-
-    body {
-        margin-bottom: 20mm;
-    }
-
-}
-
+            body {
+                margin-bottom: 20mm;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="payslip-container">
         {% for payslip in payslips %}
-            <div class="payslip-section">
-                <div class="payslip-header">
-                    <img id="imgg" src="/static/lora-log.png" alt="LORA IT Innovations Logo">
-                    <div id="texxt" class="company-name">LoRa Innovations Pvt Ltd</div>
-                </div>
-                <h3>{{ payslip.month|date:"F Y" }} - Payslip</h3>  <!-- Centered Heading -->
-                
-                <table class="py-0">
+        <div class="payslip-section">
+            <!-- Header with logo -->
+            <div class="payslip-header">
+                <img src="{% static 'images/lora-log.png' %}" alt="LORA IT Innovations Logo" class="payslip-logo">
+                <div class="company-name">LoRa Innovations Pvt Ltd</div>
+            </div>
 
-                    <tr>
-                        <th colspan="2">Employee Name: {{ payslip.employee.name }}</th>
-                        <th colspan="3">Employee ID: {{ payslip.employee.employee_id }}</th>
-                    </tr>
-                    <tr>
-                        <th colspan="2">Designation: {{ payslip.employee.designation }}</th>
-                        <th colspan="3">Current MTH cal days: {{ payslip.current_month_calculated_days }}</th>
-                    </tr>
- 
-                    <tr>
-                        <th colspan="2">Bank account: {{ payslip.employee.bank_name }}</th>
-                        <th colspan="3">Current MTH paid days: {{ payslip.current_month_paid_days }}</th>
-                    </tr>
- 
-                    <tr>
-                        <th colspan="2">Bank account no.: {{ payslip.employee.bank_account_number }}</th>
-                        <th colspan="3">PF NO.: {{ payslip.employee.pf_number }}</th>
-                    </tr>
- 
-                    <tr>
-                        <th colspan="2">PAN NO.: {{ payslip.employee.pan_number }}</th>
-                        <th colspan="3">UAN NO.: {{ payslip.employee.uan_number }}</th>
-                    </tr>
- 
-                    <tr>
-                        <th colspan="2">Component</th>
-                        <th colspan="3" style='text-align: right;padding-right:30px'>Monthly (INR)</th>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Basic Salary</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.basic_salary }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">House Rent Allowance (HRA)</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.house_rent_allowance }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Special Allowance</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.special_allowance }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Conveyance Allowance</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.conveyance_allowance }}</td>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="2">Total Fixed Salary</th>
-                        <th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.total_fixed_salary }}</th>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="5" >Deductions</th>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Provident Fund (PF)</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.pf_contribution }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Professional Tax</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.professional_tax }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Income Tax (TDS)</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.income_tax }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Medical Insurance</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.medical_insurance }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Stationery & Misc</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.stationery_misc }}</td>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="2">Total Deductions</th>
-                        <th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.deductions }}</th>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="5">Variable Pay</th>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Performance Bonus</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.performance_bonus }}</td>
-                    </tr>
-            
-                    <tr>
-                        <td colspan="2">Other Incentives</td>
-                        <td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.other_incentives }}</td>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="2">Total Variable Pay</th>
-                        <th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.total_variable_pay }}</th>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="2">Gross Salary</th>
-                        <th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.gross_salary }}</th>
-                    </tr>
-            
-                    <tr>
-                        <th colspan="2">Net Salary (After Deduction)</th>
-                        <th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.net_salary }}</th>
-                    </tr>
+            <h3>{{ payslip.month|date:"F Y" }} - Payslip</h3>
 
-                </table>
+            <!-- Main Salary Table -->
+            <table>
+                <tr>
+                    <th colspan="2">Employee Name: {{ payslip.employee.name }}</th>
+                    <th colspan="3">Employee ID: {{ payslip.employee.employee_id }}</th>
+                </tr>
+                <tr>
+                    <th colspan="2">Designation: {{ payslip.employee.designation }}</th>
+                    <th colspan="3">Current MTH cal days: {{ payslip.current_month_calculated_days }}</th>
+                </tr>
+                <tr>
+                    <th colspan="2">Bank account: {{ payslip.employee.bank_name }}</th>
+                    <th colspan="3">Current MTH paid days: {{ payslip.current_month_paid_days }}</th>
+                </tr>
+                <tr>
+                    <th colspan="2">Bank account no.: {{ payslip.employee.bank_account_number }}</th>
+                    <th colspan="3">PF NO.: {{ payslip.employee.pf_number }}</th>
+                </tr>
+                <tr>
+                    <th colspan="2">PAN NO.: {{ payslip.employee.pan_number }}</th>
+                    <th colspan="3">UAN NO.: {{ payslip.employee.uan_number }}</th>
+                </tr>
+                <tr>
+                    <th colspan="2">Component</th>
+                    <th colspan="3" style='text-align: right;padding-right:30px'>Monthly (INR)</th>
+                </tr>
+                <tr><td colspan="2">Basic Salary</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.basic_salary }}</td></tr>
+                <tr><td colspan="2">House Rent Allowance (HRA)</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.house_rent_allowance }}</td></tr>
+                <tr><td colspan="2">Special Allowance</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.special_allowance }}</td></tr>
+                <tr><td colspan="2">Conveyance Allowance</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.conveyance_allowance }}</td></tr>
+                <tr><th colspan="2">Total Fixed Salary</th><th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.total_fixed_salary }}</th></tr>
+                <tr><th colspan="5">Deductions</th></tr>
+                <tr><td colspan="2">Provident Fund (PF)</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.pf_contribution }}</td></tr>
+                <tr><td colspan="2">Professional Tax</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.professional_tax }}</td></tr>
+                <tr><td colspan="2">Income Tax (TDS)</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.income_tax }}</td></tr>
+                <tr><td colspan="2">Medical Insurance</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.medical_insurance }}</td></tr>
+                <tr><td colspan="2">Stationery & Misc</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.stationery_misc }}</td></tr>
+                <tr><th colspan="2">Total Deductions</th><th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.deductions }}</th></tr>
+                <tr><th colspan="5">Variable Pay</th></tr>
+                <tr><td colspan="2">Performance Bonus</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.performance_bonus }}</td></tr>
+                <tr><td colspan="2">Other Incentives</td><td colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.other_incentives }}</td></tr>
+                <tr><th colspan="2">Total Variable Pay</th><th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.total_variable_pay }}</th></tr>
+                <tr><th colspan="2">Gross Salary</th><th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.gross_salary }}</th></tr>
+                <tr><th colspan="2">Net Salary (After Deduction)</th><th colspan="3" style='text-align: right;padding-right:30px'>{{ payslip.net_salary }}</th></tr>
+            </table>
 
-                <table class="py-0">
+            <!-- Footer Section that stays together -->
+            <div class="payslip-footer">
+                <table>
                     <tr>
                         <th>Total Earning</th>
                         <th>Total Deductions</th>
@@ -232,7 +144,6 @@ th, td {
                         <th>Variable Pay Deductions</th>
                         <th>Net Salary</th>
                     </tr>
-
                     <tr>
                         <th>{{ payslip.total_fixed_salary }}</th>
                         <th>{{ payslip.deductions }}</th>
@@ -240,32 +151,30 @@ th, td {
                         <th>{{ payslip.total_variable_pay }}</th>
                         <th>{{ payslip.actual_salary }}</th>
                     </tr>
- 
                     <tr>
                         <td colspan="5" style="color: green;">
                             Salary credited to your A/C no. <b>{{ payslip.employee.bank_account_number }}, Rs {{ payslip.actual_salary }}/-</b>
                         </td>
                     </tr>
-            
                     <tr>
                         <td colspan="5">
                             <small>
-                            GST (w.e.f. July 1, 2017) is applicable on Canteen Deduction, Gym Fees, Admin Charges, Mobile Deduction,
-                            Postage, Notice Period Recovery, Monetary Fund, and Bus Service Charges at applicable rates.
+                                GST (w.e.f. July 1, 2017) is applicable on Canteen Deduction, Gym Fees, Admin Charges, Mobile Deduction,
+                                Postage, Notice Period Recovery, Monetary Fund, and Bus Service Charges at applicable rates.
                             </small>
                         </td>
                     </tr>
                     <tr>
                         <td colspan="5">
                             <small>
-                            Address: 5th floor, Jain Sadguru Images Capital Park, 502B, Capital Pk Rd, VIP Hills, Jaihind Enclave, Madhapur, Hyderabad, Telangana 500081.
+                                Address: 5th floor, Jain Sadguru Images Capital Park, 502B, Capital Pk Rd, VIP Hills, Jaihind Enclave,
+                                Madhapur, Hyderabad, Telangana 500081.
                             </small>
                         </td>
                     </tr>
-
                 </table>
-               
             </div>
+        </div>
         {% endfor %}
     </div>
 </body>

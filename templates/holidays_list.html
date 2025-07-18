@@ -131,7 +131,7 @@ border-color:grey !important;
         All employees Data
     </a>
 </li>
-
+{% if request.user.is_authenticated and request.user.role == 'Manager' %}
 <li class="sidebar-item">
     <a href="/company_list" class="sidebar-link mt-2 w3-bar-item w3-button tablink" style='color: black;'>
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-building mx-3" viewBox="0 0 16 16">
@@ -141,7 +141,7 @@ border-color:grey !important;
         Company Check
     </a>
 </li>
-
+{% endif %}
 <li class="sidebar-item">
     <a href="/employee_list" class="sidebar-link mt-2 w3-bar-item w3-button tablink" style='color: black;'>
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-person-add mx-3" viewBox="0 0 16 16">
