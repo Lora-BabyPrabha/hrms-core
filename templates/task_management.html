@@ -32,57 +32,96 @@
 </li>
 
 {% endblock %}
-
 {% block content %}
-
+ 
 <div class="mx-auto">
-
     <div class="mx-auto container">
-                        
+ 
         <div id="assignTaskInterface" class="interface active container">
             <h3 class='pb-3 text-center'>Assign Task</h3>
             <form id="assignTaskForm" method="POST" action="{% url 'assign_task' %}">
                 {% csrf_token %}
                 <label for="taskName">Task Name</label>
                 <input type="text" id="taskName" name="task_name" placeholder="Enter Task Name" required>
-                
+ 
                 <label for="employeeEmails">Assign To (Emails or IDs)</label>
                 <input type="text" id="employeeEmails" name="employee_emails" placeholder="Enter Emails/IDs (comma-separated)" required>
-                
+ 
                 <label for="dueDate">Due Date</label>
                 <input type="date" id="dueDate" name="due_date" required>
-                
+ 
                 <button type="submit" class='btn btn-dark'>Assign Task</button>
+ 
+                <div id="task-message" class="mt-3"></div>
             </form>
+ 
+            <!-- ✅ Filters for employee_id and month (copied from task_list.html) -->
+            <hr class="my-4">
+            <h4 class="mb-3">Filter Assigned Tasks</h4>
+ 
+            <form method="GET" action="{% url 'assign_task' %}" id="filter-form" class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label for="employee_id">Filter by Employee ID</label>
+                    <input type="text" class="form-control" name="employee_id" id="employee_id" value="{{ request.GET.employee_id }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="month">Filter by Month</label>
+                    <select name="month" id="month" class="form-select">
+                        <option value="">-- Select Month --</option>
+                        {% for month in months %}
+                            <option value="{{ current_month|slice:":4" }}-{{ month.num }}"
+                                {% if request.GET.month == current_month|slice:":4"|add:"-"|add:month.num %}selected{% endif %}>
+                                {{ month.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                </div>
+            </form>
+ 
+            <!-- ✅ Filtered Task Table -->
+            <h4 class="mb-3">Your Previously Assigned Tasks</h4>
+ 
+            <table class="table table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Task Name</th>
+                        <th>Assigned To</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Assigned On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in assigned_tasks %}
+                        <tr>
+                            <td>{{ task.name }}</td>
+                            <td>
+                                {% for user in task.assigned_to.all %}
+                                    {{ user.employee_id }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>{{ task.due_date }}</td>
+                            <td>
+                                {% if task.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ task.created_at|date:"d M Y, h:i A" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No tasks assigned yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-
-        <!-- My Tasks Section -->
-        <div id="myTaskInterface" class="interface">
-            <h3 class="text-center">My Tasks</h3>
-            <div class="calendar-header">
-                <button id="prevMonth">Previous</button>
-                <span id="currentMonthYear"></span>
-                <button id="nextMonth">Next</button>
-            </div>
-            <div id="calendar"></div>
-            <div id="taskDetails"></div>
-        </div>
-        
-        <!-- Modal for task details -->
-        <div id="taskModal" class="modal">
-            <div class="modal-header">
-                <h4>Task Details</h4>
-                <button class="modal-close" id="closeModalBtn">&times;</button>
-            </div>
-            <div id="taskModalContent"></div>
-        </div>
-        
-        <!-- Custom Success Alert Box -->
-  <div id="successAlert" class="custom-alert">
-  <div class="custom-alert-content">
-    <p id="alertMessage">This is an alert message.</p>
-    <button id="alertCloseBtn" class="custom-alert-btn">Close</button>
-  </div>
+    </div>
 </div>
 
 <script>
