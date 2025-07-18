@@ -38,7 +38,7 @@ ROLE_TYPE = (
 
 class CustomUser(AbstractUser):
     username = None
-    name = models.CharField(max_length=100, null=True, blank=True, error_messages={'required': "Name must be provided"})
+    name = models.CharField(max_length=100)
     role = models.CharField(choices=ROLE_TYPE, max_length=100, error_messages={'required': "Role must be provided"})
     employee_id = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254, unique=True)
@@ -330,8 +330,6 @@ class Performance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     performance_score = models.IntegerField()
     date = models.DateField(auto_now_add=True)
-    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='performance')
-
 
     class Meta:
         ordering = ['-date']

@@ -161,8 +161,8 @@
                 <tbody>
                     {% for entry in time_entries %}
                     <tr>
-                        <td>{{ entry.user.employee_user.name }}</td> <!----added---->
-                        <td>{{ entry.user.employee_id }}</td>  <!----added---->
+                        <td>{{ entry.user.first_name}} {{ entry.user.last_name }}</td>
+                        <td>{{ entry.user.employee_id }}</td>
                         <td>{{ entry.clock_in_time }}</td>
                         <td>{{ entry.clock_out_time }}</td>
                         <td>{{ entry.clock_in_latitude }}</td>
@@ -219,8 +219,8 @@
             <tbody>
                 {% for request in muster_requests %}
                 <tr>
-                    <td>{{ request.user.employee_user.name }}</td>    <!----added---->
-                    <td>{{ request.user.employee_id }}</td>     <!----added---->
+                    <td>{{ request.user.first_name}} {{ request.user.last_name }}</td>
+                    <td>{{ request.user.employee_id }}</td>
                     <td>{{ request.date }}</td>
                     <td>{{ request.clock_in_time }}</td>
                     <td>{{ request.clock_out_time }}</td>
@@ -261,7 +261,7 @@
             <tbody>
                 {% for request in leave_requests %}
                 <tr>
-                    <td>{{ request.employee.name }}</td> <!--added-->                 
+                    <td>{{ request.employee.first_name}} {{ request.employee.last_name }}</td>
                     <td>{{ request.employee.employee_id }}</td>
                     <td>{{ request.leave_type }}</td>
                     <td>{{ request.start_date }}</td>
@@ -304,7 +304,7 @@
             <tbody>
                 {% for claim in expense_claims %}
                 <tr>
-                    <td>{{ claim.employee.name }}</td> <!--added-->   
+                    <td>{{ claim.employee.first_name}} {{ claim.employee.last_name }}</td>
                     <td>{{ claim.employee.employee_id }}</td>
                     <td>{{ claim.category }}</td>
                     <td>{{ claim.date }}</td>
@@ -353,7 +353,7 @@
             <tbody>
                 {% for loan in loan_requests %}
                 <tr>
-                    <td>{{ loan.employee.name }}</td> <!--added--> 
+                    <td>{{ loan.employee.first_name}} {{ loan.employee.last_name }}</td>
                     <td>{{ loan.employee.employee_id }}</td>
                     <td>{{ loan.loan_type }}</td>
                     <td>{{ loan.loan_amount }}</td>
