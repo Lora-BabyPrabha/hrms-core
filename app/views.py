@@ -348,6 +348,17 @@ from .models import (
     CustomUser, Employee, Notification
 )
 
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.utils.timezone import localdate
+from datetime import datetime
+
+from app.models import (
+    Muster, LeaveRequest, ExpenseClaim, LoanRequest,
+    TimeEntry, Employee, Notification, CustomUser
+)
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_requests(request):
@@ -356,7 +367,7 @@ def employee_requests(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
 
-    # Default to today's data for the current company
+    # Base queryset filtered by company and today (initial)
     muster_requests = Muster.objects.filter(user__company=company, date__date=today)
     leave_requests = LeaveRequest.objects.filter(employee__company=company, start_date=today)
     expense_claims = ExpenseClaim.objects.filter(employee__company=company, date=today)
@@ -364,39 +375,82 @@ def employee_requests(request):
     time_entries = TimeEntry.objects.filter(user__company=company, clock_in_time__date=today)
     employees = CustomUser.objects.filter(company=company)
 
-    # If a filter is applied (POST)
+    # Filters
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
-        selected_request_type = request.POST.get('request_type')
+        request_type = request.POST.get('request_type')
+        month_filter = request.POST.get('month')
+        specific_date = request.POST.get('specific_date')
         filtered_employee = None
 
+        # Apply employee ID filter if provided
         if employee_id_input:
             try:
                 filtered_employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
             except CustomUser.DoesNotExist:
                 filtered_employee = None
 
-        if selected_request_type in ['muster', ''] and filtered_employee:
-            muster_requests = Muster.objects.filter(user=filtered_employee)
+        # If no employee filter, get all users from company
+        users_qs = CustomUser.objects.filter(company=company)
+        if filtered_employee:
+            users_qs = users_qs.filter(id=filtered_employee.id)
 
-        if selected_request_type in ['leave', ''] and filtered_employee:
-            leave_requests = LeaveRequest.objects.filter(employee=filtered_employee)
+        # Apply month filter
+        if month_filter:
+            year, month = map(int, month_filter.split('-'))
 
-        if selected_request_type in ['expense', ''] and filtered_employee:
-            expense_claims = ExpenseClaim.objects.filter(employee=filtered_employee)
+            muster_requests = Muster.objects.filter(user__in=users_qs, date__year=year, date__month=month)
+            leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date__year=year, start_date__month=month)
+            expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date__year=year, date__month=month)
+            loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__year=year, date_requested__month=month)
+            time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__year=year, clock_in_time__month=month)
 
-        if selected_request_type in ['loan', ''] and filtered_employee:
-            loan_requests = LoanRequest.objects.filter(employee=filtered_employee)
+        # Apply specific date filter
+        elif specific_date:
+            try:
+                date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                muster_requests = Muster.objects.filter(user__in=users_qs, date__date=date_obj)
+                leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date=date_obj)
+                expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date=date_obj)
+                loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=date_obj)
+                time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__date=date_obj)
+            except ValueError:
+                pass
 
-        if selected_request_type in ['time_entry', ''] and filtered_employee:
-            time_entries = TimeEntry.objects.filter(user=filtered_employee)
+        # Apply request_type filter
+        if request_type:
+            if request_type == 'muster':
+                leave_requests = []
+                expense_claims = []
+                loan_requests = []
+                time_entries = []
+            elif request_type == 'leave':
+                muster_requests = []
+                expense_claims = []
+                loan_requests = []
+                time_entries = []
+            elif request_type == 'expense':
+                muster_requests = []
+                leave_requests = []
+                loan_requests = []
+                time_entries = []
+            elif request_type == 'loan':
+                muster_requests = []
+                leave_requests = []
+                expense_claims = []
+                time_entries = []
+            elif request_type == 'time_entry':
+                muster_requests = []
+                leave_requests = []
+                expense_claims = []
+                loan_requests = []
 
-    # Notifications for header
+    # Notifications
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'employee_data.html', {
-        'employees': employees,
         'employee': employee,
+        'employees': employees,
         'muster_requests': muster_requests,
         'leave_requests': leave_requests,
         'expense_claims': expense_claims,
@@ -404,6 +458,7 @@ def employee_requests(request):
         'time_entries': time_entries,
         'notifications': notifications,
     })
+
 
 
 
@@ -416,6 +471,17 @@ from django.shortcuts import render
 from .models import (
     Muster, LeaveRequest, ExpenseClaim, LoanRequest,
     CustomUser, Employee, Notification
+)
+
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from django.utils.timezone import localdate
+from datetime import datetime
+
+from app.models import (
+    Employee, CustomUser, Muster, LeaveRequest,
+    ExpenseClaim, LoanRequest, Notification
 )
 
 @login_required(login_url='/')
@@ -434,7 +500,9 @@ def staff_notifications(request):
 
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
-        selected_request_type = request.POST.get('request_type')
+        request_type = request.POST.get('request_type')
+        month_filter = request.POST.get('month')
+        specific_date = request.POST.get('specific_date')
 
         filtered_employee = None
         if employee_id_input:
@@ -443,18 +511,48 @@ def staff_notifications(request):
             except CustomUser.DoesNotExist:
                 filtered_employee = None
 
-        # If employee filter exists, show all (not just today)
-        if selected_request_type in ['muster', ''] and filtered_employee:
-            musters = Muster.objects.filter(status='Pending', user=filtered_employee)
+        # Base user filter by company
+        users_qs = CustomUser.objects.filter(company=company)
+        if filtered_employee:
+            users_qs = users_qs.filter(id=filtered_employee.id)
 
-        if selected_request_type in ['leave', ''] and filtered_employee:
-            leaves = LeaveRequest.objects.filter(status='pending', employee=filtered_employee)
+        # Apply month filter
+        if month_filter:
+            year, month = map(int, month_filter.split('-'))
+            musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__year=year, date__month=month)
+            leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date__year=year, start_date__month=month)
+            expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date__year=year, date__month=month)
+            pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__year=year, date_requested__month=month)
 
-        if selected_request_type in ['expense', ''] and filtered_employee:
-            expenses = ExpenseClaim.objects.filter(status='pending', employee=filtered_employee)
+        # Apply specific date filter
+        elif specific_date:
+            try:
+                date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__date=date_obj)
+                leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date=date_obj)
+                expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date=date_obj)
+                pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__date=date_obj)
+            except ValueError:
+                pass
 
-        if selected_request_type in ['loan', ''] and filtered_employee:
-            pendings_loan = LoanRequest.objects.filter(status='pending', employee=filtered_employee)
+        # Apply request type filter
+        if request_type:
+            if request_type == 'muster':
+                leaves = []
+                expenses = []
+                pendings_loan = []
+            elif request_type == 'leave':
+                musters = []
+                expenses = []
+                pendings_loan = []
+            elif request_type == 'expense':
+                musters = []
+                leaves = []
+                pendings_loan = []
+            elif request_type == 'loan':
+                musters = []
+                leaves = []
+                expenses = []
 
     # Notifications for header
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
@@ -467,7 +565,6 @@ def staff_notifications(request):
         'pendings_loan': pendings_loan,
         'notifications': notifications,
     })
-
 
 
 

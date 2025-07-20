@@ -264,105 +264,96 @@
 
                                         {% if request.user.is_authenticated and request.user.role == 'HR' or request.user.role == 'Manager' or request.user.is_superuser %}
 
-                                            <div id="notif" >
+                                            <div id="notif">
+                                                <div class='text-center'>Pending Approvals - {{ request.user.company.name }}</div>
 
-                                                <div class='text-center'>Pending Approvals</div>
-
-                                                    {% if pending_musters %}
-                                                        {% for muster in pending_musters %}
-                                                            <hr class='col-12'>
-                                                            <div class="notification" style="margin-left:30px;">
-                                                                <small>
-                                                                {{ muster.user.employee_id }} has been requested for 'Muster'
+                                                {% for muster in pending_musters %}
+                                                    {% if muster.user.company == request.user.company %}
+                                                        <hr class='col-12'>
+                                                        <div class="notification" style="margin-left:30px;">
+                                                            <small>
+                                                                {{ muster.user.employee_id }} has requested for 'Muster'
                                                                 <br>
-                                                                Reason : {{muster.reason}}
+                                                                Reason : {{ muster.reason }}
                                                                 <br>
-                                                                Notes : {{muster.notes}}
+                                                                Notes : {{ muster.notes }}
                                                                 <br>
                                                                 Requested Date : {{ muster.date|date:"F d Y" }}
-                                                                <br>
-                                                                ↳
-                                                                </small>
-                                                                
-                                                                <a href="{% url 'review_muster_notifications' muster.id 'approve' %}" class="approve btn btn-sm"><small>Approve</small></a> 
-                                                                
-                                                                <a href="{% url 'review_muster_notifications' muster.id 'reject' %}" class="reject btn btn-sm"><small>Reject</small></a>
-                                                              
-                                                            </div>
-                                                            <hr class='col-12'>
-                                                        {% endfor %}
+                                                                <br>↳
+                                                            </small>
+                                                            <a href="{% url 'review_muster_notifications' muster.id 'approve' %}" class="approve btn btn-sm"><small>Approve</small></a>
+                                                            <a href="{% url 'review_muster_notifications' muster.id 'reject' %}" class="reject btn btn-sm"><small>Reject</small></a>
+                                                        </div>
                                                     {% endif %}
-                                                    
-                                                    {% if pending_leave_request %}
-                                                        {% for leaves in pending_leave_request %}
-                                                        <hr class='col-12'>
-                                                            <div class="notification" style="margin-left:30px;">
-                                                                <small>
-                                                                {{ leaves.employee.employee_id }} has been requested for 'Leave Request'
-                                                                <br>
-                                                                Reason type : {{leaves.leave_type}}
-                                                                <br>
-                                                                Start date : {{leaves.start_date|date:"F d Y"}}
-                                                                <br>
-                                                                End date : {{leaves.end_date|date:"F d Y"}}
-                                                                <br>
-                                                                Reason : {{ leaves.reason }}
-                                                                <br>
-                                                                Requested dates : {{ leaves.days_requested }}
-                                                                <br>
-                                                                ↳
-                                                                </small>
-                                                                <a href="{% url 'review_leaves_notifications' leaves.id 'approve' %}" class="approve btn btn-sm">Approve</a> 
-                                                                <a href="{% url 'review_leaves_notifications' leaves.id 'reject' %}" class="reject btn btn-sm">Reject</a>
-                                                            </div>
-                                                        {% endfor %}
-                                                    {% endif %}
+                                                {% endfor %}
 
-                                                    {% if pending_expense %}
-                                                        {% for expense in pending_expense %}
+                                                {% for leave in pending_leave_request %}
+                                                    {% if leave.employee.company == request.user.company %}
                                                         <hr class='col-12'>
-                                                            <div class="notification" style="margin-left:30px;">
-                                                                <small>
-                                                                {{ expense.employee.employee_id }} has been requested for 'Expense claims'
+                                                        <div class="notification" style="margin-left:30px;">
+                                                            <small>
+                                                                {{ leave.employee.employee_id }} has requested for 'Leave Request'
                                                                 <br>
-                                                                Bill no : {{expense.bill_no}}
+                                                                Type : {{ leave.leave_type }}
                                                                 <br>
-                                                                    Amount : {{expense.amount}}
+                                                                Start : {{ leave.start_date|date:"F d Y" }}
                                                                 <br>
-                                                                Requested Date : {{ expense.date|date:"F d Y" }}
-                                                                </small>
-                                                                <a href="{% url 'review_expense_notifications' expense.id 'approve' %}" class="approve btn btn-sm">Approve</a> | 
-                                                                <a href="{% url 'review_expense_notifications' expense.id 'reject' %}" class="reject btn btn-sm">Reject</a>
-                                                            </div>
-                                                        {% endfor %}
+                                                                End : {{ leave.end_date|date:"F d Y" }}
+                                                                <br>
+                                                                Reason : {{ leave.reason }}
+                                                                <br>
+                                                                Days : {{ leave.days_requested }}
+                                                                <br>↳
+                                                            </small>
+                                                            <a href="{% url 'review_leaves_notifications' leave.id 'approve' %}" class="approve btn btn-sm">Approve</a>
+                                                            <a href="{% url 'review_leaves_notifications' leave.id 'reject' %}" class="reject btn btn-sm">Reject</a>
+                                                        </div>
                                                     {% endif %}
+                                                {% endfor %}
 
-                                                    {% if pending_loan %}
-                                                        {% for loan in pending_loan %}
+                                                {% for expense in pending_expense %}
+                                                    {% if expense.employee.company == request.user.company %}
                                                         <hr class='col-12'>
-                                                            <div class="notification" style="margin-left:30px;">
-                                                                <small>
-                                                                {{ loan.employee.employee_id }} has been requested for 'Loan request'
+                                                        <div class="notification" style="margin-left:30px;">
+                                                            <small>
+                                                                {{ expense.employee.employee_id }} has requested for 'Expense Claim'
                                                                 <br>
-                                                                Loan type : {{loan.loan_type}} - Amount : Rs.{{loan.loan_amount}}
+                                                                Bill No: {{ expense.bill_no }}
                                                                 <br>
-                                                                Repayment : {{loan.repayment_duration}} months, interest rate - {{loan.interest_rate}}% PA
+                                                                Amount: ₹{{ expense.amount }}
                                                                 <br>
-                                                                Requested Date : {{ loan.date|date:"F d Y" }}
-                                                                </small>
-                                                                <a href="{% url 'review_loan_notifications' loan.id 'approve' %}" class="approve btn btn-sm">Approve</a> | 
-                                                                <a href="{% url 'review_loan_notifications' loan.id 'reject' %}" class="reject btn btn-sm">Reject</a>
-                                                            </div>
-                                                        {% endfor %}
+                                                                Date: {{ expense.date|date:"F d Y" }}
+                                                            </small>
+                                                            <a href="{% url 'review_expense_notifications' expense.id 'approve' %}" class="approve btn btn-sm">Approve</a>
+                                                            <a href="{% url 'review_expense_notifications' expense.id 'reject' %}" class="reject btn btn-sm">Reject</a>
+                                                        </div>
                                                     {% endif %}
+                                                {% endfor %}
+
+                                                {% for loan in pending_loan %}
+                                                    {% if loan.employee.company == request.user.company %}
+                                                        <hr class='col-12'>
+                                                        <div class="notification" style="margin-left:30px;">
+                                                            <small>
+                                                                {{ loan.employee.employee_id }} has requested for 'Loan'
+                                                                <br>
+                                                                Type: {{ loan.loan_type }} – ₹{{ loan.loan_amount }}
+                                                                <br>
+                                                                Repayment: {{ loan.repayment_duration }} months @ {{ loan.interest_rate }}% PA
+                                                                <br>
+                                                                Date: {{ loan.date|date:"F d Y" }}
+                                                            </small>
+                                                            <a href="{% url 'review_loan_notifications' loan.id 'approve' %}" class="approve btn btn-sm">Approve</a>
+                                                            <a href="{% url 'review_loan_notifications' loan.id 'reject' %}" class="reject btn btn-sm">Reject</a>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
                                             </div>
-                                            
-                                        {% endif %}
+                                        {% endif %}>
 
-                                    </ul>
+                                </ul>
 
-                                </li> 
-
+                                </li>
                                 <!-- Profile section -->
                                 <li id="profileDropdownItem" class="nav-item dropdown">
                                     <a href="#" data-bs-toggle="dropdown" id="profileDropdownButton" style='color: black;'>
