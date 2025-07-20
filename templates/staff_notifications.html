@@ -128,6 +128,16 @@
                         <option value="loan" {% if request.POST.request_type == 'loan' %}selected{% endif %}>Loan Request</option>
                     </select>
                 </div>
+                <div class="col-md-3">
+    <label for="month" class="form-label">Select Month</label>
+    <input type="month" id="month" name="month" class="form-control" value="{{ request.POST.month }}">
+</div>
+
+<div class="col-md-3">
+    <label for="specific_date" class="form-label">Select Date</label>
+    <input type="date" id="specific_date" name="specific_date" class="form-control" value="{{ request.POST.specific_date }}">
+</div>
+
                 <div class="col-md-4 d-flex buttoned">
                     <button type="submit" class="btn btn-primary bb">Search</button>
                 </div>
