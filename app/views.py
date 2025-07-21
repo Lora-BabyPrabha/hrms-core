@@ -1519,6 +1519,17 @@ def submit_loan_request(request):
         repayment_duration = request.POST.get('repayment_duration')
         interest_rate = request.POST.get('interest_rate')
 
+        # Validate loan amount: must be less than 10 digits before decimal
+        try:
+            # Remove commas and spaces if any
+            loan_amount_clean = str(loan_amount).replace(',', '').replace(' ', '')
+            if len(loan_amount_clean.split('.')[0]) > 9:
+                messages.error(request, "Please enter a loan amount less than 10 digits.")
+                return redirect('loan_requests')
+        except Exception:
+            messages.error(request, "Invalid loan amount format.")
+            return redirect('loan_requests')
+
         loan_request = LoanRequest(
             employee=request.user,
             loan_type=loan_type,
@@ -1533,7 +1544,7 @@ def submit_loan_request(request):
         loan_request.save()
 
         return redirect('loan_requests')
-
+# ...existing code...
 
 #------------------------------------------------------------- Reviews-Page #
 
