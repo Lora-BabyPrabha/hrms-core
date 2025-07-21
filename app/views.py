@@ -135,48 +135,114 @@ def loginview(request):
 
 #------------------------------------------------------------- Search bar #
 
+from django.contrib import messages
+from django.urls import reverse
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+
 @login_required(login_url='/')
 def search_results(request):
     query = request.GET.get('query', '').lower()
-
     normalized_query = query.replace('-', ' ').strip()
 
     page_urls = {
-        'muster': 'muster',  
-        'status': 'muster_status',  
-        'leave': 'leave_balance',  
-        'balance':'leave_balance',
-        'holidays':'holidays',
-        'salary': 'salary_details',  
-        'expense': 'expense_claims',  
-        'loan': 'loan_requests',  
+        'home': 'dashboard',
+        'index': 'dashboard',
+        'dashboard': 'dashboard',
+        'login': 'login',
+        '404': 'page_not_found',
+
+        # Profile
+        'profile': 'profile',
+        'edit': 'profile',
+        'details': 'profile',
+        'personal': 'profile',
+        'professional': 'profile',
+        'banking': 'profile',
+        'picture': 'profile',
+        'cover': 'profile',
+
+        # Employee
+        'employee': 'view_employee',
+        'employee list': 'view_employee',
+        'employee detail': 'view_employee',
+        'employee create': 'view_employee',
+        'employee edit': 'view_employee',
+
+        # Leave & Holidays
+        'leave': 'leave_balance',
+        'balance': 'leave_balance',
+        'holiday': 'holidays',
+        'holidays': 'holidays',
+        'holiday view': 'holidays',
+        'holiday list': 'holidays',
+
+        # Muster
+        'muster': 'muster',
+        'status': 'muster_status',
+        'review': 'review_muster',
+        'working': 'working_days',
+
+        # Salary
+        'salary': 'salary_details',
+        'pay': 'salary_details',
+        'financial': 'salary_details',
+        'performance': 'performance_list',
+        'tax': 'tax_deduction',
+        'deduction': 'tax_deduction',
+        'payslip': 'all_payslips',
+
+        # Expense & Loan
+        'expense': 'expense_claims',
+        'claim': 'expense_claims',
+        'loan': 'loan_requests',
+
+        # Tasks & Training
         'task': 'task_management',
-        'management':'task_management',
-        'financial':'salary_details',
-        'claim':'expense_claims',
-        'tax':'tax_deduction',
-        'deduction':'tax_deduction',
-        'details':'profile',
-        'edit':'profile',
-        'personal':'profile',
-        'professional':'profile',
-        'banking':'profile',
-        'picture':'profile',
-        'profile':'profile',
-        'cover':'profile',
-        'data':'employee_requests',
+        'management': 'task_management',
+        'training': 'training',
+
+        # Policies
+        'policy': 'policy',
+        'cookie': 'cookie_policy',
+        'terms': 'terms_of_service',
+        'refund': 'refund_cancellation_policy',
+        'acceptable': 'acceptable_use_policy',
+        'retention': 'data_retention_policy',
+
+        # Forms & Company
+        'company': 'company_list',
+        'company form': 'company_list',
+
+        # Users
+        'user': 'user_list',
+        'reset': 'reset_password',
+        'forgot': 'forgot_password',
+        'otp': 'verify_otp',
+
+        # Others
+        'faq': 'faq',
+        'contact': 'contact_us',
+        'chat': 'chat_bot',
+        'notifications': 'staff_notifications',
+        'data': 'employee_requests',
     }
- 
-    if request.user.is_authenticated and request.user.role == 'HR' or request.user.role == 'Manager' or request.user.is_superuser:
+
+    # Admin/Manager/HR access
+    if request.user.role in ['HR', 'Manager'] or request.user.is_superuser:
         page_urls['request'] = 'employee_requests'
+        page_urls['employee requests'] = 'employee_requests'
 
+    # Partial match logic
     for page_name, url_name in page_urls.items():
-        normalized_page_name = page_name.lower().replace(' ', '-')
+        if page_name in normalized_query or normalized_query in page_name:
+            return redirect(reverse(url_name))
 
-        if normalized_page_name in normalized_query:
-            return redirect(reverse(url_name))  
- 
+    # No match found
+    messages.warning(request, "No results found for your search.")
     return redirect('dashboard')
+
+
 
 
 #------------------------------------------------------------- FAQ #
