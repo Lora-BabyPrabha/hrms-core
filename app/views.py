@@ -1231,25 +1231,56 @@ def edit_banking_info(request, employee_id):
 def task_management(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    company = user.company  # get the logged-in user's company
+    company = user.company
 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
 
-    # Filter only data belonging to the same company
-    pending_musters = Muster.objects.filter(status='Pending', user__company=company)
-    pending_leave_request = LeaveRequest.objects.filter(status='pending', employee__company=company)
-    pending_expense = ExpenseClaim.objects.filter(status='pending', employee__company=company)
-    pending_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
+    # Show all tasks assigned to this user/company by default
+    assigned_tasks = Task.objects.filter(
+        Q(created_by__employee__company=company) | Q(assigned_to__employee__company=company)
+    ).distinct().order_by('-created_at')
+
+    # Optional: Apply filters if present
+    employee_id = request.GET.get('employee_id', '')
+    if employee_id:
+        try:
+            employee_filter = CustomUser.objects.get(employee_id=employee_id, company=company)
+            assigned_tasks = assigned_tasks.filter(assigned_to=employee_filter)
+        except CustomUser.DoesNotExist:
+            assigned_tasks = Task.objects.none()
+
+    month = request.GET.get('month', '')
+    if month:
+        try:
+            month_start = datetime.strptime(month, '%Y-%m').date()
+            month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            assigned_tasks = assigned_tasks.filter(due_date__range=[month_start, month_end])
+        except ValueError:
+            pass
+
+    # Remove duplicates (by name & due_date)
+    seen = set()
+    unique_tasks = []
+    for task in assigned_tasks:
+        key = (task.name, task.due_date)
+        if key not in seen:
+            seen.add(key)
+            unique_tasks.append(task)
+
+    months = [
+        {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
+        for i in range(1, 13)
+    ]
 
     return render(request, 'task_management.html', {
         'employee_id': user.employee_id,
         'employee': employee,
         'notifications': notifications,
-        'pending_musters': pending_musters,
-        'pending_leave_request': pending_leave_request,
-        'pending_expense': pending_expense,
-        'pending_loan': pending_loan
+        'assigned_tasks': unique_tasks,  # <-- This will show tasks by default
+        'months': months,
+        'current_month': datetime.now().strftime('%Y-%m')
     })
+
     
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -1263,70 +1294,68 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import render
 from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
+
 @login_required(login_url='/')
 @staff_member_required
 def assign_task(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
+    # --- POST: Assign Task ---
     if request.method == 'POST':
         try:
             task_name = request.POST['task_name']
             employee_input = request.POST['employee_emails']
             due_date = request.POST['due_date']
- 
-            # Clean input list
+
             employee_input_list = [input.strip() for input in employee_input.split(",")]
- 
-            # Get logged-in user's company
-            logged_in_employee = Employee.objects.get(employee_id=request.user.employee_id)
-            company = logged_in_employee.company
- 
-            # Filter users in the same company
+
             users = CustomUser.objects.filter(
                 (Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)),
                 employee__company=company
             )
- 
+
             if users.exists():
                 task = Task.objects.create(
                     name=task_name,
                     due_date=due_date,
-                    created_by=request.user
+                    created_by=user
                 )
                 task.assigned_to.set(users)
- 
-                for user in users:
+
+                for user_obj in users:
                     notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
-                    Notification.objects.create(recipient=user, message=notification_message)
- 
+                    Notification.objects.create(recipient=user_obj, message=notification_message)
+
                 task.save()
- 
+
                 return JsonResponse({'status': 'success', 'message': f"Task '{task_name}' has been assigned successfully!"})
             else:
                 return JsonResponse({'status': 'error', 'message': f"Employee '{employee_input}' not found in your company!"}, status=400)
- 
+
         except KeyError as e:
             return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
- 
-    # ---------------- GET Request Logic ----------------
- 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
- 
-    # Get all tasks created by current user
-    all_tasks = Task.objects.filter(created_by=user).order_by('-created_at')
- 
-    # Filter by employee_id
+
+    # --- GET: Always show all tasks by default ---
+    # Show all tasks created by this user for this company by default
+    all_tasks = Task.objects.filter(
+        created_by=user,
+        created_by__employee__company=company
+    ).order_by('-created_at')
+
+    # Apply filters only if present
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
         try:
-            employee_filter = CustomUser.objects.get(employee_id=employee_id)
+            employee_filter = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
             all_tasks = all_tasks.filter(assigned_to=employee_filter)
         except CustomUser.DoesNotExist:
             all_tasks = Task.objects.none()
- 
-    # Filter by month
+
     month = request.GET.get('month', '')
     if month:
         try:
@@ -1335,8 +1364,8 @@ def assign_task(request):
             all_tasks = all_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
- 
-    #  Unique task filter (by name & due_date)
+
+    # Unique task filter (by name & due_date)
     seen = set()
     unique_tasks = []
     for task in all_tasks:
@@ -1344,19 +1373,19 @@ def assign_task(request):
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
- 
-    # Month dropdown list
+
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
- 
+
     return render(request, 'task_management.html', {
         'employee': employee,
-        'assigned_tasks': unique_tasks,  # filtered task list
+        'assigned_tasks': unique_tasks,  # always show tasks by default
         'months': months,
         'current_month': datetime.now().strftime('%Y-%m')
     })
+
  
 
 
