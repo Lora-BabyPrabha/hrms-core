@@ -1831,7 +1831,7 @@ def user_create(request):
     company = employee.company
 
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = FrontendUserForm(request.POST)
         if form.is_valid():
             new_user = form.save(commit=False)
             new_user.company = company  # Assign company
@@ -1839,7 +1839,7 @@ def user_create(request):
             messages.success(request, "User created successfully!")
             return redirect('user_list')
     else:
-        form = UserCreationForm()
+        form = FrontendUserForm()
 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False

@@ -107,8 +107,7 @@ class UserCreationForm(forms.ModelForm):
     class Meta:
         model = CustomUser
         fields = '__all__'
-        exclude = ['company']  # Exclude fields not needed in the form
-
+        
     def clean_password(self):
         password = self.cleaned_data.get("password")
         user = self.instance
@@ -148,12 +147,25 @@ class UserCreationForm(forms.ModelForm):
         if commit:
             user.save()
         return user
-    
+
+
+
+# forms.py (frontend form)
+
+class FrontendUserForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput)
+
+    class Meta:
+        model = CustomUser
+        fields = '__all__'
+        exclude = ['company']
+
 
 class MusterForm(forms.ModelForm):
     class Meta:
         model = Muster
         fields = '__all__'
+        
 
 
 # class SalaryForm(forms.ModelForm):
