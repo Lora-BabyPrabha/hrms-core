@@ -145,34 +145,29 @@ def search_results(request):
     query = request.GET.get('query', '').lower()
     normalized_query = query.replace('-', ' ').strip()
 
-    # Add all page keywords and their corresponding url names here
     page_urls = {
-        # Dashboard & Home
         'home': 'dashboard',
         'index': 'dashboard',
         'dashboard': 'dashboard',
-
-        # Login & Auth
         'login': 'login',
-        'logout': 'logout',
-        'reset password': 'reset_password',
-        'forgot password': 'forgot_password',
-        'otp': 'verify_otp',
+        '404': 'page_not_found',
 
         # Profile
         'profile': 'profile',
-        'edit personal': 'edit_personal_info',
-        'edit professional': 'edit_professional_info',
-        'edit banking': 'edit_banking_info',
-        'edit profile picture': 'edit_profile_picture',
-        'edit cover picture': 'edit_cover_picture',
+        'edit': 'profile',
+        'details': 'profile',
+        'personal': 'profile',
+        'professional': 'profile',
+        'banking': 'profile',
+        'picture': 'profile',
+        'cover': 'profile',
 
         # Employee
-        'employee': 'employee_list',
-        'employee list': 'employee_list',
-        'employee create': 'employee_create',
-        'employee edit': 'employee_edit',
-        'employee delete': 'employee_delete',
+        'employee': 'view_employee',
+        'employee list': 'view_employee',
+        'employee detail': 'view_employee',
+        'employee create': 'view_employee',
+        'employee edit': 'view_employee',
 
         # Leave & Holidays
         'leave balance': 'leave_balance',
@@ -189,8 +184,9 @@ def search_results(request):
 
         # Muster
         'muster': 'muster',
-        'muster status': 'muster_status',
-        'review muster': 'review_muster',
+        'status': 'muster_status',
+        'review': 'review_muster',
+        'working': 'working_days',
 
         # Salary
         'salary': 'salary_details',
@@ -209,31 +205,20 @@ def search_results(request):
 
         # Tasks & Training
         'task': 'task_management',
-        'task management': 'task_management',
-        'task list': 'task_list',
-        'assign task': 'assign_task',
+        'management': 'task_management',
         'training': 'training',
-
-        # Performance
-        'performance': 'performance_page',
-        'performance entry': 'performance_entry',
-        'performance list': 'performance_list',
 
         # Policies
         'policy': 'policy',
-        'cookie policy': 'cookie_policy',
+        'cookie': 'cookie_policy',
         'terms': 'terms_of_service',
         'refund': 'refund_cancellation_policy',
-        'acceptable use': 'acceptable_use_policy',
-        'data retention': 'data_retention_policy',
+        'acceptable': 'acceptable_use_policy',
+        'retention': 'data_retention_policy',
 
-        # Company
+        # Forms & Company
         'company': 'company_list',
-        'company create': 'company_create',
-        'company edit': 'company_edit',
-        'company delete': 'company_delete',
-        'company detail': 'company_detail',
-        'company check': 'company_check',
+        'company form': 'company_list',
 
         # Users
         'user': 'user_list',
@@ -242,12 +227,10 @@ def search_results(request):
         'user edit': 'user_list',
         'user delete': 'user_list',
 
-        # FAQ, Chat, Contact
+        # Others
         'faq': 'faq',
-        'chat': 'chat_bot',
         'contact': 'contact_us',
-
-        # Notifications
+        'chat': 'chat_bot',
         'notifications': 'staff_notifications',
 
         # HR4U
@@ -267,25 +250,14 @@ def search_results(request):
         return redirect(reverse(url_name))
     for page_name, url_name in page_urls.items():
         if page_name in normalized_query or normalized_query in page_name:
-            # For URLs that require employee_id, pass it
-            if url_name in [
-                'edit_personal_info',
-                'edit_professional_info',
-                'edit_banking_info',
-            ]:
-                employee = Employee.objects.filter(user=request.user).first()
-                if employee:
-                    return redirect(reverse(url_name, args=[employee.id]))
-                else:
-                    messages.error(request, "Employee profile not found.")
-                    return redirect('dashboard')
-            else:
-                return redirect(reverse(url_name))
+            return redirect(reverse(url_name))
 
     # No match found
     messages.warning(request, "No results found for your search.")
     return redirect('dashboard')
-# ...existing code...
+
+
+
 
 #------------------------------------------------------------- FAQ #
 
@@ -1193,7 +1165,7 @@ def profile(request):
 def edit_personal_info(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
-    if request.user != employee:
+    if request.user.employee_user != employee:
         messages.error(request, "You don't have permission to edit this profile.")
         return redirect('profile')
    
@@ -1728,28 +1700,30 @@ def review_muster_notifications(request, muster_id, action):
 def review_leaves_notifications(request, leaves_id, action):
     leave_request = get_object_or_404(LeaveRequest, id=leaves_id)
     leave_balance = Leave.objects.get(employee=leave_request.employee)
-
+ 
     if action == 'approve':
         leave_request.status = 'approved'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
         Notification.objects.create(recipient=leave_request.employee, message=message)
 
-        # Deduct leave days from the correct leave type
-        leave_balance.update_balance(
-            leave_type=leave_request.leave_type,
-            days_requested=leave_request.days_requested,
-            start_date=leave_request.start_date,
-            end_date=leave_request.end_date
+        requested_leave_days = leave_balance.update_balance(
+            leave_request.leave_type,
+            leave_request.days_requested,
+            leave_request.start_date,
+            leave_request.end_date
         )
-        leave_balance.save()  # Save the updated balance
-
+ 
+        if requested_leave_days > 0:
+            leave_request.days_requested = requested_leave_days
+            leave_request.save()
+ 
     elif action == 'reject':
         leave_request.status = 'rejected'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been rejected."
         Notification.objects.create(recipient=leave_request.employee, message=message)
-
+ 
     return redirect('dashboard')
 
 @login_required(login_url='/')
@@ -1831,7 +1805,7 @@ def user_create(request):
     company = employee.company
 
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = FrontendUserForm(request.POST)
         if form.is_valid():
             new_user = form.save(commit=False)
             new_user.company = company  # Assign company
@@ -1839,7 +1813,7 @@ def user_create(request):
             messages.success(request, "User created successfully!")
             return redirect('user_list')
     else:
-        form = UserCreationForm()
+        form = FrontendUserForm()
 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
@@ -2611,7 +2585,8 @@ def employee_list(request):
 def employee_create(request):
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES)
-        if form.is_valid():
+        media_form = EmployeeMediaForm(request.POST, request.FILES)
+        if form.is_valid() and media_form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
@@ -2620,12 +2595,14 @@ def employee_create(request):
                     messages.error(request, "This user has no company assigned. Please assign it first.")
                 else:
                     employee = form.save(commit=False)
+                    media = media_form.save(commit=False)
+
                     employee.user = user
                     employee.company = user.company
                     employee.save()
 
-                    # Create empty EmployeeMedia
-                    EmployeeMedia.objects.create(employee=employee)
+                    media.employee = employee
+                    media.save()  # ✅ Save after setting FK
 
                     messages.success(request, 'Employee added successfully!')
                     return redirect('employee_list')
@@ -2634,12 +2611,14 @@ def employee_create(request):
                 messages.error(request, 'No user found with the provided employee ID.')
     else:
         form = EmployeeProfileForm()
+        media_form = EmployeeMediaForm()
 
     current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'employee_create.html', {
         'form': form,
+        'media_form': media_form,
         'employee': current_employee,
         'notifications': notifications
     })
