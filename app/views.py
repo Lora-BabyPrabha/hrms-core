@@ -145,105 +145,147 @@ def search_results(request):
     query = request.GET.get('query', '').lower()
     normalized_query = query.replace('-', ' ').strip()
 
+    # Add all page keywords and their corresponding url names here
     page_urls = {
+        # Dashboard & Home
         'home': 'dashboard',
         'index': 'dashboard',
         'dashboard': 'dashboard',
+
+        # Login & Auth
         'login': 'login',
-        '404': 'page_not_found',
+        'logout': 'logout',
+        'reset password': 'reset_password',
+        'forgot password': 'forgot_password',
+        'otp': 'verify_otp',
 
         # Profile
         'profile': 'profile',
-        'edit': 'profile',
-        'details': 'profile',
-        'personal': 'profile',
-        'professional': 'profile',
-        'banking': 'profile',
-        'picture': 'profile',
-        'cover': 'profile',
+        'edit personal': 'edit_personal_info',
+        'edit professional': 'edit_professional_info',
+        'edit banking': 'edit_banking_info',
+        'edit profile picture': 'edit_profile_picture',
+        'edit cover picture': 'edit_cover_picture',
 
         # Employee
-        'employee': 'view_employee',
-        'employee list': 'view_employee',
-        'employee detail': 'view_employee',
-        'employee create': 'view_employee',
-        'employee edit': 'view_employee',
+        'employee': 'employee_list',
+        'employee list': 'employee_list',
+        'employee create': 'employee_create',
+        'employee edit': 'employee_edit',
+        'employee delete': 'employee_delete',
 
         # Leave & Holidays
-        'leave': 'leave_balance',
-        'balance': 'leave_balance',
-        'holiday': 'holidays',
+        'leave balance': 'leave_balance',
+        'leave request': 'leave_request',
+        'leave list': 'leave_list',
+        'leave create': 'leave_create',
+        'leave edit': 'leave_edit',
+        'leave delete': 'leave_delete',
         'holidays': 'holidays',
-        'holiday view': 'holidays',
-        'holiday list': 'holidays',
+        'holiday list': 'holidays_list',
+        'holiday create': 'holiday_create',
+        'holiday edit': 'holiday_edit',
+        'holiday delete': 'holiday_delete',
 
         # Muster
         'muster': 'muster',
-        'status': 'muster_status',
-        'review': 'review_muster',
-        'working': 'working_days',
+        'muster status': 'muster_status',
+        'review muster': 'review_muster',
 
         # Salary
         'salary': 'salary_details',
-        'pay': 'salary_details',
-        'financial': 'salary_details',
-        'performance': 'performance_list',
-        'tax': 'tax_deduction',
-        'deduction': 'tax_deduction',
+        'salary list': 'salary_list',
+        'salary create': 'create_salary',
+        'salary edit': 'edit_salary',
+        'salary delete': 'delete_salary',
+        'view salary': 'view_salary',
         'payslip': 'all_payslips',
+        'generate payslip': 'generate_payslip_pdf',
 
         # Expense & Loan
         'expense': 'expense_claims',
-        'claim': 'expense_claims',
+        'expense claim': 'expense_claims',
+        'submit expense': 'submit_expense_claim',
         'loan': 'loan_requests',
+        'loan request': 'loan_requests',
+        'submit loan': 'submit_loan_request',
 
         # Tasks & Training
         'task': 'task_management',
-        'management': 'task_management',
+        'task management': 'task_management',
+        'task list': 'task_list',
+        'assign task': 'assign_task',
         'training': 'training',
+
+        # Performance
+        'performance': 'performance_page',
+        'performance entry': 'performance_entry',
+        'performance list': 'performance_list',
 
         # Policies
         'policy': 'policy',
-        'cookie': 'cookie_policy',
+        'cookie policy': 'cookie_policy',
         'terms': 'terms_of_service',
         'refund': 'refund_cancellation_policy',
-        'acceptable': 'acceptable_use_policy',
-        'retention': 'data_retention_policy',
+        'acceptable use': 'acceptable_use_policy',
+        'data retention': 'data_retention_policy',
 
-        # Forms & Company
+        # Company
         'company': 'company_list',
-        'company form': 'company_list',
+        'company create': 'company_create',
+        'company edit': 'company_edit',
+        'company delete': 'company_delete',
+        'company detail': 'company_detail',
+        'company check': 'company_check',
 
         # Users
         'user': 'user_list',
-        'reset': 'reset_password',
-        'forgot': 'forgot_password',
-        'otp': 'verify_otp',
+        'user list': 'user_list',
+        'user create': 'user_create',
+        'user edit': 'user_edit',
+        'user delete': 'user_confirm_delete',
 
-        # Others
+        # FAQ, Chat, Contact
         'faq': 'faq',
-        'contact': 'contact_us',
         'chat': 'chat_bot',
+        'contact': 'contact_us',
+
+        # Notifications
         'notifications': 'staff_notifications',
+
+        # HR4U
+        'hr4u': 'hr4u_dashboard',
+        'employee self service': 'employee_self_service',
+        'benefits': 'benefits_compensation',
+        'career': 'career_development',
+        'help desk': 'help_desk',
+
+        # Data
         'data': 'employee_requests',
     }
 
     # Admin/Manager/HR access
-    if request.user.role in ['HR', 'Manager'] or request.user.is_superuser:
-        page_urls['request'] = 'employee_requests'
-        page_urls['employee requests'] = 'employee_requests'
-
-    # Partial match logic
     for page_name, url_name in page_urls.items():
         if page_name in normalized_query or normalized_query in page_name:
-            return redirect(reverse(url_name))
+            # For URLs that require employee_id, pass it
+            if url_name in [
+                'edit_personal_info',
+                'edit_professional_info',
+                'edit_banking_info',
+            ]:
+                employee = Employee.objects.filter(user=request.user).first()
+                if employee:
+                    return redirect(reverse(url_name, args=[employee.id]))
+                else:
+                    messages.error(request, "Employee profile not found.")
+                    return redirect('dashboard')
+            else:
+                return redirect(reverse(url_name))
 
     # No match found
     messages.warning(request, "No results found for your search.")
     return redirect('dashboard')
-
-
-
+# ...existing code...
 
 #------------------------------------------------------------- FAQ #
 
@@ -1151,7 +1193,7 @@ def profile(request):
 def edit_personal_info(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
-    if request.user.employee_user != employee:
+    if request.user != employee:
         messages.error(request, "You don't have permission to edit this profile.")
         return redirect('profile')
    
@@ -1231,25 +1273,56 @@ def edit_banking_info(request, employee_id):
 def task_management(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    company = user.company  # get the logged-in user's company
+    company = user.company
 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
 
-    # Filter only data belonging to the same company
-    pending_musters = Muster.objects.filter(status='Pending', user__company=company)
-    pending_leave_request = LeaveRequest.objects.filter(status='pending', employee__company=company)
-    pending_expense = ExpenseClaim.objects.filter(status='pending', employee__company=company)
-    pending_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
+    # Show all tasks assigned to this user/company by default
+    assigned_tasks = Task.objects.filter(
+        Q(created_by__employee__company=company) | Q(assigned_to__employee__company=company)
+    ).distinct().order_by('-created_at')
+
+    # Optional: Apply filters if present
+    employee_id = request.GET.get('employee_id', '')
+    if employee_id:
+        try:
+            employee_filter = CustomUser.objects.get(employee_id=employee_id, company=company)
+            assigned_tasks = assigned_tasks.filter(assigned_to=employee_filter)
+        except CustomUser.DoesNotExist:
+            assigned_tasks = Task.objects.none()
+
+    month = request.GET.get('month', '')
+    if month:
+        try:
+            month_start = datetime.strptime(month, '%Y-%m').date()
+            month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            assigned_tasks = assigned_tasks.filter(due_date__range=[month_start, month_end])
+        except ValueError:
+            pass
+
+    # Remove duplicates (by name & due_date)
+    seen = set()
+    unique_tasks = []
+    for task in assigned_tasks:
+        key = (task.name, task.due_date)
+        if key not in seen:
+            seen.add(key)
+            unique_tasks.append(task)
+
+    months = [
+        {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
+        for i in range(1, 13)
+    ]
 
     return render(request, 'task_management.html', {
         'employee_id': user.employee_id,
         'employee': employee,
         'notifications': notifications,
-        'pending_musters': pending_musters,
-        'pending_leave_request': pending_leave_request,
-        'pending_expense': pending_expense,
-        'pending_loan': pending_loan
+        'assigned_tasks': unique_tasks,  # <-- This will show tasks by default
+        'months': months,
+        'current_month': datetime.now().strftime('%Y-%m')
     })
+
     
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -1263,70 +1336,68 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import render
 from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
+
 @login_required(login_url='/')
 @staff_member_required
 def assign_task(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
+
+    # --- POST: Assign Task ---
     if request.method == 'POST':
         try:
             task_name = request.POST['task_name']
             employee_input = request.POST['employee_emails']
             due_date = request.POST['due_date']
- 
-            # Clean input list
+
             employee_input_list = [input.strip() for input in employee_input.split(",")]
- 
-            # Get logged-in user's company
-            logged_in_employee = Employee.objects.get(employee_id=request.user.employee_id)
-            company = logged_in_employee.company
- 
-            # Filter users in the same company
+
             users = CustomUser.objects.filter(
                 (Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)),
                 employee__company=company
             )
- 
+
             if users.exists():
                 task = Task.objects.create(
                     name=task_name,
                     due_date=due_date,
-                    created_by=request.user
+                    created_by=user
                 )
                 task.assigned_to.set(users)
- 
-                for user in users:
+
+                for user_obj in users:
                     notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
-                    Notification.objects.create(recipient=user, message=notification_message)
- 
+                    Notification.objects.create(recipient=user_obj, message=notification_message)
+
                 task.save()
- 
+
                 return JsonResponse({'status': 'success', 'message': f"Task '{task_name}' has been assigned successfully!"})
             else:
                 return JsonResponse({'status': 'error', 'message': f"Employee '{employee_input}' not found in your company!"}, status=400)
- 
+
         except KeyError as e:
             return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
- 
-    # ---------------- GET Request Logic ----------------
- 
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
- 
-    # Get all tasks created by current user
-    all_tasks = Task.objects.filter(created_by=user).order_by('-created_at')
- 
-    # Filter by employee_id
+
+    # --- GET: Always show all tasks by default ---
+    # Show all tasks created by this user for this company by default
+    all_tasks = Task.objects.filter(
+        created_by=user,
+        created_by__employee__company=company
+    ).order_by('-created_at')
+
+    # Apply filters only if present
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
         try:
-            employee_filter = CustomUser.objects.get(employee_id=employee_id)
+            employee_filter = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
             all_tasks = all_tasks.filter(assigned_to=employee_filter)
         except CustomUser.DoesNotExist:
             all_tasks = Task.objects.none()
- 
-    # Filter by month
+
     month = request.GET.get('month', '')
     if month:
         try:
@@ -1335,8 +1406,8 @@ def assign_task(request):
             all_tasks = all_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
- 
-    #  Unique task filter (by name & due_date)
+
+    # Unique task filter (by name & due_date)
     seen = set()
     unique_tasks = []
     for task in all_tasks:
@@ -1344,19 +1415,19 @@ def assign_task(request):
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
- 
-    # Month dropdown list
+
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
- 
+
     return render(request, 'task_management.html', {
         'employee': employee,
-        'assigned_tasks': unique_tasks,  # filtered task list
+        'assigned_tasks': unique_tasks,  # always show tasks by default
         'months': months,
         'current_month': datetime.now().strftime('%Y-%m')
     })
+
  
 
 
@@ -1490,6 +1561,17 @@ def submit_loan_request(request):
         repayment_duration = request.POST.get('repayment_duration')
         interest_rate = request.POST.get('interest_rate')
 
+        # Validate loan amount: must be less than 10 digits before decimal
+        try:
+            # Remove commas and spaces if any
+            loan_amount_clean = str(loan_amount).replace(',', '').replace(' ', '')
+            if len(loan_amount_clean.split('.')[0]) > 9:
+                messages.error(request, "Please enter a loan amount less than 10 digits.")
+                return redirect('loan_requests')
+        except Exception:
+            messages.error(request, "Invalid loan amount format.")
+            return redirect('loan_requests')
+
         loan_request = LoanRequest(
             employee=request.user,
             loan_type=loan_type,
@@ -1504,7 +1586,7 @@ def submit_loan_request(request):
         loan_request.save()
 
         return redirect('loan_requests')
-
+# ...existing code...
 
 #------------------------------------------------------------- Reviews-Page #
 
@@ -1646,30 +1728,28 @@ def review_muster_notifications(request, muster_id, action):
 def review_leaves_notifications(request, leaves_id, action):
     leave_request = get_object_or_404(LeaveRequest, id=leaves_id)
     leave_balance = Leave.objects.get(employee=leave_request.employee)
- 
+
     if action == 'approve':
         leave_request.status = 'approved'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
         Notification.objects.create(recipient=leave_request.employee, message=message)
 
-        requested_leave_days = leave_balance.update_balance(
-            leave_request.leave_type,
-            leave_request.days_requested,
-            leave_request.start_date,
-            leave_request.end_date
+        # Deduct leave days from the correct leave type
+        leave_balance.update_balance(
+            leave_type=leave_request.leave_type,
+            days_requested=leave_request.days_requested,
+            start_date=leave_request.start_date,
+            end_date=leave_request.end_date
         )
- 
-        if requested_leave_days > 0:
-            leave_request.days_requested = requested_leave_days
-            leave_request.save()
- 
+        leave_balance.save()  # Save the updated balance
+
     elif action == 'reject':
         leave_request.status = 'rejected'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been rejected."
         Notification.objects.create(recipient=leave_request.employee, message=message)
- 
+
     return redirect('dashboard')
 
 @login_required(login_url='/')
