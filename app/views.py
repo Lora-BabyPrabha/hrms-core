@@ -145,105 +145,147 @@ def search_results(request):
     query = request.GET.get('query', '').lower()
     normalized_query = query.replace('-', ' ').strip()
 
+    # Add all page keywords and their corresponding url names here
     page_urls = {
+        # Dashboard & Home
         'home': 'dashboard',
         'index': 'dashboard',
         'dashboard': 'dashboard',
+
+        # Login & Auth
         'login': 'login',
-        '404': 'page_not_found',
+        'logout': 'logout',
+        'reset password': 'reset_password',
+        'forgot password': 'forgot_password',
+        'otp': 'verify_otp',
 
         # Profile
         'profile': 'profile',
-        'edit': 'profile',
-        'details': 'profile',
-        'personal': 'profile',
-        'professional': 'profile',
-        'banking': 'profile',
-        'picture': 'profile',
-        'cover': 'profile',
+        'edit personal': 'edit_personal_info',
+        'edit professional': 'edit_professional_info',
+        'edit banking': 'edit_banking_info',
+        'edit profile picture': 'edit_profile_picture',
+        'edit cover picture': 'edit_cover_picture',
 
         # Employee
-        'employee': 'view_employee',
-        'employee list': 'view_employee',
-        'employee detail': 'view_employee',
-        'employee create': 'view_employee',
-        'employee edit': 'view_employee',
+        'employee': 'employee_list',
+        'employee list': 'employee_list',
+        'employee create': 'employee_create',
+        'employee edit': 'employee_edit',
+        'employee delete': 'employee_delete',
 
         # Leave & Holidays
-        'leave': 'leave_balance',
-        'balance': 'leave_balance',
-        'holiday': 'holidays',
+        'leave balance': 'leave_balance',
+        'leave request': 'leave_request',
+        'leave list': 'leave_list',
+        'leave create': 'leave_create',
+        'leave edit': 'leave_edit',
+        'leave delete': 'leave_delete',
         'holidays': 'holidays',
-        'holiday view': 'holidays',
-        'holiday list': 'holidays',
+        'holiday list': 'holidays_list',
+        'holiday create': 'holiday_create',
+        'holiday edit': 'holiday_edit',
+        'holiday delete': 'holiday_delete',
 
         # Muster
         'muster': 'muster',
-        'status': 'muster_status',
-        'review': 'review_muster',
-        'working': 'working_days',
+        'muster status': 'muster_status',
+        'review muster': 'review_muster',
 
         # Salary
         'salary': 'salary_details',
-        'pay': 'salary_details',
-        'financial': 'salary_details',
-        'performance': 'performance_list',
-        'tax': 'tax_deduction',
-        'deduction': 'tax_deduction',
+        'salary list': 'salary_list',
+        'salary create': 'create_salary',
+        'salary edit': 'edit_salary',
+        'salary delete': 'delete_salary',
+        'view salary': 'view_salary',
         'payslip': 'all_payslips',
+        'generate payslip': 'generate_payslip_pdf',
 
         # Expense & Loan
         'expense': 'expense_claims',
-        'claim': 'expense_claims',
+        'expense claim': 'expense_claims',
+        'submit expense': 'submit_expense_claim',
         'loan': 'loan_requests',
+        'loan request': 'loan_requests',
+        'submit loan': 'submit_loan_request',
 
         # Tasks & Training
         'task': 'task_management',
-        'management': 'task_management',
+        'task management': 'task_management',
+        'task list': 'task_list',
+        'assign task': 'assign_task',
         'training': 'training',
+
+        # Performance
+        'performance': 'performance_page',
+        'performance entry': 'performance_entry',
+        'performance list': 'performance_list',
 
         # Policies
         'policy': 'policy',
-        'cookie': 'cookie_policy',
+        'cookie policy': 'cookie_policy',
         'terms': 'terms_of_service',
         'refund': 'refund_cancellation_policy',
-        'acceptable': 'acceptable_use_policy',
-        'retention': 'data_retention_policy',
+        'acceptable use': 'acceptable_use_policy',
+        'data retention': 'data_retention_policy',
 
-        # Forms & Company
+        # Company
         'company': 'company_list',
-        'company form': 'company_list',
+        'company create': 'company_create',
+        'company edit': 'company_edit',
+        'company delete': 'company_delete',
+        'company detail': 'company_detail',
+        'company check': 'company_check',
 
         # Users
         'user': 'user_list',
-        'reset': 'reset_password',
-        'forgot': 'forgot_password',
-        'otp': 'verify_otp',
+        'user list': 'user_list',
+        'user create': 'user_create',
+        'user edit': 'user_edit',
+        'user delete': 'user_confirm_delete',
 
-        # Others
+        # FAQ, Chat, Contact
         'faq': 'faq',
-        'contact': 'contact_us',
         'chat': 'chat_bot',
+        'contact': 'contact_us',
+
+        # Notifications
         'notifications': 'staff_notifications',
+
+        # HR4U
+        'hr4u': 'hr4u_dashboard',
+        'employee self service': 'employee_self_service',
+        'benefits': 'benefits_compensation',
+        'career': 'career_development',
+        'help desk': 'help_desk',
+
+        # Data
         'data': 'employee_requests',
     }
 
     # Admin/Manager/HR access
-    if request.user.role in ['HR', 'Manager'] or request.user.is_superuser:
-        page_urls['request'] = 'employee_requests'
-        page_urls['employee requests'] = 'employee_requests'
-
-    # Partial match logic
     for page_name, url_name in page_urls.items():
         if page_name in normalized_query or normalized_query in page_name:
-            return redirect(reverse(url_name))
+            # For URLs that require employee_id, pass it
+            if url_name in [
+                'edit_personal_info',
+                'edit_professional_info',
+                'edit_banking_info',
+            ]:
+                employee = Employee.objects.filter(user=request.user).first()
+                if employee:
+                    return redirect(reverse(url_name, args=[employee.id]))
+                else:
+                    messages.error(request, "Employee profile not found.")
+                    return redirect('dashboard')
+            else:
+                return redirect(reverse(url_name))
 
     # No match found
     messages.warning(request, "No results found for your search.")
     return redirect('dashboard')
-
-
-
+# ...existing code...
 
 #------------------------------------------------------------- FAQ #
 
@@ -1151,7 +1193,7 @@ def profile(request):
 def edit_personal_info(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
-    if request.user.employee_user != employee:
+    if request.user != employee:
         messages.error(request, "You don't have permission to edit this profile.")
         return redirect('profile')
    
@@ -1686,30 +1728,28 @@ def review_muster_notifications(request, muster_id, action):
 def review_leaves_notifications(request, leaves_id, action):
     leave_request = get_object_or_404(LeaveRequest, id=leaves_id)
     leave_balance = Leave.objects.get(employee=leave_request.employee)
- 
+
     if action == 'approve':
         leave_request.status = 'approved'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
         Notification.objects.create(recipient=leave_request.employee, message=message)
 
-        requested_leave_days = leave_balance.update_balance(
-            leave_request.leave_type,
-            leave_request.days_requested,
-            leave_request.start_date,
-            leave_request.end_date
+        # Deduct leave days from the correct leave type
+        leave_balance.update_balance(
+            leave_type=leave_request.leave_type,
+            days_requested=leave_request.days_requested,
+            start_date=leave_request.start_date,
+            end_date=leave_request.end_date
         )
- 
-        if requested_leave_days > 0:
-            leave_request.days_requested = requested_leave_days
-            leave_request.save()
- 
+        leave_balance.save()  # Save the updated balance
+
     elif action == 'reject':
         leave_request.status = 'rejected'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been rejected."
         Notification.objects.create(recipient=leave_request.employee, message=message)
- 
+
     return redirect('dashboard')
 
 @login_required(login_url='/')
