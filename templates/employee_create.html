@@ -346,28 +346,29 @@
         </div>
 
         <div>
-            <label for="{{ form.profile_picture.id_for_label }}">Profile Picture:</label>
-            {{ form.profile_picture }}
-            {% if form.profile_picture.errors %}
-                <div class="error">
-                    {% for error in form.profile_picture.errors %}
-                        <p>{{ error }}</p>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
+        <label for="{{ media_form.profile_picture.id_for_label }}">Profile Picture:</label>
+        {{ media_form.profile_picture }}
+        {% if media_form.profile_picture.errors %}
+            <div class="error">
+                {% for error in media_form.profile_picture.errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
 
-        <div>
-            <label for="{{ form.cover_picture.id_for_label }}">Cover Picture:</label>
-            {{ form.cover_picture }}
-            {% if form.cover_picture.errors %}
-                <div class="error">
-                    {% for error in form.cover_picture.errors %}
-                        <p>{{ error }}</p>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
+    <div>
+        <label for="{{ media_form.cover_picture.id_for_label }}">Cover Picture:</label>
+        {{ media_form.cover_picture }}
+        {% if media_form.cover_picture.errors %}
+            <div class="error">
+                {% for error in media_form.cover_picture.errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
                 {% if form.errors %}
         <div class="error-box">
         <h4>Form errors:</h4>
