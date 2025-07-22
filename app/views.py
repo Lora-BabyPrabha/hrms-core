@@ -2289,7 +2289,7 @@ def working_days(request):
         'employee_data': employee_data,
         'months': months_formatted,
         'selected_month': selected_month,
-        'selected_year': selected_year,
+        'selected_year': selected_year, 
         'employee_id_filter': employee_id_filter,
         'employee_id': current_employee,  # Changed to use the preserved variable
         'notifications': notifications,
