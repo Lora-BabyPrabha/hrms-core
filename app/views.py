@@ -2571,7 +2571,8 @@ def employee_list(request):
 def employee_create(request):
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES)
-        if form.is_valid():
+        media_form = EmployeeMediaForm(request.POST, request.FILES)
+        if form.is_valid() and media_form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
@@ -2580,12 +2581,14 @@ def employee_create(request):
                     messages.error(request, "This user has no company assigned. Please assign it first.")
                 else:
                     employee = form.save(commit=False)
+                    media = media_form.save(commit=False)
+
                     employee.user = user
                     employee.company = user.company
                     employee.save()
 
-                    # Create empty EmployeeMedia
-                    EmployeeMedia.objects.create(employee=employee)
+                    media.employee = employee
+                    media.save()  # ✅ Save after setting FK
 
                     messages.success(request, 'Employee added successfully!')
                     return redirect('employee_list')
@@ -2594,12 +2597,14 @@ def employee_create(request):
                 messages.error(request, 'No user found with the provided employee ID.')
     else:
         form = EmployeeProfileForm()
+        media_form = EmployeeMediaForm()
 
     current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
 
     return render(request, 'employee_create.html', {
         'form': form,
+        'media_form': media_form,
         'employee': current_employee,
         'notifications': notifications
     })
