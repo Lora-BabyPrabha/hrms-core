@@ -176,16 +176,16 @@ def search_results(request):
 
         # Leave & Holidays
         'leave balance': 'leave_balance',
-        'leave request': 'leave_request',
+        'leave request': 'leave_balance',
         'leave list': 'leave_list',
         'leave create': 'leave_create',
-        'leave edit': 'leave_edit',
-        'leave delete': 'leave_delete',
+        'leave edit': 'leave_list',
+        'leave delete': 'leave_list',
         'holidays': 'holidays',
         'holiday list': 'holidays_list',
         'holiday create': 'holiday_create',
-        'holiday edit': 'holiday_edit',
-        'holiday delete': 'holiday_delete',
+        'holiday edit': 'holidays_list',
+        'holiday delete': 'holidays_list',
 
         # Muster
         'muster': 'muster',
@@ -196,19 +196,16 @@ def search_results(request):
         'salary': 'salary_details',
         'salary list': 'salary_list',
         'salary create': 'create_salary',
-        'salary edit': 'edit_salary',
-        'salary delete': 'delete_salary',
-        'view salary': 'view_salary',
-        'payslip': 'all_payslips',
-        'generate payslip': 'generate_payslip_pdf',
+        'salary edit': 'salary_list',
+        'salary delete': 'salary_list',
+        'view salary': 'salary_list',
+        'payslip': 'salary_details',
 
         # Expense & Loan
         'expense': 'expense_claims',
         'expense claim': 'expense_claims',
-        'submit expense': 'submit_expense_claim',
         'loan': 'loan_requests',
         'loan request': 'loan_requests',
-        'submit loan': 'submit_loan_request',
 
         # Tasks & Training
         'task': 'task_management',
@@ -242,8 +239,8 @@ def search_results(request):
         'user': 'user_list',
         'user list': 'user_list',
         'user create': 'user_create',
-        'user edit': 'user_edit',
-        'user delete': 'user_confirm_delete',
+        'user edit': 'user_list',
+        'user delete': 'user_list',
 
         # FAQ, Chat, Contact
         'faq': 'faq',
@@ -254,7 +251,7 @@ def search_results(request):
         'notifications': 'staff_notifications',
 
         # HR4U
-        'hr4u': 'hr4u_dashboard',
+        'hr4u': 'hr_dashboard',
         'employee self service': 'employee_self_service',
         'benefits': 'benefits_compensation',
         'career': 'career_development',
@@ -265,6 +262,9 @@ def search_results(request):
     }
 
     # Admin/Manager/HR access
+    if normalized_query in page_urls:
+        url_name = page_urls[normalized_query]
+        return redirect(reverse(url_name))
     for page_name, url_name in page_urls.items():
         if page_name in normalized_query or normalized_query in page_name:
             # For URLs that require employee_id, pass it

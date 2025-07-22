@@ -1,30 +1,3 @@
-.modal {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100vw;
-    height: 100vh;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.4); /* Semi-transparent overlay */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 10px;
-    overflow: hidden; /* Prevents any overflow */
-}
-
-.modal-content {
-    background-color: #fff;
-    padding: 16px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 320px; /* Adjusted for iPhone SE */
-    position: relative;
-    text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
 .close {
     position: absolute;
     right: 10px;
