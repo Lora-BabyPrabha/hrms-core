@@ -31,4 +31,11 @@ def common_data(request):
         'pending_expense': pending_expense,
         'pending_loan': pending_loan
     }
+from .models import Notification
 
+def notifications_count(request):
+    if request.user.is_authenticated:
+        return {
+            'notifications': Notification.objects.filter(recipient=request.user, is_read=False)
+        }
+    return {'notifications': []}

@@ -172,6 +172,7 @@ urlpatterns = [
     path('benefits_compensation', views.benefits_compensation, name='benefits_compensation'),
     path('career_development', views.career_development, name='career_development'),
     path('help_desk', views.help_desk, name='help_desk'),
-    
+    # clear notifications
+    path('clear_notifications/', views.clear_notifications, name='clear_notifications'),
 
 ]
