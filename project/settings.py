@@ -130,6 +130,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.common_data',
+                'app.context_processors.notifications_count',
             ],
         },
     },
