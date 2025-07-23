@@ -50,24 +50,24 @@ from django.http import JsonResponse
 from .models import EmployeeProfile, Payroll, Benefit, Training, HelpTicket
 from django.http import JsonResponse
 from .models import Company_check
-
+ 
 CustomUser = get_user_model()
-
-
+ 
+ 
 # Create your views here.
-
+ 
 #------------------------------------------------------------- Index #
-
-
+ 
+ 
 def indexview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
-
+ 
     error_message = None
-
+ 
     if request.method == "POST":
         company_name = request.POST.get('company_name', '').strip()
-
+ 
         if company_name:
             try:
                 # Case-sensitive match
@@ -80,7 +80,7 @@ def indexview(request):
                 )
         else:
             error_message = "Please enter a company name."
-
+ 
     return render(request, 'index.html', {
         'message': error_message
     })
@@ -89,21 +89,21 @@ def company_autocomplete(request):
     term = request.GET.get('term', '')
     companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
     return JsonResponse(list(companies), safe=False)
-
-
+ 
+ 
 #------------------------------------------------------------- Login #
-
-
+ 
+ 
 def loginview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
-
+ 
     company_id = request.GET.get('company_id') or request.POST.get('company_id')
-
+ 
     if request.method == 'POST':
         employee_id = request.POST.get('username')  
         password = request.POST.get('password')
-
+ 
         try:
             user_obj = User.objects.get(employee_id=employee_id)
         except User.DoesNotExist:
@@ -111,16 +111,16 @@ def loginview(request):
                 'message': 'User not found',
                 'company_id': company_id
             })
-
+ 
         # Check if user belongs to this company
         if str(user_obj.company_id) != str(company_id):
             return render(request, 'login.html', {
                 'message': 'You are not authorized for this company',
                 'company_id': company_id
             })
-
+ 
         user = authenticate(request, employee_id=employee_id, password=password)
-
+ 
         if user is not None:
             login(request, user)
             return redirect("dashboard")
@@ -129,29 +129,29 @@ def loginview(request):
                 'message': 'Incorrect Password',
                 'company_id': company_id
             })
-
+ 
     return render(request, "login.html", {'company_id': company_id})
-
-
+ 
+ 
 #------------------------------------------------------------- Search bar #
-
+ 
 from django.contrib import messages
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
-
+ 
 @login_required(login_url='/')
 def search_results(request):
     query = request.GET.get('query', '').lower()
     normalized_query = query.replace('-', ' ').strip()
-
+ 
     page_urls = {
         'home': 'dashboard',
         'index': 'dashboard',
         'dashboard': 'dashboard',
         'login': 'login',
         '404': 'page_not_found',
-
+ 
         # Profile
         'profile': 'profile',
         'edit': 'profile',
@@ -161,14 +161,14 @@ def search_results(request):
         'banking': 'profile',
         'picture': 'profile',
         'cover': 'profile',
-
+ 
         # Employee
         'employee': 'view_employee',
         'employee list': 'view_employee',
         'employee detail': 'view_employee',
         'employee create': 'view_employee',
         'employee edit': 'view_employee',
-
+ 
         # Leave & Holidays
         'leave balance': 'leave_balance',
         'leave request': 'leave_balance',
@@ -181,13 +181,13 @@ def search_results(request):
         'holiday create': 'holiday_create',
         'holiday edit': 'holidays_list',
         'holiday delete': 'holidays_list',
-
+ 
         # Muster
         'muster': 'muster',
         'status': 'muster_status',
         'review': 'review_muster',
         'working': 'working_days',
-
+ 
         # Salary
         'salary': 'salary_details',
         'salary list': 'salary_list',
@@ -196,18 +196,18 @@ def search_results(request):
         'salary delete': 'salary_list',
         'view salary': 'salary_list',
         'payslip': 'salary_details',
-
+ 
         # Expense & Loan
         'expense': 'expense_claims',
         'expense claim': 'expense_claims',
         'loan': 'loan_requests',
         'loan request': 'loan_requests',
-
+ 
         # Tasks & Training
         'task': 'task_management',
         'management': 'task_management',
         'training': 'training',
-
+ 
         # Policies
         'policy': 'policy',
         'cookie': 'cookie_policy',
@@ -215,35 +215,35 @@ def search_results(request):
         'refund': 'refund_cancellation_policy',
         'acceptable': 'acceptable_use_policy',
         'retention': 'data_retention_policy',
-
+ 
         # Forms & Company
         'company': 'company_list',
         'company form': 'company_list',
-
+ 
         # Users
         'user': 'user_list',
         'user list': 'user_list',
         'user create': 'user_create',
         'user edit': 'user_list',
         'user delete': 'user_list',
-
+ 
         # Others
         'faq': 'faq',
         'contact': 'contact_us',
         'chat': 'chat_bot',
         'notifications': 'staff_notifications',
-
+ 
         # HR4U
         'hr4u': 'hr_dashboard',
         'employee self service': 'employee_self_service',
         'benefits': 'benefits_compensation',
         'career': 'career_development',
         'help desk': 'help_desk',
-
+ 
         # Data
         'data': 'employee_requests',
     }
-
+ 
     # Admin/Manager/HR access
     if normalized_query in page_urls:
         url_name = page_urls[normalized_query]
@@ -251,117 +251,121 @@ def search_results(request):
     for page_name, url_name in page_urls.items():
         if page_name in normalized_query or normalized_query in page_name:
             return redirect(reverse(url_name))
-
+ 
     # No match found
     messages.warning(request, "No results found for your search.")
     return redirect('dashboard')
-
-
-
-
+ 
+ 
+ 
+ 
 #------------------------------------------------------------- FAQ #
-
+ 
 @login_required(login_url='/')
 def chat_bot(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     return render(request,'chat_bot.html' , {'employee': employee})
-
-
+ 
+ 
 #------------------------------------------------------------- Chat Bot #
-
+ 
 @login_required(login_url='/')
 def faq(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request,'faq.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Chat Bot #
-
+ 
 @login_required(login_url='/')
 def training(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request,'training.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Contact us #
-
+ 
 @login_required(login_url='/')
 def contact_us(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request,'contact_us.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Company records #
-
+ 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+ 
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from .models import Company_check
-
+ 
 @login_required(login_url='/')
 def company_check(request):
     if request.method == 'POST':
         company_name = request.POST.get('company_name', '').strip()
-        
+       
         if not company_name:
             return render(request, 'company_check.html', {'message': 'Company name is required.'})
-        
+       
         company, created = Company_check.objects.get_or_create(company_name=company_name)
-        
+       
         return redirect('company_detail', company_id=company.id)
-
+ 
     return render(request, 'company_check.html')
-
+ 
 @login_required(login_url='/')
 def company_detail(request, company_id):
     company = Company_check.objects.get(id=company_id)
     return render(request, 'company_detail.html', {'company': company})
-
-
-
+ 
+ 
+ 
 #------------------------------------------------------------- Company records #
-
+ 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from .models import Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
-
+ 
 @login_required(login_url='/')
 def base(request):
     user = request.user  # Always define this first
-
+ 
     # Common to all roles
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=user, is_read=False, company=company).order_by('-created_at')[:5]
-   
+ 
     context = {
         'employee': employee,
         'notifications': notifications,
-       
     }
-
+ 
     if user.role == 'Employee':
         return render(request, 'dashboard.html', context)
-
+ 
     elif user.role in ['HR', 'Manager'] or user.is_superuser:
         # Only fetch company-specific pending requests
         context.update({
@@ -371,57 +375,70 @@ def base(request):
             'pending_loan': LoanRequest.objects.filter(status='pending', company=company),
         })
         return render(request, 'base.html', context)
-
+ 
     return render(request, 'base.html')
-
-
+ 
+ 
 #------------------------------------------------------------- Dashboard #
-
+ 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from datetime import datetime
 from .models import Employee, Notification
-
+ 
 @login_required(login_url='/')
 def dashboard(request):
     user = request.user
-
+ 
     if not user.is_authenticated:
         return render(request, 'index.html')
-
+ 
     today = datetime.now().date()
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = user.company  # get company from CustomUser
-
+ 
     # birthdays filtered by company
     employees_with_birthday = Employee.objects.filter(
         date_of_birth__month=today.month,
         date_of_birth__day=today.day,
         company=company
     )
-
+ 
     notifications = Notification.objects.filter(
-        recipient=request.user,
+        recipient=user,
         is_read=False
     ).order_by('-created_at')[:5]
-
-    notification_count = Notification.objects.filter(
-        recipient=request.user,
-        is_read=False
-    ).count()
-
+ 
     return render(request, 'dashboard.html', {
         'employee': employee,
         'employees_with_birthday': employees_with_birthday,
         'today': today,
         'notifications': notifications,
-        'notification_count': notification_count,
     })
-
-    
-
+ 
+   
+ 
 #------------------------------------------------------------- Employee requests - Notifications  #
-
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.timezone import localdate
+from .models import (
+    Muster, LeaveRequest, ExpenseClaim, LoanRequest, TimeEntry,
+    CustomUser, Employee, Notification
+)
+ 
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.utils.timezone import localdate
+from datetime import datetime
+ 
+from app.models import (
+    Muster, LeaveRequest, ExpenseClaim, LoanRequest,
+    TimeEntry, Employee, Notification, CustomUser
+)
+ 
 @login_required(login_url='/')
 @staff_member_required
 def employee_requests(request):
@@ -429,80 +446,91 @@ def employee_requests(request):
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
-
-    # Get filter values from POST or GET
-    employee_id_input = request.POST.get('employee_id') or request.GET.get('employee_id')
-    request_type = request.POST.get('request_type') or request.GET.get('request_type')
-    month_filter = request.POST.get('month') or request.GET.get('month')
-    specific_date = request.POST.get('specific_date') or request.GET.get('specific_date')
-
-    # Apply employee ID filter if provided
-    if employee_id_input:
-        users_qs = CustomUser.objects.filter(employee_id=employee_id_input, company=company)
-    else:
+ 
+    # Base queryset filtered by company and today (initial)
+    muster_requests = Muster.objects.filter(user__company=company, date__date=today)
+    leave_requests = LeaveRequest.objects.filter(employee__company=company, start_date=today)
+    expense_claims = ExpenseClaim.objects.filter(employee__company=company, date=today)
+    loan_requests = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
+    time_entries = TimeEntry.objects.filter(user__company=company, clock_in_time__date=today)
+    employees = CustomUser.objects.filter(company=company)
+ 
+    # Filters
+    if request.method == 'POST':
+        employee_id_input = request.POST.get('employee_id')
+        request_type = request.POST.get('request_type')
+        month_filter = request.POST.get('month')
+        specific_date = request.POST.get('specific_date')
+        filtered_employee = None
+ 
+        # Apply employee ID filter if provided
+        if employee_id_input:
+            try:
+                filtered_employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
+            except CustomUser.DoesNotExist:
+                filtered_employee = None
+ 
+        # If no employee filter, get all users from company
         users_qs = CustomUser.objects.filter(company=company)
-
-    # Initial queries filtered by users_qs
-    muster_requests = Muster.objects.filter(user__in=users_qs, date__date=today)
-    leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date=today)
-    expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date=today)
-    loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=today)
-    time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__date=today)
-
-    # Apply month filter
-    if month_filter:
-        year, month = map(int, month_filter.split('-'))
-        muster_requests = Muster.objects.filter(user__in=users_qs, date__year=year, date__month=month)
-        leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date__year=year, start_date__month=month)
-        expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date__year=year, date__month=month)
-        loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__year=year, date_requested__month=month)
-        time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__year=year, clock_in_time__month=month)
-
-    # Apply specific date filter
-    elif specific_date:
-        try:
-            date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
-            muster_requests = Muster.objects.filter(user__in=users_qs, date__date=date_obj)
-            leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date=date_obj)
-            expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date=date_obj)
-            loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=date_obj)
-            time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__date=date_obj)
-        except ValueError:
-            pass
-
-    # Apply request_type filter
-    if request_type:
-        if request_type == 'muster':
-            leave_requests = []
-            expense_claims = []
-            loan_requests = []
-            time_entries = []
-        elif request_type == 'leave':
-            muster_requests = []
-            expense_claims = []
-            loan_requests = []
-            time_entries = []
-        elif request_type == 'expense':
-            muster_requests = []
-            leave_requests = []
-            loan_requests = []
-            time_entries = []
-        elif request_type == 'loan':
-            muster_requests = []
-            leave_requests = []
-            expense_claims = []
-            time_entries = []
-        elif request_type == 'time_entry':
-            muster_requests = []
-            leave_requests = []
-            expense_claims = []
-            loan_requests = []
-
+        if filtered_employee:
+            users_qs = users_qs.filter(id=filtered_employee.id)
+ 
+        # Apply month filter
+        if month_filter:
+            year, month = map(int, month_filter.split('-'))
+ 
+            muster_requests = Muster.objects.filter(user__in=users_qs, date__year=year, date__month=month)
+            leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date__year=year, start_date__month=month)
+            expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date__year=year, date__month=month)
+            loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__year=year, date_requested__month=month)
+            time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__year=year, clock_in_time__month=month)
+ 
+        # Apply specific date filter
+        elif specific_date:
+            try:
+                date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                muster_requests = Muster.objects.filter(user__in=users_qs, date__date=date_obj)
+                leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date=date_obj)
+                expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date=date_obj)
+                loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=date_obj)
+                time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__date=date_obj)
+            except ValueError:
+                pass
+ 
+        # Apply request_type filter
+        if request_type:
+            if request_type == 'muster':
+                leave_requests = []
+                expense_claims = []
+                loan_requests = []
+                time_entries = []
+            elif request_type == 'leave':
+                muster_requests = []
+                expense_claims = []
+                loan_requests = []
+                time_entries = []
+            elif request_type == 'expense':
+                muster_requests = []
+                leave_requests = []
+                loan_requests = []
+                time_entries = []
+            elif request_type == 'loan':
+                muster_requests = []
+                leave_requests = []
+                expense_claims = []
+                time_entries = []
+            elif request_type == 'time_entry':
+                muster_requests = []
+                leave_requests = []
+                expense_claims = []
+                loan_requests = []
+ 
+    # Notifications
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'employee_data.html', {
         'employee': employee,
-        'employees': users_qs,
+        'employees': employees,
         'muster_requests': muster_requests,
         'leave_requests': leave_requests,
         'expense_claims': expense_claims,
@@ -510,12 +538,12 @@ def employee_requests(request):
         'time_entries': time_entries,
         'notifications': notifications,
     })
-
-
-
-
+ 
+ 
+ 
+ 
 #------------------------------------------------------------- Mark as read -- Notifications  #
-
+ 
 from django.utils.timezone import localdate
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -524,8 +552,18 @@ from .models import (
     Muster, LeaveRequest, ExpenseClaim, LoanRequest,
     CustomUser, Employee, Notification
 )
-
-
+ 
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from django.utils.timezone import localdate
+from datetime import datetime
+ 
+from app.models import (
+    Employee, CustomUser, Muster, LeaveRequest,
+    ExpenseClaim, LoanRequest, Notification
+)
+ 
 @login_required(login_url='/')
 @staff_member_required
 def staff_notifications(request):
@@ -533,65 +571,72 @@ def staff_notifications(request):
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
-
-    # Get filter values from POST or GET
-    employee_id_input = request.POST.get('employee_id') or request.GET.get('employee_id')
-    request_type = request.POST.get('request_type') or request.GET.get('request_type')
-    month_filter = request.POST.get('month') or request.GET.get('month')
-    specific_date = request.POST.get('specific_date') or request.GET.get('specific_date')
-
-    # Apply employee ID filter if provided
-    if employee_id_input:
-        users_qs = CustomUser.objects.filter(employee_id=employee_id_input, company=company)
-    else:
+ 
+    # Default: today's pending requests for the company
+    musters = Muster.objects.filter(status='Pending', user__company=company, date__date=today)
+    leaves = LeaveRequest.objects.filter(status='pending', employee__company=company, start_date=today)
+    expenses = ExpenseClaim.objects.filter(status='pending', employee__company=company, date=today)
+    pendings_loan = LoanRequest.objects.filter(status='pending', employee__company=company, date_requested__date=today)
+ 
+    if request.method == 'POST':
+        employee_id_input = request.POST.get('employee_id')
+        request_type = request.POST.get('request_type')
+        month_filter = request.POST.get('month')
+        specific_date = request.POST.get('specific_date')
+ 
+        filtered_employee = None
+        if employee_id_input:
+            try:
+                filtered_employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
+            except CustomUser.DoesNotExist:
+                filtered_employee = None
+ 
+        # Base user filter by company
         users_qs = CustomUser.objects.filter(company=company)
-
-    # Show all requests regardless of status
-    musters = Muster.objects.filter(user__in=users_qs, date__date=today)
-    leaves = LeaveRequest.objects.filter(employee__in=users_qs, start_date=today)
-    expenses = ExpenseClaim.objects.filter(employee__in=users_qs, date=today)
-    pendings_loan = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=today)
-
-    # Apply month filter
-    if month_filter:
-        year, month = map(int, month_filter.split('-'))
-        musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__year=year, date__month=month)
-        leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date__year=year, start_date__month=month)
-        expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date__year=year, date__month=month)
-        pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__year=year, date_requested__month=month)
-
-    # Apply specific date filter
-    elif specific_date:
-        try:
-            date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
-            musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__date=date_obj)
-            leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date=date_obj)
-            expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date=date_obj)
-            pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__date=date_obj)
-        except ValueError:
-            pass
-
-    # Apply request type filter
-    if request_type:
-        if request_type == 'muster':
-            leaves = []
-            expenses = []
-            pendings_loan = []
-        elif request_type == 'leave':
-            musters = []
-            expenses = []
-            pendings_loan = []
-        elif request_type == 'expense':
-            musters = []
-            leaves = []
-            pendings_loan = []
-        elif request_type == 'loan':
-            musters = []
-            leaves = []
-            expenses = []
-
+        if filtered_employee:
+            users_qs = users_qs.filter(id=filtered_employee.id)
+ 
+        # Apply month filter
+        if month_filter:
+            year, month = map(int, month_filter.split('-'))
+            musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__year=year, date__month=month)
+            leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date__year=year, start_date__month=month)
+            expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date__year=year, date__month=month)
+            pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__year=year, date_requested__month=month)
+ 
+        # Apply specific date filter
+        elif specific_date:
+            try:
+                date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__date=date_obj)
+                leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date=date_obj)
+                expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date=date_obj)
+                pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__date=date_obj)
+            except ValueError:
+                pass
+ 
+        # Apply request type filter
+        if request_type:
+            if request_type == 'muster':
+                leaves = []
+                expenses = []
+                pendings_loan = []
+            elif request_type == 'leave':
+                musters = []
+                expenses = []
+                pendings_loan = []
+            elif request_type == 'expense':
+                musters = []
+                leaves = []
+                pendings_loan = []
+            elif request_type == 'loan':
+                musters = []
+                leaves = []
+                expenses = []
+ 
+    # Notifications for header
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'staff_notifications.html', {
         'employee': employee,
         'musters': musters,
@@ -600,16 +645,17 @@ def staff_notifications(request):
         'pendings_loan': pendings_loan,
         'notifications': notifications,
     })
-
-
+ 
+ 
+ 
 #------------------------------------------------------------- clock In #
-
+ 
 @login_required(login_url='/')
 def clock_in(request):
     if request.method == 'POST':
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
-
+ 
         if latitude and longitude:
             if TimeEntry.objects.filter(user=request.user, clock_out_time__isnull=True).exists():
                 messages.warning(request, "You have already clocked in.")
@@ -625,18 +671,18 @@ def clock_in(request):
                 messages.success(request, "Clocked in successfully.")
         else:
             messages.error(request, "Unable to capture your location. Please try again.")
-    
+   
     return redirect('dashboard')
-    
-
+   
+ 
 #------------------------------------------------------------- clock Out #
-
+ 
 @login_required(login_url='/')
 def clock_out(request):
     if request.method == 'POST':
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
-
+ 
         try:
             if latitude == '':
                 latitude = None
@@ -644,7 +690,7 @@ def clock_out(request):
                 latitude = float(latitude)
         except ValueError:
             latitude = None
-        
+       
         try:
             if longitude == '':
                 longitude = None
@@ -652,16 +698,16 @@ def clock_out(request):
                 longitude = float(longitude)
         except ValueError:
             longitude = None
-
+ 
         time_entry = TimeEntry.objects.filter(user=request.user, clock_out_time__isnull=True).first()
-
+ 
         if not time_entry:
             messages.warning(request, "You haven't clocked in yet.")
         else:
             clock_in_time = timezone.localtime(time_entry.clock_in_time)
             current_time = timezone.localtime(timezone.now())
             time_difference = current_time - clock_in_time
-
+ 
             if time_difference >= timedelta(hours=9):
                 time_entry.clock_out_time = current_time
                 time_entry.clock_out_latitude = latitude
@@ -670,12 +716,12 @@ def clock_out(request):
                 messages.success(request, "Clocked out successfully.")
             else:
                 messages.warning(request, "You can only clock out after 9 hours.")
-
+ 
     return redirect('dashboard')
-
-
+ 
+ 
 #------------------------------------------------------------- Muster #
-
+ 
 @login_required(login_url='/')
 def muster(request):
     user = request.user
@@ -701,19 +747,19 @@ def muster(request):
         date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
  
         muster_entry = Muster.objects.create(user=request.user,employee_id=employee_id,date=date_obj,clock_in_time=clock_in_time,clock_out_time=clock_out_time,reason=reason,notes=notes,status="Pending")
-
+ 
         notification_message = f"Your Muster request of {reason}, {date_obj} - {clock_in_time} & {clock_out_time} has been submitted successfully."
         Notification.objects.create(recipient=muster_entry.user, message=notification_message)
  
         muster_entry.save()
-
+ 
         return redirect('muster')
    
     user = request.user
     muster_entry = Muster.objects.filter(employee_id=user.employee_id)
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request,'muster.html', {
         'employee': employee,
         'employee_id': user.employee_id,
@@ -723,26 +769,26 @@ def muster(request):
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 @login_required(login_url='/')
 def muster_status(request):
     user = request.user
-
+ 
     time_entries = TimeEntry.objects.filter(user=user)
-
+ 
     entries = []
     for entry in time_entries:
         if entry.clock_in_time and entry.clock_out_time:
             time_difference = entry.clock_out_time - entry.clock_in_time
-
+ 
             if time_difference > timedelta(hours=12):
                 continue
-
+ 
             status = "Regular" if time_difference >= timedelta(hours=9) else "Pending"
         else:
             status = "Pending"
-
+ 
         entries.append({
             "employee_id": entry.user.employee_id,
             "date": entry.clock_in_time.date() if entry.clock_in_time else None,
@@ -750,21 +796,21 @@ def muster_status(request):
             "clock_out_time": entry.clock_out_time if entry.clock_out_time else None,
             "status": status,
         })
-
+ 
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, "muster_status.html", {
         "entries": entries,
         "employee": employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Leave Request #
-
+ 
 @login_required(login_url='/')
 def leave_balance(request):
     user = request.user
@@ -774,7 +820,7 @@ def leave_balance(request):
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'leave_balance.html', {'leave': leave , 'leave_request': leave_request , "employee": employee , 'notifications': notifications})
  
-
+ 
 @login_required(login_url='/')
 def leave_request(request):
     if request.method == 'POST':
@@ -782,17 +828,17 @@ def leave_request(request):
         start_date = request.POST['start_date']
         end_date = request.POST['end_date']
         reason = request.POST['reason']
-
+ 
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
-
+ 
         weekdays_requested = 0
         current_day = start_date
         while current_day <= end_date:
             if current_day.weekday() < 5:
                 weekdays_requested += 1
             current_day += timedelta(days=1)
-
+ 
         leave_request = LeaveRequest(
             employee=request.user,
             leave_type=leave_type,
@@ -812,27 +858,27 @@ def leave_request(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'leave_request.html', {"employee": employee , 'notifications': notifications})
-
-
+ 
+ 
 #------------------------------------------------------------- Holidays #
-
+ 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from .models import Holiday, Employee, Notification
-
+ 
 @login_required(login_url='/')
 def holidays(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     holidays = Holiday.objects.filter(company=employee.company)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'holidays.html', {
         'h': holidays,
         'employee': employee,
         'notifications': notifications,
     })
-
+ 
 #------------------------------------------------------------- Salary details #
 @login_required(login_url='/')
 def salary_details(request):
@@ -875,30 +921,30 @@ def salary_details(request):
         'from_month': from_month[:7] if from_month else None,
         'to_month': to_month[:7] if to_month else None,
     })
-    
+   
 @login_required(login_url='/')
 def generate_payslip_pdf(request, employee_id):
     user = request.user
     employee = get_object_or_404(Employee, employee_id=user.employee_id)
     company = employee.company  # restrict to logged-in user's company
-
+ 
     from_month = request.GET.get('from_month')
     to_month = request.GET.get('to_month')
-
+ 
     if not from_month and not to_month:
         latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
-
+ 
     if from_month:
         from_month = f"{from_month}-01"
-
+ 
     if to_month:
         to_month_date = datetime.strptime(f"{to_month}-01", '%Y-%m-%d')
         last_day = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
         to_month = f"{to_month}-{last_day}"
-
+ 
     if from_month and to_month:
         payslips = Salary.objects.filter(
             employee=employee,
@@ -911,32 +957,32 @@ def generate_payslip_pdf(request, employee_id):
             employee=employee,
             employee__company=company
         ).order_by('-month')[:1]
-
+ 
     logo_url = request.build_absolute_uri(static('salary_logo_40.png'))
-
+ 
     html_string = render_to_string('all_payslips.html', {
         'employee': employee,
         'payslips': payslips,
         'logo_url': logo_url
     })
-
+ 
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
-
+ 
     return response
-
-
-
+ 
+ 
+ 
 #------------------------------------------------------------- Tax Deduction #
-
+ 
 @login_required(login_url='/')
 def tax_deduction(request):
     user = request.user
     td = LoanRequest.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'tax_deduction.html', {
         'user': user,
         'td': td,
@@ -944,10 +990,10 @@ def tax_deduction(request):
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Forgot Password #
-
+ 
 User = get_user_model()
  
 def generate_otp():
@@ -966,10 +1012,10 @@ def forgot_password(request):
                 return redirect('forgot_password')
  
             otp = generate_otp()
-
+ 
             india_tz = zoneinfo.ZoneInfo('Asia/Kolkata')
             current_time = datetime.now(india_tz)
-
+ 
             request.session['otp'] = str(otp)
             request.session['otp_time'] = current_time.strftime('%Y-%m-%d %H:%M:%S%z')
             request.session['user_email'] = email
@@ -1004,16 +1050,16 @@ def verify_otp(request):
             india_tz = zoneinfo.ZoneInfo('Asia/Kolkata')
             stored_time = datetime.strptime(stored_otp_time_str, '%Y-%m-%d %H:%M:%S%z')
             current_time = datetime.now(india_tz)
-
+ 
             time_diff = (current_time - stored_time).total_seconds() / 60
-
+ 
             if time_diff > 10:
                 messages.error(request, "OTP has expired. Please request a new one.")
-
+ 
                 for key in ['otp', 'otp_time', 'user_email']:
                     request.session.pop(key, None)
                 return redirect('forgot_password')
-
+ 
             if otp_input == stored_otp:
                 messages.success(request, "OTP verified successfully.")
                 return redirect('reset_password_with_otp')
@@ -1033,11 +1079,11 @@ def reset_password_with_otp(request):
         new_password = request.POST.get('new_password')
         confirm_password = request.POST.get('confirm_password')
         user_email = request.session.get('user_email')
-
+ 
         if new_password != confirm_password:
             messages.error(request, "Passwords do not match. Please try again.")
             return redirect('reset_password_with_otp')
-
+ 
         password_regex = r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
  
         if not re.match(password_regex, new_password):
@@ -1046,13 +1092,13 @@ def reset_password_with_otp(request):
                 "one special character, and one number."
             ))
             return redirect('reset_password_with_otp')
-
+ 
         try:
             user = get_user_model().objects.get(email=user_email)
             user.password = make_password(new_password)
             user.password_last_changed = now()
             user.save()
-
+ 
             for key in ['otp', 'otp_time', 'user_email']:
                 request.session.pop(key, None)
  
@@ -1066,10 +1112,10 @@ def reset_password_with_otp(request):
             return redirect('forgot_password')
  
     return render(request, 'reset_password_with_otp.html')
-
-
+ 
+ 
 #------------------------------------------------------------- Reset Password #
-
+ 
 from django.contrib.auth import update_session_auth_hash
  
 def reset_password(request):
@@ -1099,26 +1145,26 @@ def reset_password(request):
  
     return render(request, 'reset_password.html', {'form': form})
  
-    
+   
 #------------------------------------------------------------- Profile #
-
+ 
 @login_required
 def profile(request):
     user = request.user
     employee = Employee.objects.filter(user=user).first()
     employee_media = EmployeeMedia.objects.filter(employee=employee).first()
-    
+   
     return render(request, 'profile.html', {
         'employee': employee,
         'employee_media': employee_media,
         'user': user,
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 def edit_personal_info(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
-
+ 
     if request.user.employee_user != employee:
         messages.error(request, "You don't have permission to edit this profile.")
         return redirect('profile')
@@ -1141,12 +1187,12 @@ def edit_personal_info(request, employee_id):
         'form': form,
         'employee': employee
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 def edit_professional_info(request, employee_id):
     employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
-    
+   
     if request.method == 'POST':
         form = ProfessionalInfoForm(request.POST, instance=employee)
         if form.is_valid():
@@ -1154,23 +1200,25 @@ def edit_professional_info(request, employee_id):
             return redirect('profile')
     else:
         form = ProfessionalInfoForm(instance=employee)
-    
+   
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'edit_professional_info.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
+ 
+ 
 @login_required(login_url='/')
 def edit_banking_info(request, employee_id):
     employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
-    
+   
     if request.method == 'POST':
         form = BankingInfoForm(request.POST, instance=employee)
         if form.is_valid():
@@ -1178,36 +1226,36 @@ def edit_banking_info(request, employee_id):
             return redirect('profile')
     else:
         form = BankingInfoForm(instance=employee)
-    
+   
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'edit_banking_info.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
-
-
-
+ 
+ 
+ 
+ 
+ 
 #------------------------------------------------------------- Task Management #
 @login_required(login_url='/')
 def task_management(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = user.company
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
-
+ 
     # Show all tasks assigned to this user/company by default
     assigned_tasks = Task.objects.filter(
         Q(created_by__employee__company=company) | Q(assigned_to__employee__company=company)
     ).distinct().order_by('-created_at')
-
+ 
     # Optional: Apply filters if present
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
@@ -1216,7 +1264,7 @@ def task_management(request):
             assigned_tasks = assigned_tasks.filter(assigned_to=employee_filter)
         except CustomUser.DoesNotExist:
             assigned_tasks = Task.objects.none()
-
+ 
     month = request.GET.get('month', '')
     if month:
         try:
@@ -1225,7 +1273,7 @@ def task_management(request):
             assigned_tasks = assigned_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
-
+ 
     # Remove duplicates (by name & due_date)
     seen = set()
     unique_tasks = []
@@ -1234,12 +1282,12 @@ def task_management(request):
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
-
+ 
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
-
+ 
     return render(request, 'task_management.html', {
         'employee_id': user.employee_id,
         'employee': employee,
@@ -1248,38 +1296,42 @@ def task_management(request):
         'months': months,
         'current_month': datetime.now().strftime('%Y-%m')
     })
-
-    
+ 
+   
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from .models import CustomUser, Employee, Task, Notification
 from django.db.models.functions import Lower
-
-
+ 
+ 
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.db.models import Q
+from django.shortcuts import render
 from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def assign_task(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
-
+ 
     # --- POST: Assign Task ---
     if request.method == 'POST':
         try:
             task_name = request.POST['task_name']
             employee_input = request.POST['employee_emails']
             due_date = request.POST['due_date']
-
+ 
             employee_input_list = [input.strip() for input in employee_input.split(",")]
-
+ 
             users = CustomUser.objects.filter(
                 (Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)),
                 employee__company=company
             )
-
+ 
             if users.exists():
                 task = Task.objects.create(
                     name=task_name,
@@ -1287,30 +1339,30 @@ def assign_task(request):
                     created_by=user
                 )
                 task.assigned_to.set(users)
-
+ 
                 for user_obj in users:
                     notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
                     Notification.objects.create(recipient=user_obj, message=notification_message)
-
+ 
                 task.save()
-
+ 
                 return JsonResponse({'status': 'success', 'message': f"Task '{task_name}' has been assigned successfully!"})
             else:
                 return JsonResponse({'status': 'error', 'message': f"Employee '{employee_input}' not found in your company!"}, status=400)
-
+ 
         except KeyError as e:
             return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
-
+ 
     # --- GET: Always show all tasks by default ---
     # Show all tasks created by this user for this company by default
     all_tasks = Task.objects.filter(
         created_by=user,
         created_by__employee__company=company
     ).order_by('-created_at')
-
+ 
     # Apply filters only if present
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
@@ -1319,7 +1371,7 @@ def assign_task(request):
             all_tasks = all_tasks.filter(assigned_to=employee_filter)
         except CustomUser.DoesNotExist:
             all_tasks = Task.objects.none()
-
+ 
     month = request.GET.get('month', '')
     if month:
         try:
@@ -1328,7 +1380,7 @@ def assign_task(request):
             all_tasks = all_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
-
+ 
     # Unique task filter (by name & due_date)
     seen = set()
     unique_tasks = []
@@ -1337,34 +1389,34 @@ def assign_task(request):
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
-
+ 
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
-
+ 
     return render(request, 'task_management.html', {
         'employee': employee,
         'assigned_tasks': unique_tasks,  # always show tasks by default
         'months': months,
         'current_month': datetime.now().strftime('%Y-%m')
     })
-
  
-
-
+ 
+ 
+ 
 @login_required
 def tasks_by_date(request):
     if request.method == 'GET':
         date_str = request.GET.get('date')
-
+ 
         date = parse_date(date_str)
-
+ 
         if not date:
             return JsonResponse({'error': 'Invalid date format'}, status=400)
-
+ 
         tasks = Task.objects.filter(due_date=date, assigned_to=request.user)
-        
+       
         tasks_data = [
             {
                 'id': task.id,
@@ -1375,10 +1427,10 @@ def tasks_by_date(request):
             }
             for task in tasks
         ]
-        
+       
         return JsonResponse({'tasks': tasks_data})
-
-
+ 
+ 
 @csrf_exempt
 def mark_task_complete(request, task_id):
     try:
@@ -1386,17 +1438,17 @@ def mark_task_complete(request, task_id):
         task.completed = True
         task.save()
         return JsonResponse({'status': 'success', 'message':'Task marked as completed'})
-    
+   
     except Task.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Task not found'})
-
-
+ 
+ 
 def my_tasks(request):
     try:
         user = request.user
-
+ 
         tasks = Task.objects.filter(assigned_to=user).order_by('-created_at')
-
+ 
         tasks_data = [
             {
                 'id': task.id,
@@ -1407,15 +1459,15 @@ def my_tasks(request):
             }
             for task in tasks
         ]
-
+ 
         return JsonResponse({'tasks': tasks_data})
-
+ 
     except Exception as e:
         print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
-
+ 
 #------------------------------------------------------------- Expense claim #
-
+ 
 @login_required(login_url='/')
 def submit_expense_claim(request):
     if request.method == 'POST':
@@ -1425,7 +1477,7 @@ def submit_expense_claim(request):
         amount = request.POST.get('amount')
         bill_no = request.POST.get('bill_no')
         receipt = request.FILES.get('receipt')
-
+ 
         expense_claiming = ExpenseClaim.objects.create(
             employee=request.user,
             category=category,
@@ -1437,43 +1489,43 @@ def submit_expense_claim(request):
             status='pending'
         )
         return redirect('expense_claims')
-    
+   
     return JsonResponse({'success': False, 'error': "Invalid request."})
-
-
+ 
+ 
 @login_required(login_url='/')
 def expense_claims(request):
     user = request.user
     claims = ExpenseClaim.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'expense_claims.html', {
         'claims': claims,
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Loan Requests #
-
+ 
 @login_required(login_url='/')
 def loan_requests(request):
     user = request.user
     loans = LoanRequest.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'loan_requests.html', {
         'loans': loans,
         'employee': employee,
         'notifications': notifications,
-
+ 
         }
     )
-
-
+ 
+ 
 @login_required(login_url='/')
 def submit_loan_request(request):
     employee = request.user
@@ -1482,7 +1534,7 @@ def submit_loan_request(request):
         loan_amount = request.POST.get('loan_amount')
         repayment_duration = request.POST.get('repayment_duration')
         interest_rate = request.POST.get('interest_rate')
-
+ 
         # Validate loan amount: must be less than 10 digits before decimal
         try:
             # Remove commas and spaces if any
@@ -1493,7 +1545,7 @@ def submit_loan_request(request):
         except Exception:
             messages.error(request, "Invalid loan amount format.")
             return redirect('loan_requests')
-
+ 
         loan_request = LoanRequest(
             employee=request.user,
             loan_type=loan_type,
@@ -1506,18 +1558,18 @@ def submit_loan_request(request):
         notification_message = f"Your Loan request of {loan_type}, amount {loan_amount}, Duration {repayment_duration} with {interest_rate} % has been submitted successfully."
         Notification.objects.create(recipient=loan_request.employee, message=notification_message)
         loan_request.save()
-
+ 
         return redirect('loan_requests')
 # ...existing code...
-
+ 
 #------------------------------------------------------------- Reviews-Page #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_muster(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to view this page.")
-    
+   
     musters = Muster.objects.all()
     if request.method == 'POST':
         muster_id = request.POST.get('muster_id')
@@ -1529,17 +1581,17 @@ def review_muster(request):
         except Muster.DoesNotExist:
             pass
         return redirect('staff_notifications')
-
+ 
     musters = Muster.objects.all()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'staff_notifications.html', {
         'musters': musters,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_leave(request):
@@ -1560,20 +1612,20 @@ def review_leave(request):
    
     leaves = LeaveRequest.objects.all()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'staff_notifications.html', {
         'leaves': leaves,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_expense(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to view this page.")
-    
+   
     expenses = ExpenseClaim.objects.all()
     if request.method == 'POST':
         expense_id = request.POST.get('expense_id')
@@ -1585,23 +1637,23 @@ def review_expense(request):
         except ExpenseClaim.DoesNotExist:
             pass
         return redirect('staff_notifications')
-
+ 
     expenses = ExpenseClaim.objects.all()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'staff_notifications.html', {
         'expenses': expenses,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_loan(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to view this page.")
-    
+   
     loans = LoanRequest.objects.all()
     if request.method == 'POST':
         loan_id = request.POST.get('loan_id')
@@ -1613,38 +1665,38 @@ def review_loan(request):
         except LoanRequest.DoesNotExist:
             pass
         return redirect('staff_notifications')
-
+ 
     loans = LoanRequest.objects.all()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'staff_notifications.html', {
         'loans': loans,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Reviews - Notification Bar #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_muster_notifications(request, muster_id, action):
     muster_request = get_object_or_404(Muster, id=muster_id)
-
+ 
     if action == 'approve':
         muster_request.status = 'approved'
         muster_request.save()
         message = f"Your muster from {muster_request.clock_in_time} to {muster_request.clock_out_time} has been approved."
         Notification.objects.create(recipient=muster_request.user, message=message)
-
+ 
     elif action == 'reject':
         muster_request.status = 'rejected'
         muster_request.save()
         message = f"Your muster from {muster_request.clock_in_time} to {muster_request.clock_out_time} has been rejected."
         Notification.objects.create(recipient=muster_request.user, message=message)
-
+ 
     return redirect('dashboard')
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_leaves_notifications(request, leaves_id, action):
@@ -1656,7 +1708,7 @@ def review_leaves_notifications(request, leaves_id, action):
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
         Notification.objects.create(recipient=leave_request.employee, message=message)
-
+ 
         requested_leave_days = leave_balance.update_balance(
             leave_request.leave_type,
             leave_request.days_requested,
@@ -1675,85 +1727,85 @@ def review_leaves_notifications(request, leaves_id, action):
         Notification.objects.create(recipient=leave_request.employee, message=message)
  
     return redirect('dashboard')
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_expense_notifications(request, expense_id, action):
     expense_claim = get_object_or_404(ExpenseClaim, id=expense_id)
-
+ 
     if action == 'approve':
         expense_claim.status = 'approved'
         expense_claim.save()
         message = f"Your Expense claim {expense_claim.amount} , {expense_claim.bill_no} has been approved."
         Notification.objects.create(recipient=expense_claim.employee, message=message)
-
+ 
     elif action == 'reject':
         expense_claim.status = 'rejected'
         expense_claim.save()
         message = f"Your Expense claim {expense_claim.amount} , {expense_claim.bill_no} has been rejected."
         Notification.objects.create(recipient=expense_claim.employee, message=message)
-
+ 
     return redirect('dashboard')
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def review_loan_notifications(request, loan_id, action):
     loan_request = get_object_or_404(LoanRequest, id=loan_id)
-
+ 
     if action == 'approve':
         loan_request.status = 'approved'
         loan_request.save()
         message = f"Your loan request {loan_request.loan_type} to {loan_request.loan_amount} has been approved."
         Notification.objects.create(recipient=loan_request.employee, message=message)
-
+ 
     elif action == 'reject':
         loan_request.status = 'rejected'
         loan_request.save()
         message = f"Your loan request {loan_request.loan_type} to {loan_request.loan_amount} has been rejected."
         Notification.objects.create(recipient=loan_request.employee, message=message)
-
+ 
     return redirect('dashboard')
-
-
+ 
+ 
 #------------------------------------------------------------- Reviews-notification bar #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def user_list(request):
     employee_id_filter = request.GET.get('employee_id')
     user = request.user
-
+ 
     try:
         employee = Employee.objects.get(employee_id=user.employee_id)
         company = employee.company
     except Employee.DoesNotExist:
         company = None
-
+ 
     # Filter users by company
     user_query = CustomUser.objects.filter(company=company) if company else CustomUser.objects.none()
-
+ 
     if employee_id_filter:
         user_query = user_query.filter(employee_id=employee_id_filter)
-
+ 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'user_list.html', {
         'users': user_query,
         'employee': employee,
         'notifications': notifications,
         'employee_id_filter': employee_id_filter,
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def user_create(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
-
+ 
     if request.method == 'POST':
         form = FrontendUserForm(request.POST)
         if form.is_valid():
@@ -1764,28 +1816,28 @@ def user_create(request):
             return redirect('user_list')
     else:
         form = FrontendUserForm()
-
+ 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'user_form.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications,
     })
-
-
-
+ 
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def user_edit(request, pk):
     current_employee = Employee.objects.get(employee_id=request.user.employee_id)
     company = current_employee.company
-
+ 
     # Secure access
     user_to_edit = get_object_or_404(CustomUser, pk=pk, company=company)
-
+ 
     if request.method == 'POST':
         form = UserCreationForm(request.POST, instance=user_to_edit)
         if form.is_valid():
@@ -1794,163 +1846,163 @@ def user_edit(request, pk):
             return redirect('user_list')
     else:
         form = UserCreationForm(instance=user_to_edit)
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'user_form.html', {
         'form': form,
         'employee': current_employee,
         'notifications': notifications,
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def user_confirm_delete(request, pk):
     current_employee = Employee.objects.get(employee_id=request.user.employee_id)
     company = current_employee.company
-
+ 
     # Secure delete
     user_to_delete = get_object_or_404(CustomUser, pk=pk, company=company)
-
+ 
     if request.method == 'POST':
         user_to_delete.delete()
         messages.success(request, 'User deleted successfully!')
         return redirect('user_list')
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'user_confirm_delete.html', {
         'emp': user_to_delete,
         'current_employee': current_employee,
         'notifications': notifications
     })
-
-
-
+ 
+ 
+ 
 #------------------------------------------------------------- Policies #
-
+ 
 @login_required(login_url='/')
 def policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'policy.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
+ 
 @login_required(login_url='/')
 def data_retention_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'data_retention_policy.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
+ 
 @login_required(login_url='/')
 def acceptable_use_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'acceptable_use_policy.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
+ 
 @login_required(login_url='/')
 def cookie_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'cookie_policy.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
+ 
 @login_required(login_url='/')
 def refund_cancellation_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'refund_cancellation_policy.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
+ 
 @login_required(login_url='/')
 def terms_of_service(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'terms_of_service.html' , {
         'employee': employee,
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 #------------------------------------------------------------- Add salaries by Staff #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def create_salary(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = user.company  # Get the logged-in user's company
-
+ 
     employee_id_filter = request.GET.get('employee_id', '')
     month_filter = request.GET.get('month', '')
     filtered_employee = None
-
+ 
     if month_filter:
         try:
             month_filter = datetime.strptime(month_filter, '%Y-%m')
         except ValueError:
             month_filter = None
-
+ 
     # Only allow filtering by employee in same company
     if employee_id_filter:
         filtered_employee = Employee.objects.filter(employee_id=employee_id_filter, company=company).first()
         if not filtered_employee:
             messages.error(request, "No employee found with that ID in your company.")
             return redirect('create_salary')
-
+ 
     if request.method == 'POST':
         form = SalaryForm(request.POST)
         if form.is_valid():
             salary_instance = form.save(commit=False)
-
+ 
             # Ensure the employee belongs to the same company before saving
             if salary_instance.employee.company != company:
                 messages.error(request, "You cannot assign salary for an employee outside your company.")
                 return redirect('create_salary')
-
+ 
             salary_instance.save()
             messages.success(request, "Salary created successfully.")
             return redirect('salary_list')
     else:
         form = SalaryForm()
-
+ 
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'create_salary.html', {
         'form': form,
         'employee': employee,
@@ -1958,8 +2010,8 @@ def create_salary(request):
         'employee_id_filter': employee_id_filter,
         'month_filter': month_filter,
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def view_salary(request, salary_id):
@@ -1974,13 +2026,13 @@ def view_salary(request, salary_id):
         'notifications': notifications,
         }
     )
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def edit_salary(request, salary_id):
     salary = get_object_or_404(Salary, id=salary_id)
-
+ 
     if request.method == 'POST':
         form = SalaryForm(request.POST, instance=salary)
         if form.is_valid():
@@ -1988,60 +2040,60 @@ def edit_salary(request, salary_id):
             return redirect('salary_list')
     else:
         form = SalaryForm(instance=salary)
-
+ 
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'edit_salary.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications,
         }
     )
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def delete_salary(request, salary_id):
     salary = get_object_or_404(Salary, id=salary_id)
-
+ 
     if request.method == 'POST':
         salary.delete()
         return redirect('salary_list')
     return render(request, 'delete_salary.html')
-
-
+ 
+ 
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from datetime import datetime
 from .models import Salary, Employee, Notification
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def salary_list(request):
     user = request.user
-
+ 
     # Get the current user's company from CustomUser model
     user_company = user.company
-
+ 
     # Get the associated employee record (if needed for context)
     try:
         employee = Employee.objects.get(employee_id=user.employee_id)
     except Employee.DoesNotExist:
         employee = None
-
+ 
     # Filters
     employee_id_filter = request.GET.get('employee_id')
     month_filter = request.GET.get('month')
-
+ 
     # Start salary query limited to this user's company
     salary_query = Salary.objects.filter(employee__company=user_company)
-
+ 
     # Filter by employee ID (within the same company)
     if employee_id_filter:
         salary_query = salary_query.filter(employee__employee_id=employee_id_filter)
-
+ 
     # Filter by month (safe parsing)
     if month_filter:
         try:
@@ -2052,13 +2104,13 @@ def salary_list(request):
             )
         except ValueError:
             salary_query = Salary.objects.none()  # Invalid month format
-
+ 
     # Get unread notifications (only from this user's company if needed)
     notifications = Notification.objects.filter(
         recipient=user,
         is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'salary_list.html', {
         'salaries': salary_query,
         'employee': employee,
@@ -2066,52 +2118,52 @@ def salary_list(request):
         'employee_id_filter': employee_id_filter,
         'month_filter': month_filter,
     })
-
-
+ 
+ 
 #------------------------------------------------------------- Performance #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def performance_entry(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'performance_entry.html', {
         'employee': employee,
         'notifications': notifications
         })
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-
+ 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_performance(request):
     employee_id = request.data.get('employee_id')
     performance_score = request.data.get('performance_score')
-
+ 
     if not employee_id or performance_score is None:
         return Response({'error': 'Missing fields'}, status=400)
-
+ 
     try:
         # Get the employee that is being submitted
         employee_id = Employee.objects.get(employee_id=employee_id)
     except Employee.DoesNotExist:
         return Response({'error': 'Employee not found'}, status=404)
-
+ 
     try:
         # Get the logged-in user’s employee instance
         logged_in_employee = Employee.objects.get(employee_id=request.user.employee_id)
     except Employee.DoesNotExist:
         return Response({'error': 'Unauthorized access'}, status=403)
-
+ 
     # Check if both employees belong to the same company
     if employee_id.company != logged_in_employee.company:
         return Response({'error': 'You can only submit performance for employees in your company'}, status=403)
-
+ 
     Performance.objects.create(employee=employee_id, performance_score=performance_score)
     return Response({'message': 'Performance submitted successfully'})
-
+ 
  
  
 @api_view(['GET'])
@@ -2131,28 +2183,28 @@ def best_monthly_performer(request):
         serializer = PerformanceSerializer(top_performer)
         return Response(serializer.data)
     return Response({'message': 'No data available'}, status=404)
-
-
+ 
+ 
 @login_required(login_url='/')
 def performance_page(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    
+   
     # Filter only performances in user's company
     performance_data = Performance.objects.filter(employee__company=employee.company)
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'performance_page.html', {
         'performance_data': performance_data,
         'employee': employee,
         'notifications': notifications,
     })
-
-
-
+ 
+ 
+ 
 #------------------------------------------------------------- Working days #
-
+ 
 from datetime import timedelta, datetime
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
@@ -2161,30 +2213,30 @@ from django.utils import timezone
 from django.http import Http404
 from django.db.models import F
 import calendar
-
+ 
 from .models import (
     CustomUser, Employee, TimeEntry, Muster,
     Holiday, LeaveRequest, Notification
 )
-
-
+ 
+ 
 @login_required(login_url='/')
 @login_required(login_url='/')
 @staff_member_required
 def working_days(request):
     today = timezone.localtime(timezone.now()).date()
-
+ 
     # Build a list of 12 previous months for filter dropdown
     months = [today]
     for i in range(1, 12):
         previous_month = today.replace(day=1) - timedelta(days=i * 30)
         months.append(previous_month)
-
+ 
     months_formatted = [(month.month, month.year, f"{calendar.month_name[month.month]} {month.year}") for month in months]
-
+ 
     selected_month_year = request.GET.get('month_year', None)
     employee_id_filter = request.GET.get('employee_id', None)
-
+ 
     if selected_month_year:
         try:
             selected_month, selected_year = map(int, selected_month_year.split('-'))
@@ -2194,60 +2246,60 @@ def working_days(request):
     else:
         selected_date = today
         selected_month, selected_year = selected_date.month, selected_date.year
-
+ 
     # Define payroll period
     period_start = selected_date.replace(day=23)
     if selected_date.day < 23:
         period_start = (selected_date.replace(day=1) - timedelta(days=1)).replace(day=23)
     period_end = (period_start + timedelta(days=32)).replace(day=22)
-
+ 
     # Get current user company
     user = request.user
     current_employee = Employee.objects.get(employee_id=user.employee_id)  # Changed variable name
     company = current_employee.company
-
+ 
     # Filter employees by company
     if employee_id_filter:
         employees = CustomUser.objects.filter(employee_id=employee_id_filter, company=company)
     else:
         employees = CustomUser.objects.filter(company=company)
-
+ 
     employee_data = []
-
+ 
     for emp in employees:  # Changed variable name to 'emp' to avoid conflict
         data = {'employee': emp, 'working_days': [], 'leaves_taken': 0}
-
+ 
         time_entries = TimeEntry.objects.filter(
             user=emp,
             clock_in_time__gte=period_start,
             clock_in_time__lte=period_end,
             clock_out_time__lte=F('clock_in_time') + timedelta(hours=12)
         ).values('clock_in_time__date')
-
+ 
         approved_musters = Muster.objects.filter(
             user=emp,
             date__gte=period_start,
             date__lte=period_end,
             status='approved'
         ).values('date')
-
+ 
         holidays = Holiday.objects.filter(
             date__gte=period_start,
             date__lte=period_end
         ).values('date')
-
+ 
         approved_leaves = LeaveRequest.objects.filter(
             employee=emp,
             start_date__gte=period_start,
             end_date__lte=period_end,
             status='approved'
         ).values('leave_type', 'start_date', 'end_date', 'days_requested')
-
+ 
         total_leave_days = 18
         remaining_leave_days = total_leave_days
         counted_days = set()
         leaves_taken = set()
-
+ 
         for leave in approved_leaves:
             leave_days = leave['days_requested']
             if remaining_leave_days > 0:
@@ -2258,49 +2310,49 @@ def working_days(request):
                     for i in range(leave_days):
                         current_leave_day = leave_day + timedelta(days=i)
                         leaves_taken.add(current_leave_day)
-
+ 
         combined_dates = set(time_entries.values_list('clock_in_time__date', flat=True)) | \
                          set(approved_musters.values_list('date', flat=True)) | \
                          set(holidays.values_list('date', flat=True))
-
+ 
         standardized_dates = set()
         for date in combined_dates:
             if isinstance(date, datetime):
                 standardized_dates.add(date.date())
             else:
                 standardized_dates.add(date)
-
+ 
         working_dates = {date for date in standardized_dates if date.weekday() < 5}
-
+ 
         total_working_days = 0
         for date in working_dates:
             if date not in counted_days:
                 total_working_days += 1
                 counted_days.add(date)
-
+ 
         data['leaves_taken'] = len(leaves_taken)
         data['working_days'].append({
             'period_label': f"{period_start.strftime('%b %Y')} - {period_end.strftime('%b %Y')}",
             'working_days': total_working_days,
         })
         data['remaining_leave_days'] = remaining_leave_days
-
+ 
         employee_data.append(data)
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'working_days.html', {
         'employee_data': employee_data,
         'months': months_formatted,
         'selected_month': selected_month,
-        'selected_year': selected_year, 
+        'selected_year': selected_year,
         'employee_id_filter': employee_id_filter,
         'employee_id': current_employee,  # Changed to use the preserved variable
         'notifications': notifications,
     })
-
+ 
 #------------------------------------------------------------- Company adding by staff #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def company_list(request):
@@ -2309,7 +2361,7 @@ def company_list(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'company_list.html', {'companies': companies,'employee': employee,'notifications': notifications})
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def company_create(request):
@@ -2320,12 +2372,12 @@ def company_create(request):
             return redirect('company_list')
     else:
         form = Company_checkForm()
-    
+   
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'company_form.html', {'form': form,'employee': employee,'notifications': notifications})
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def company_edit(request, pk):
@@ -2337,12 +2389,12 @@ def company_edit(request, pk):
             return redirect('company_list')
     else:
         form = Company_checkForm(instance=company)
-    
+   
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'company_form.html', {'form': form,'employee': employee,'notifications': notifications})
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def company_delete(request, pk):
@@ -2354,17 +2406,21 @@ def company_delete(request, pk):
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'company_delete.html', {'company': company,'employee': employee,'notifications': notifications})
-
-
+ 
+ 
 #------------------------------------------------------------- Task list by staff #
-
+ 
+from datetime import datetime, timedelta
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
 from .models import Task, Employee, Notification, CustomUser  # adjust if needed
-
-
-
-
+ 
+ 
+ 
+ 
 from django.db.models import Prefetch
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def task_list(request):
@@ -2422,9 +2478,14 @@ def task_list(request):
     })
  
 #------------------------------------------------------------- Company adding by staff #
-
+ 
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 from .models import Performance, Employee, Notification
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def performance_list(request):
@@ -2432,45 +2493,45 @@ def performance_list(request):
     first_day_of_month = today.replace(day=1)
     last_day_of_month = first_day_of_month + timedelta(days=31)
     last_day_of_month = last_day_of_month.replace(day=1) - timedelta(days=1)
-
+ 
     # Get current logged-in employee's company
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
-
+ 
     # Filter performance data by current month AND company
     performance_data = Performance.objects.filter(
         date__range=[first_day_of_month, last_day_of_month],
         employee__company=company
     )
-
+ 
     # Filters (by employee_id and month) while respecting the company
     employee_id = request.GET.get('employee_id')
     month = request.GET.get('month')
-
+ 
     if employee_id:
         performance_data = performance_data.filter(employee__employee_id=employee_id, employee__company=company)
-
+ 
     if month:
         month_start = timezone.datetime.strptime(month, '%Y-%m').date()
         month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
         performance_data = performance_data.filter(date__range=[month_start, month_end], employee__company=company)
-
+ 
     # Get employees of that company only
     employees = Employee.objects.filter(company=company)
-
+ 
     months = [
         (timezone.datetime(today.year, m, 1).strftime('%Y-%m'),
          timezone.datetime(today.year, m, 1).strftime('%B'))
         for m in range(1, 13)
     ]
-
+ 
     # Notifications
     notifications = Notification.objects.filter(
         recipient=request.user,
         is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'performance_list.html', {
         'performance_data': performance_data,
         'employees': employees,
@@ -2480,47 +2541,47 @@ def performance_list(request):
         'employee': employee,
         'notifications': notifications
     })
-
-
-
+ 
+ 
+ 
 #------------------------------------------------------------- Company adding by staff #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def employee_list(request):
     user = request.user
     employee_id_filter = request.GET.get('employee_id')
-
+ 
     try:
         current_employee = Employee.objects.get(employee_id=user.employee_id)
         company = current_employee.company
     except Employee.DoesNotExist:
         company = None
-
+ 
     # Default to empty list if company not found
     employee_query = Employee.objects.none()
-
+ 
     if company:
         employee_query = Employee.objects.filter(company=company)
-
+ 
         # Apply employee_id filter if provided
         if employee_id_filter:
             employee_query = employee_query.filter(employee_id=employee_id_filter)
-
+ 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'employee_list.html', {
         'employee_query': employee_query,
         'employee': current_employee if company else None,
         'notifications': notifications,
         'employee_id_filter': employee_id_filter,
     })
-
-
-
-
+ 
+ 
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
@@ -2531,44 +2592,44 @@ def employee_create(request):
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
-
+ 
                 if not user.company:
                     messages.error(request, "This user has no company assigned. Please assign it first.")
                 else:
                     employee = form.save(commit=False)
                     media = media_form.save(commit=False)
-
+ 
                     employee.user = user
                     employee.company = user.company
                     employee.save()
-
+ 
                     media.employee = employee
                     media.save()  # ✅ Save after setting FK
-
+ 
                     messages.success(request, 'Employee added successfully!')
                     return redirect('employee_list')
-
+ 
             except CustomUser.DoesNotExist:
                 messages.error(request, 'No user found with the provided employee ID.')
     else:
         form = EmployeeProfileForm()
         media_form = EmployeeMediaForm()
-
+ 
     current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
         'employee': current_employee,
         'notifications': notifications
     })
-
+ 
 @login_required
 def upload_employee_media(request):
     employee = Employee.objects.get(user=request.user)
     media, _ = EmployeeMedia.objects.get_or_create(employee=employee)
-
+ 
     if request.method == 'POST':
         form = EmployeeMediaForm(request.POST, request.FILES, instance=media)
         if form.is_valid():
@@ -2577,14 +2638,15 @@ def upload_employee_media(request):
             return redirect('profile')  # Or wherever you go
     else:
         form = EmployeeMediaForm(instance=media)
-
+ 
     return render(request, 'upload_media.html', {'form': form})
-
+ 
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import EmployeeMedia, Employee
 from .forms import EmployeeMediaForm
-
+ 
 # --- Edit Profile Picture ---
 @login_required(login_url='/')
 def edit_profile_picture(request):
@@ -2594,9 +2656,9 @@ def edit_profile_picture(request):
     except Employee.DoesNotExist:
         messages.error(request, "Employee profile not found.")
         return redirect('profile')
-
-
-
+ 
+ 
+ 
     if request.method == 'POST':
         form = EmployeeMediaForm(request.POST, request.FILES, instance=employee_media)
         if form.is_valid():
@@ -2605,10 +2667,10 @@ def edit_profile_picture(request):
             return redirect('profile')
     else:
         form = EmployeeMediaForm(instance=employee_media)
-
+ 
     return render(request, 'profile.html', {'form': form})
-
-
+ 
+ 
 # --- Edit Cover Picture ---
 @login_required(login_url='/')
 def edit_cover_picture(request):
@@ -2618,8 +2680,8 @@ def edit_cover_picture(request):
     except Employee.DoesNotExist:
         messages.error(request, "Employee profile not found.")
         return redirect('profile')
-    
-
+   
+ 
     if request.method == 'POST':
         form = EmployeeMediaForm(request.POST, request.FILES, instance=employee_media)
         if form.is_valid():
@@ -2628,17 +2690,17 @@ def edit_cover_picture(request):
             return redirect('profile')
     else:
         form = EmployeeMediaForm(instance=employee_media)
-
+ 
     return render(request, 'profile.html', {'form': form})
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
     user = request.user
     current_employee = Employee.objects.get(employee_id=user.employee_id)
     employee = get_object_or_404(Employee, pk=pk, company=current_employee.company)
-
+ 
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES, instance=employee)
         if form.is_valid():
@@ -2647,64 +2709,64 @@ def employee_edit(request, pk):
             return redirect('employee_list')
     else:
         form = EmployeeProfileForm(instance=employee)
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'employee_create.html', {
         'form': form,
         'employee': current_employee,
         'notifications': notifications
     })
-
-
-
+ 
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def employee_delete(request, pk):
     user = request.user
     current_employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     # Only allow deleting if same company
     employee = get_object_or_404(Employee, pk=pk, company=current_employee.company)
-
+ 
     if request.method == 'POST':
         employee.delete()
         messages.success(request, 'Employee deleted successfully!')
         return redirect('employee_list')
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
+ 
     return render(request, 'employee_delete.html', {
         'employee': employee,
         'current_employee': current_employee,
         'notifications': notifications
     })
-
-
-
-
+ 
+ 
+ 
+ 
 #------------------------------------------------------------- Holidays adding by staff #
-
+ 
 @staff_member_required
 def holidays_list(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     holidays = Holiday.objects.filter(company=employee.company).order_by('date')  # ✅ Filter here
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'holidays_list.html', {
         'holidays': holidays,
         'employee': employee,
         'notifications': notifications
 })
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def holiday_create(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     if request.method == 'POST':
         form = HolidaysForm(request.POST)
         if form.is_valid():
@@ -2714,28 +2776,28 @@ def holiday_create(request):
             return redirect('holidays_list')
     else:
         form = HolidaysForm()
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'holiday_form.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def holiday_view(request, pk):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     # Secure: Only access holidays from the same company
     holiday = get_object_or_404(Holiday, pk=pk, company=employee.company)
-
+ 
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'holiday_view.html', {'holiday': holiday, 'employee': employee, 'notifications': notifications})
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def holiday_edit(request, pk):
@@ -2747,12 +2809,12 @@ def holiday_edit(request, pk):
             return redirect('holiday_view', pk=holiday.pk)
     else:
         form = HolidaysForm(instance=holiday)
-    
+   
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'holiday_form.html', {'form': form,'employee': employee,'notifications': notifications})
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def holiday_delete(request, pk):
@@ -2760,48 +2822,48 @@ def holiday_delete(request, pk):
     if request.method == 'POST':
         holiday.delete()
         return redirect('holidays_list')
-    
+   
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
     return render(request, 'holiday_delete.html', {'holiday': holiday,'employee': employee,'notifications': notifications})
-
-
+ 
+ 
 #------------------------------------------------------------- Leave balance adding by staff #
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def leave_list(request):
     employee_id_filter = request.GET.get('employee_id')
-
+ 
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     # Filter leaves only for this company
     leave_query = Leave.objects.filter(company=employee.company)
-
+ 
     if employee_id_filter:
         leave_query = leave_query.filter(employee__employee_id=employee_id_filter)
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'leave_list.html', {
         'leaves': leave_query,
         'employee': employee,
         'notifications': notifications,
         'employee_id_filter': employee_id_filter,
     })
-
-
-
+ 
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def leave_create(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     if request.method == 'POST':
         form = LeaveForm(request.POST)
         if form.is_valid():
@@ -2813,45 +2875,45 @@ def leave_create(request):
         form = LeaveForm()
         # Optional: Filter employees by company
         form.fields['employee'].queryset = CustomUser.objects.filter(company=employee.company)
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'leave_create.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications
     })
-
-
+ 
+ 
 @login_required(login_url='/')
 @staff_member_required
 def leave_detail(request, pk):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     # Ensure only leaves for that company are fetched
     leave = get_object_or_404(Leave, pk=pk, company=employee.company)
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'leave_detail.html', {
         'leave': leave,
         'employee': employee,
         'notifications': notifications
     })
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def leave_edit(request, pk):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     leave = get_object_or_404(Leave, pk=pk, company=employee.company)
-
+ 
     if request.method == 'POST':
         form = LeaveForm(request.POST, instance=leave)
         if form.is_valid():
@@ -2859,98 +2921,98 @@ def leave_edit(request, pk):
             return redirect('leave_list')
     else:
         form = LeaveForm(instance=leave)
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'leave_edit.html', {
         'form': form,
         'employee': employee,
         'notifications': notifications
     })
-
+ 
 @login_required(login_url='/')
 @staff_member_required
 def leave_delete(request, pk):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-
+ 
     leave = get_object_or_404(Leave, pk=pk, company=employee.company)
-
+ 
     if request.method == "POST":
         leave.delete()
         return redirect('leave_list')
-
+ 
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')[:5]
-
+ 
     return render(request, 'leave_delete.html', {
         'leave': leave,
         'employee': employee,
         'notifications': notifications
     })
-
-
-
-
-
+ 
+ 
+ 
+ 
+ 
 # ----------------------------------------------Main views  HR4U content
-
+ 
 @login_required
 def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
-
-
+ 
+ 
 @login_required
 def employee_self_service(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
     context = {'employee': employee}
-    
+   
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render(request, 'hr/partials/employee_self_service.html', context)
     return render(request, 'hr/employee_self_service.html', context)
-
+ 
 @login_required
 def benefits_compensation(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
     payrolls = Payroll.objects.filter(employee=employee).order_by('-period_end')
     benefits = Benefit.objects.filter(employee=employee)
-    
+   
     context = {
         'payrolls': payrolls,
         'benefits': benefits
     }
-    
+   
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render(request, 'hr/partials/benefits_compensation.html', context)
     return render(request, 'hr/benefits_compensation.html', context)
-
+ 
 @login_required
 def career_development(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
     trainings = Training.objects.filter(employee=employee).order_by('-date_completed')
-    
+   
     context = {
         'trainings': trainings,
         'skills': employee.skills.all()
     }
-    
+   
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render(request, 'hr/partials/career_development.html', context)
     return render(request, 'hr/career_development.html', context)
-
+ 
 @login_required
 def help_desk(request):
     tickets = HelpTicket.objects.filter(employee__user=request.user).order_by('-created_at')
-    
+   
     if request.method == 'POST':
         subject = request.POST.get('subject')
         description = request.POST.get('description')
         category = request.POST.get('category')
-        
+       
         employee = get_object_or_404(EmployeeProfile, user=request.user)
         ticket = HelpTicket.objects.create(
             employee=employee,
@@ -2960,14 +3022,14 @@ def help_desk(request):
         )
         tickets = list(tickets)  # Convert to list to add new ticket
         tickets.insert(0, ticket)
-    
+   
     context = {'tickets': tickets}
-    
+   
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render(request, 'hr/partials/help_desk.html', context)
     return render(request, 'hr/help_desk.html', context)
-
-# ------------ clear_notifications ----------
+ 
+ 
 
 @login_required(login_url='/')
 def clear_notifications(request):
@@ -2975,3 +3037,4 @@ def clear_notifications(request):
         Notification.objects.filter(recipient=request.user).delete()
         messages.success(request, "All notifications cleared.")
     return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+ 
