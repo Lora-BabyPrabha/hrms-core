@@ -352,10 +352,11 @@ def base(request):
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(recipient=user, is_read=False, company=company).order_by('-created_at')[:5]
-
+   
     context = {
         'employee': employee,
         'notifications': notifications,
+       
     }
 
     if user.role == 'Employee':
@@ -404,11 +405,17 @@ def dashboard(request):
         is_read=False
     ).order_by('-created_at')[:5]
 
+    notification_count = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).count()
+
     return render(request, 'dashboard.html', {
         'employee': employee,
         'employees_with_birthday': employees_with_birthday,
         'today': today,
         'notifications': notifications,
+        'notification_count': notification_count,
     })
 
     
