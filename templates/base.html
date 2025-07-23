@@ -17,23 +17,23 @@
     </head>
     <body>
         <div class="wrapper">
-
+ 
             <!-- sidebar -->
             <aside id="sidebar" class="js-sidebar shadow">
-                
+               
                 <div class="h-100">
-
+ 
                     <div class="sidebar-logo text-center">
                         <a href="/dashboard"><img src="{% static 'images/lora-log.png' %}" height="auto" width="150"></a>
                     </div>
-
+ 
                     <ul class="sidebar-nav">
-
+ 
                         <h6 class='text-center mt-3 pt-3'>{{user.employee_id.title}}</h6>
                         <hr class='col-8 text-center mx-auto'>
-
+ 
                         {% block sidebar %}
-
+ 
                         <li class="sidebar-item">
                             <a href="/HR4U" class="sidebar-link active" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-columns-gap mx-3" viewBox="0 0 16 16">
@@ -42,7 +42,7 @@
                                 HR4U
                             </a>
                         </li>
-
+ 
                         <li class="sidebar-item">
                             <a href="/muster" class="sidebar-link" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-stopwatch mx-3" viewBox="0 0 16 16">
@@ -52,7 +52,7 @@
                              Muster
                             </a>
                         </li>
-
+ 
                         <li class="sidebar-item">
                             <a href="/salary_details" class="sidebar-link" style="color: black;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-bank mx-3" viewBox="0 0 16 16">
@@ -61,10 +61,10 @@
                                 My Financial
                             </a>
                         </li>
-
+ 
                         <h6 class='text-center mt-4'>Company</h6>
                         <hr class='col-8 text-center mx-auto'>
-
+ 
                         {% if request.user.is_authenticated and request.user.role == 'HR' or request.user.role == 'Manager' or request.user.is_superuser %}
                         <li class="sidebar-item">
                             <a href="/employee_requests" class="sidebar-link" style='color: black;'>
@@ -76,7 +76,7 @@
                                 Employees Data
                             </a>
                         </li>
-
+ 
                         <li class="sidebar-item">
                             <a href="/working_days" class="sidebar-link" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-calendar2-day mx-3" viewBox="0 0 16 16">
@@ -87,9 +87,9 @@
                                 Working days
                             </a>
                         </li>
-
+ 
                         {% endif %}
-
+ 
                         <li class="sidebar-item">
                             <a href="{% url 'performance_page' %}" class="sidebar-link" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-graph-up mx-3" viewBox="0 0 16 16">
@@ -98,7 +98,7 @@
                                 Performance
                             </a>
                         </li>
-                        
+                       
                         <li class="sidebar-item">
                             <a href="/task_management" class="sidebar-link" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-clipboard-check mx-3" viewBox="0 0 16 16">
@@ -109,7 +109,7 @@
                                 Task Management
                             </a>
                         </li>
-
+ 
                         <li class="sidebar-item">
                             <a href="/training" class="sidebar-link" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-people mx-3" viewBox="0 0 16 16">
@@ -118,7 +118,7 @@
                                 Training
                             </a>
                         </li>
-
+ 
                         <li class="sidebar-item">
                             <a href="/policy" class="sidebar-link" style='color: black;'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-shield-check mx-3" viewBox="0 0 16 16">
@@ -128,25 +128,25 @@
                                 Policies
                             </a>
                         </li>
-
+ 
                         {% endblock %}
-
+ 
                     </ul>
-
+ 
                 </div>
-
+ 
             </aside>
-
+ 
             <div class="main">
-
+ 
                 <!-- Navbar -->
                 <nav class="navbar navbar-expand px-3 p-2 shadow">
-
+ 
                     <!-- Toggle -->
                     <button class="btn" id="sidebar-toggle" type="button">
                         <span class="navbar-toggler-icon"></span>
                     </button>
-
+ 
                     <!-- Search bar -->
                     <form class="d-flex mx-auto text-center ss" role="search" method="GET" action="{% url 'search_results' %}">
                         <svg type="submit" xmlns="http://www.w3.org/2000/svg" width="18" height="20" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
@@ -154,26 +154,26 @@
                         </svg>
                         <input id="m" class="form-control form-control-sm px-5 se" type="search" name="query" placeholder="Search for a page" aria-label="Search">
                     </form>
-
+ 
                     <!-- Chatbot -->
                     <div class="chatbot-container" id="chatbotContainer">
                         <div class="chat-icon" id="chatIcon">
                             <img src="https://cdn-icons-png.flaticon.com/512/13330/13330989.png" alt="Chat Icon">
                         </div>
                     </div>
-                
+               
                     <div class="chat-window hidden" id="chatWindow">
                         <div class="chat-header">
                             <h3>Support Chat</h3>
                             <span class="cross" id="closeChat">✕</span>
                         </div>
-                
+               
                         <div class="messages-container" id="messagesContainer">
                             <div class="message bot-message">
                                 <p>Hello! How can I help you?</p>
                             </div>
                         </div>
-                
+               
                         <div class="input-container">
                             <div class="input-wrapper">
                                 <input type="text" placeholder="Type your message..." class="chat-input" id="chatInput">
@@ -184,20 +184,20 @@
                                 </button>
                             </div>
                         </div>
-                    </div> 
+                    </div>
                      
-
+ 
                     <div class="navbar-collapse navbar">
-
+ 
                         <!-- Clock timer -->
                         <div class="nav-item text-center mx-auto d-none d-md-block" style='color: black;'>
                             <span id="liveClock"></span>
                         </div>
-                        
+                       
                         <ul class="navbar-nav">
-
+ 
                             <div class="d-flex gap-4">
-
+ 
                                 <!-- ? FAQ -->
                                 <li class="nav-item dropdown d-none d-md-block">
                                     <a href="#" data-bs-toggle="dropdown" style='color: black;'>
@@ -218,7 +218,7 @@
                                         <div class="dropdown-item">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-book mx-1" viewBox="0 0 16 16">
                                                 <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/>
-                                            </svg> 
+                                            </svg>
                                             <small>FAQ(Frequently Asked Questions) - </small><a href='/faq'><small>Know more</small></a>
                                         </div>
                                         <hr>
@@ -230,25 +230,25 @@
                                         </div>
                                     </div>
                                 </li>
-
+ 
                                 <!-- Notifications bar -->
                                 <li class="nav-item dropdown">
-
+ 
                                     <a href="#" class="d-flex notification notification-bar align-items-center text-black text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16">
                                             <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901"/>
                                         </svg>
                                         <span id="notification-count"></span>
                                     </a>
-
+ 
                                     <ul id="noti" class="dropdown-menu dropdown-menu-end text-small shadow">
-
+ 
                                         {% if request.user.is_authenticated and request.user.role == 'Employee' %}
-                                            
+                                           
                                             <div class='py-2 px-2' style="width: 330px;">
-
+ 
                                                 <div class='text-center'>Notifications</div>
-
+ 
                                                 {% if notifications %}
                                                     {% for notification in notifications %}
                                                         <hr class='col-12'>
@@ -257,16 +257,16 @@
                                                         </div>
                                                     {% endfor %}
                                                 {% endif %}
-
+ 
                                             </div>
-
+ 
                                         {% endif %}
-
+ 
                                         {% if request.user.is_authenticated and request.user.role == 'HR' or request.user.role == 'Manager' or request.user.is_superuser %}
-
+ 
                                             <div id="notif">
                                                 <div class='text-center'>Pending Approvals - {{ request.user.company.name }}</div>
-
+ 
                                                 {% for muster in pending_musters %}
                                                     {% if muster.user.company == request.user.company %}
                                                         <hr class='col-12'>
@@ -286,7 +286,7 @@
                                                         </div>
                                                     {% endif %}
                                                 {% endfor %}
-
+ 
                                                 {% for leave in pending_leave_request %}
                                                     {% if leave.employee.company == request.user.company %}
                                                         <hr class='col-12'>
@@ -310,7 +310,7 @@
                                                         </div>
                                                     {% endif %}
                                                 {% endfor %}
-
+ 
                                                 {% for expense in pending_expense %}
                                                     {% if expense.employee.company == request.user.company %}
                                                         <hr class='col-12'>
@@ -329,7 +329,7 @@
                                                         </div>
                                                     {% endif %}
                                                 {% endfor %}
-
+ 
                                                 {% for loan in pending_loan %}
                                                     {% if loan.employee.company == request.user.company %}
                                                         <hr class='col-12'>
