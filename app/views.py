@@ -343,11 +343,6 @@ def contact_us(request):
 
 #------------------------------------------------------------- Company records #
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
 from .models import Company_check
 
 @login_required(login_url='/')
@@ -447,25 +442,6 @@ def dashboard(request):
     
 
 #------------------------------------------------------------- Employee requests - Notifications  #
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.utils.timezone import localdate
-from .models import (
-    Muster, LeaveRequest, ExpenseClaim, LoanRequest, TimeEntry,
-    CustomUser, Employee, Notification
-)
-
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.utils.timezone import localdate
-from datetime import datetime
-
-from app.models import (
-    Muster, LeaveRequest, ExpenseClaim, LoanRequest,
-    TimeEntry, Employee, Notification, CustomUser
-)
 
 @login_required(login_url='/')
 @staff_member_required
@@ -581,16 +557,6 @@ from .models import (
     CustomUser, Employee, Notification
 )
 
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from django.utils.timezone import localdate
-from datetime import datetime
-
-from app.models import (
-    Employee, CustomUser, Muster, LeaveRequest,
-    ExpenseClaim, LoanRequest, Notification
-)
 
 @login_required(login_url='/')
 @staff_member_required
@@ -599,12 +565,11 @@ def staff_notifications(request):
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
-
-    # Default: today's pending requests for the company
-    musters = Muster.objects.filter(status='Pending', user__company=company, date__date=today)
-    leaves = LeaveRequest.objects.filter(status='pending', employee__company=company, start_date=today)
-    expenses = ExpenseClaim.objects.filter(status='pending', employee__company=company, date=today)
-    pendings_loan = LoanRequest.objects.filter(status='pending', employee__company=company, date_requested__date=today)
+    # Default: all pending requests for the company
+    musters = Muster.objects.filter(status='Pending', user__company=company)
+    leaves = LeaveRequest.objects.filter(status='pending', employee__company=company)
+    expenses = ExpenseClaim.objects.filter(status='pending', employee__company=company)
+    pendings_loan = LoanRequest.objects.filter(status='pending', employee__company=company)
 
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
@@ -1327,14 +1292,10 @@ def task_management(request):
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
-from .models import CustomUser, Employee, Task, Notification
 from django.db.models.functions import Lower
 
 
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
 from django.db.models import Q
-from django.shortcuts import render
 from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
 
 @login_required(login_url='/')
@@ -2434,10 +2395,6 @@ def company_delete(request, pk):
 
 #------------------------------------------------------------- Task list by staff #
 
-from datetime import datetime, timedelta
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
 from .models import Task, Employee, Notification, CustomUser  # adjust if needed
 
 
@@ -2503,11 +2460,6 @@ def task_list(request):
  
 #------------------------------------------------------------- Company adding by staff #
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.utils import timezone
-from datetime import timedelta
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
 from .models import Performance, Employee, Notification
 
 @login_required(login_url='/')
@@ -2660,7 +2612,6 @@ def upload_employee_media(request):
 
     return render(request, 'upload_media.html', {'form': form})
 
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import EmployeeMedia, Employee
