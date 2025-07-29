@@ -7,6 +7,11 @@ from app.forms import *
 
 admin.site.register(Company_check)
 admin.site.register(Muster)
+# app/admin.py
+
+
+admin.site.register(HRContact)
+
 
 admin.site.register(Salary)
 admin.site.register(TimeEntry)

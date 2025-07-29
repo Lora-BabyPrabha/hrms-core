@@ -349,52 +349,83 @@ class EmployeeMedia(models.Model):
 
 #------------------------------------------------------------- HR4U #
 
-class EmployeeProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    employee_id = models.CharField(max_length=20, unique=True)
-    department = models.CharField(max_length=100)
-    position = models.CharField(max_length=100)
-    hire_date = models.DateField()
-    manager = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
-    phone = models.CharField(max_length=20)
-    address = models.TextField()
-    emergency_contact = models.CharField(max_length=100)
-    emergency_phone = models.CharField(max_length=20)
-    
-    def __str__(self):
-        return f"{self.user.get_full_name()} ({self.employee_id})"
 
-class Payroll(models.Model):
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
-    period_start = models.DateField()
-    period_end = models.DateField()
-    gross_pay = models.DecimalField(max_digits=10, decimal_places=2)
-    deductions = models.DecimalField(max_digits=10, decimal_places=2)
-    net_pay = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_date = models.DateField()
-    
-    def __str__(self):
-        return f"Payroll {self.period_start} to {self.period_end} - {self.employee}"
+class HRContact(models.Model):
+    ROLE_CHOICES = [
+        ('TL', 'Team Leader'),
+        ('HR', 'HR'),
+        ('MG', 'Manager'),
+    ]
 
-class Benefit(models.Model):
-    BENEFIT_TYPES = (
-        ('health', 'Health Insurance'),
-        ('dental', 'Dental Insurance'),
-        ('vision', 'Vision Insurance'),
-        ('retirement', 'Retirement Plan'),
-        ('other', 'Other'),
-    )
-    
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
-    benefit_type = models.CharField(max_length=20, choices=BENEFIT_TYPES)
-    provider = models.CharField(max_length=100)
-    policy_number = models.CharField(max_length=50)
-    start_date = models.DateField()
-    end_date = models.DateField(null=True, blank=True)
-    coverage_details = models.TextField()
-    
+    name = models.CharField(max_length=100,default='name')
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=2, choices=ROLE_CHOICES)
+
     def __str__(self):
-        return f"{self.get_benefit_type_display()} - {self.employee}"
+        return f"{self.name} ({self.get_role_display()})"
+# models.py
+from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class HelpDeskTicket(models.Model):
+    CATEGORY_CHOICES = [
+        ('HR', 'HR Support'),
+        ('IT', 'IT Support'),
+        ('AS', 'Assessment'),
+    ]
+
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+    ]
+
+    # Separate issue choices for each category
+    HR_ISSUE_CHOICES = [
+        ('attendance', 'Attendance Issue'),
+        ('payroll', 'Payroll Issue'),
+        ('leave', 'Leave Request'),
+        ('policy', 'Policy Clarification'),
+    ]
+
+    IT_ISSUE_CHOICES = [
+        ('login', 'Login Problem'),
+        ('hardware', 'Hardware Issue'),
+        ('software', 'Software Problem'),
+        ('network', 'Network Issue'),
+    ]
+
+    AS_ISSUE_CHOICES = [
+        ('exam', 'Exam Schedule Issue'),
+        ('grading', 'Grading Dispute'),
+        ('result', 'Result Delay'),
+        ('reassessment', 'Reassessment Request'),
+    ]
+
+    employee = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.CharField(max_length=2, choices=CATEGORY_CHOICES)
+    issue_type = models.CharField(max_length=100)
+    description = models.TextField()
+
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='tl_tickets', null=True, blank=True)
+    escalate_to_hr = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='hr_tickets', null=True, blank=True)
+    manager = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='manager_tickets', null=True, blank=True)
+
+    viewed_by_tl = models.BooleanField(default=False)
+    viewed_by_hr = models.BooleanField(default=False)
+
+    escalated_to_hr_at = models.DateTimeField(null=True, blank=True)
+    escalated_to_manager_at = models.DateTimeField(null=True, blank=True)
+
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_category_display()} - {self.issue_type} ({self.employee})"
+
+
+
 
 class Skill(models.Model):
     name = models.CharField(max_length=100)
@@ -403,40 +434,5 @@ class Skill(models.Model):
     def __str__(self):
         return self.name
 
-class Training(models.Model):
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200)
-    provider = models.CharField(max_length=100)
-    date_completed = models.DateField()
-    skills = models.ManyToManyField(Skill)
-    certificate = models.FileField(upload_to='training_certificates/', null=True, blank=True)
-    
-    def __str__(self):
-        return f"{self.name} - {self.employee}"
 
-class HelpTicket(models.Model):
-    CATEGORY_CHOICES = (
-        ('hr', 'HR Questions'),
-        ('payroll', 'Payroll Issues'),
-        ('benefits', 'Benefits Enrollment'),
-        ('tech', 'Technical Support'),
-        ('other', 'Other'),
-    )
-    STATUS_CHOICES = (
-        ('open', 'Open'),
-        ('in_progress', 'In Progress'),
-        ('resolved', 'Resolved'),
-        ('closed', 'Closed'),
-    )
-    
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE)
-    subject = models.CharField(max_length=200)
-    description = models.TextField()
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    resolution = models.TextField(null=True, blank=True)
-    
-    def __str__(self):
-        return f"Ticket #{self.id} - {self.subject}"
+
