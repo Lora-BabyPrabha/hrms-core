@@ -364,19 +364,24 @@ class EmployeeMediaForm(forms.ModelForm):
 
 
 
-class HRContactForm(forms.ModelForm):
-    class Meta:
-        model = HRContact
-        fields = ['name', 'email', 'role']
-        widgets = {
-            'role': forms.Select(choices=HRContact.ROLE_CHOICES),
-        }
-
 # forms.py
 
 from django import forms
+from .models import HRContact
+from app.models import Employee  # Adjust if needed
+
+class HRContactForm(forms.ModelForm):
+    class Meta:
+        model = HRContact
+        fields = ['employee', 'role']
+        widgets = {
+            'employee': forms.Select(attrs={'class': 'form-control'}),
+            'role': forms.Select(choices=HRContact.ROLE_CHOICES, attrs={'class': 'form-control'}),
+        }
+
+from django import forms
 from django.contrib.auth import get_user_model
-from .models import HelpDeskTicket, HRContact
+from .models import HelpDeskTicket, HRContact, Employee
 
 User = get_user_model()
 
@@ -401,10 +406,11 @@ class HelpDeskTicketForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        category = kwargs.pop('category', None)  # e.g., 'HR', 'IT', or 'AS'
+        category = kwargs.pop('category', None)  # 'HR', 'IT', 'AS'
+        company = kwargs.pop('company', None)    # <-- new
         super().__init__(*args, **kwargs)
 
-        # Load choices directly from the model based on category
+        # Set issue type choices based on category
         if category == 'HR':
             self.fields['issue_type'].choices = HelpDeskTicket.HR_ISSUE_CHOICES
         elif category == 'IT':
@@ -414,12 +420,13 @@ class HelpDeskTicketForm(forms.ModelForm):
         else:
             self.fields['issue_type'].choices = []
 
-        # Load TL and HR from HRContact
-        tl_emails = HRContact.objects.filter(role='TL').values_list('email', flat=True)
-        hr_emails = HRContact.objects.filter(role='HR').values_list('email', flat=True)
+        # Set TL and HR queryset using the new ForeignKey-based HRContact model
+        if company:
+            tl_contacts = HRContact.objects.filter(role='TL', employee__company=company)
+            hr_contacts = HRContact.objects.filter(role='HR', employee__company=company)
 
-        self.fields['team_leader'].queryset = User.objects.filter(email__in=tl_emails)
-        self.fields['hr'].queryset = User.objects.filter(email__in=hr_emails)
+            self.fields['team_leader'].queryset = User.objects.filter(id__in=tl_contacts.values_list('employee__user_id', flat=True))
+            self.fields['hr'].queryset = User.objects.filter(id__in=hr_contacts.values_list('employee__user_id', flat=True))
 
 
 class TaskForm(forms.Form):

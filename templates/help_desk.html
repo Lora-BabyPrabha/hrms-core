@@ -104,9 +104,9 @@
             <tr>
                 <td>{{ ticket.get_category_display }}</td>
                 <td>{{ ticket.issue_type }}</td>
-                <td>{{ ticket.assigned_to }}</td>
-                <td>{{ ticket.escalate_to_hr }}</td>
-                <td>{{ ticket.manager }}</td>
+                <td>{{ ticket.assigned_to.employee.name }}</td>
+                <td>{{ ticket.escalate_to_hr.employee.name }}</td>
+                <td>{{ ticket.manager.employee.name }}</td>
                 <td>{{ ticket.get_status_display }}</td>
                 <td>{{ ticket.created_at|date:"d M Y, H:i" }}</td>
             </tr>

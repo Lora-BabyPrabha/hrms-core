@@ -349,6 +349,10 @@ class EmployeeMedia(models.Model):
 
 #------------------------------------------------------------- HR4U #
 
+# models.py
+
+from django.db import models
+from app.models import Employee  # Adjust path if needed
 
 class HRContact(models.Model):
     ROLE_CHOICES = [
@@ -357,12 +361,21 @@ class HRContact(models.Model):
         ('MG', 'Manager'),
     ]
 
-    name = models.CharField(max_length=100,default='name')
-    email = models.EmailField(unique=True)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     role = models.CharField(max_length=2, choices=ROLE_CHOICES)
 
     def __str__(self):
-        return f"{self.name} ({self.get_role_display()})"
+        return f"{self.employee.name} ({self.get_role_display()})"
+
+    @property
+    def name(self):
+        return self.employee.name
+
+    @property
+    def email(self):
+        return self.employee.user.email
+
+
 # models.py
 from django.db import models
 from django.contrib.auth import get_user_model
