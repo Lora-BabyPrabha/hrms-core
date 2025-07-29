@@ -3053,20 +3053,33 @@ def leave_delete(request, pk):
 
 
 
-@login_required(login_url='/')
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import HRContact
+from .forms import HRContactForm
+from app.models import Employee
+from django.contrib.auth.decorators import login_required
+
+@login_required
 def hr_services_page(request):
-    form = HRContactForm()
-    contacts = HRContact.objects.all().order_by('role')
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    company = employee.company
 
     if request.method == 'POST':
         form = HRContactForm(request.POST)
+        form.fields['employee'].queryset = Employee.objects.filter(company=company)
         if form.is_valid():
             form.save()
             return redirect('hr_services')
+    else:
+        form = HRContactForm()
+        form.fields['employee'].queryset = Employee.objects.filter(company=company)
 
+    contacts = HRContact.objects.filter(employee__company=company)
     return render(request, 'hr_services.html', {
         'form': form,
-        'contacts': contacts,
+        'contacts': contacts
     })
 
 
@@ -3110,6 +3123,15 @@ def assign_manager(ticket, company):
             ticket.manager = None
 
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.core.mail import send_mail
+from .models import HelpDeskTicket, HRContact, Employee, Notification
+from .forms import HelpDeskTicketForm
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 @login_required
 def help_desk_page(request):
     user = request.user
@@ -3118,19 +3140,19 @@ def help_desk_page(request):
 
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
-    # Get TL and HR emails from HRContact for the current company
-    tl_emails = HRContact.objects.filter(role='TL').values_list('email', flat=True)
-    hr_emails = HRContact.objects.filter(role='HR').values_list('email', flat=True)
+    # Fetch Team Leaders and HRs linked to employees from the same company
+    tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
+    hr_ids = HRContact.objects.filter(role='HR', employee__company=company).values_list('employee__user_id', flat=True)
 
-    team_leader_qs = User.objects.filter(email__in=tl_emails, employee__company=company)
-    hr_qs = User.objects.filter(email__in=hr_emails, employee__company=company)
+    team_leader_qs = User.objects.filter(id__in=tl_ids)
+    hr_qs = User.objects.filter(id__in=hr_ids)
 
-    # Initialize all forms with category
+    # Initialize all forms
     hr_form = HelpDeskTicketForm(prefix='hr', category='HR')
     it_form = HelpDeskTicketForm(prefix='it', category='IT')
     assessment_form = HelpDeskTicketForm(prefix='as', category='AS')
 
-    # Set team leader and HR queryset for all forms
+    # Assign team_leader and hr queryset to each form
     for form in [hr_form, it_form, assessment_form]:
         form.fields['team_leader'].queryset = team_leader_qs
         form.fields['hr'].queryset = hr_qs
@@ -3151,54 +3173,40 @@ def help_desk_page(request):
                 fail_silently=False
             )
 
-    # Handle POST submissions
+    # Handle submitted form
     if request.method == 'POST':
+        submitted_category = None
         if 'hr-submit' in request.POST:
             hr_form = HelpDeskTicketForm(request.POST, prefix='hr', category='HR')
-            hr_form.fields['team_leader'].queryset = team_leader_qs
-            hr_form.fields['hr'].queryset = hr_qs
-            if hr_form.is_valid():
-                ticket = hr_form.save(commit=False)
-                ticket.employee = user
-                ticket.category = 'HR'
-                ticket.assigned_to = hr_form.cleaned_data['team_leader']
-                ticket.escalate_to_hr = hr_form.cleaned_data['hr']
-                assign_manager(ticket, company)
-                ticket.save()
-                send_ticket_email(ticket, ticket.assigned_to, "HR Support")
-                return redirect('help_desk')
-
+            submitted_category = 'HR'
         elif 'it-submit' in request.POST:
             it_form = HelpDeskTicketForm(request.POST, prefix='it', category='IT')
-            it_form.fields['team_leader'].queryset = team_leader_qs
-            it_form.fields['hr'].queryset = hr_qs
-            if it_form.is_valid():
-                ticket = it_form.save(commit=False)
-                ticket.employee = user
-                ticket.category = 'IT'
-                ticket.assigned_to = it_form.cleaned_data['team_leader']
-                ticket.escalate_to_hr = it_form.cleaned_data['hr']
-                assign_manager(ticket, company)
-                ticket.save()
-                send_ticket_email(ticket, ticket.assigned_to, "IT Support")
-                return redirect('help_desk')
-
+            submitted_category = 'IT'
         elif 'as-submit' in request.POST:
             assessment_form = HelpDeskTicketForm(request.POST, prefix='as', category='AS')
-            assessment_form.fields['team_leader'].queryset = team_leader_qs
-            assessment_form.fields['hr'].queryset = hr_qs
-            if assessment_form.is_valid():
-                ticket = assessment_form.save(commit=False)
+            submitted_category = 'AS'
+
+        selected_form = {
+            'HR': hr_form,
+            'IT': it_form,
+            'AS': assessment_form
+        }.get(submitted_category)
+
+        if selected_form:
+            selected_form.fields['team_leader'].queryset = team_leader_qs
+            selected_form.fields['hr'].queryset = hr_qs
+
+            if selected_form.is_valid():
+                ticket = selected_form.save(commit=False)
                 ticket.employee = user
-                ticket.category = 'AS'
-                ticket.assigned_to = assessment_form.cleaned_data['team_leader']
-                ticket.escalate_to_hr = assessment_form.cleaned_data['hr']
-                assign_manager(ticket, company)
+                ticket.category = submitted_category
+                ticket.assigned_to = selected_form.cleaned_data['team_leader']
+                ticket.escalate_to_hr = selected_form.cleaned_data['hr']
+                assign_manager(ticket, company)  # <-- Ensure you have this function defined
                 ticket.save()
-                send_ticket_email(ticket, ticket.assigned_to, "Assessment")
+                send_ticket_email(ticket, ticket.assigned_to, f"{submitted_category} Support")
                 return redirect('help_desk')
 
-    # All tickets of the logged-in employee
     tickets = HelpDeskTicket.objects.filter(employee=user).order_by('-created_at')
 
     return render(request, 'help_desk.html', {

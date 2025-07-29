@@ -1,3 +1,4 @@
+<!-- templates/hr_services.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -10,17 +11,12 @@
     <form method="POST" action="{% url 'hr_services' %}">
         {% csrf_token %}
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="form-group">
-                    {{ form.name.label_tag }} {{ form.name }}
+                    {{ form.employee.label_tag }} {{ form.employee }}
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="form-group">
-                    {{ form.email.label_tag }} {{ form.email }}
-                </div>
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="form-group">
                     {{ form.role.label_tag }} {{ form.role }}
                 </div>
@@ -35,7 +31,6 @@
     </form>
 
     <hr>
-
     <h4>Saved Contacts</h4>
     <table class="table table-bordered mt-3">
         <thead>
