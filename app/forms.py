@@ -364,6 +364,64 @@ class EmployeeMediaForm(forms.ModelForm):
 
 
 
+class HRContactForm(forms.ModelForm):
+    class Meta:
+        model = HRContact
+        fields = ['name', 'email', 'role']
+        widgets = {
+            'role': forms.Select(choices=HRContact.ROLE_CHOICES),
+        }
+
+# forms.py
+
+from django import forms
+from django.contrib.auth import get_user_model
+from .models import HelpDeskTicket, HRContact
+
+User = get_user_model()
+
+class HelpDeskTicketForm(forms.ModelForm):
+    team_leader = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        label='Team Leader',
+        required=True
+    )
+    hr = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        label='HR',
+        required=True
+    )
+    issue_type = forms.ChoiceField(choices=[], label='Issue Type', required=True)
+
+    class Meta:
+        model = HelpDeskTicket
+        fields = ['issue_type', 'description', 'team_leader', 'hr']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Describe your issue'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        category = kwargs.pop('category', None)  # e.g., 'HR', 'IT', or 'AS'
+        super().__init__(*args, **kwargs)
+
+        # Load choices directly from the model based on category
+        if category == 'HR':
+            self.fields['issue_type'].choices = HelpDeskTicket.HR_ISSUE_CHOICES
+        elif category == 'IT':
+            self.fields['issue_type'].choices = HelpDeskTicket.IT_ISSUE_CHOICES
+        elif category == 'AS':
+            self.fields['issue_type'].choices = HelpDeskTicket.AS_ISSUE_CHOICES
+        else:
+            self.fields['issue_type'].choices = []
+
+        # Load TL and HR from HRContact
+        tl_emails = HRContact.objects.filter(role='TL').values_list('email', flat=True)
+        hr_emails = HRContact.objects.filter(role='HR').values_list('email', flat=True)
+
+        self.fields['team_leader'].queryset = User.objects.filter(email__in=tl_emails)
+        self.fields['hr'].queryset = User.objects.filter(email__in=hr_emails)
+
+
 class TaskForm(forms.Form):
     task_name = forms.CharField(max_length=255)
     employee_emails = forms.CharField(max_length=1024)  # For comma-separated emails
@@ -386,3 +444,4 @@ class TeamForm(forms.ModelForm):
             self.fields['members'].queryset = CustomUser.objects.filter(
                 employee__company=user.employee.company
             )
+

@@ -52,7 +52,7 @@ urlpatterns = [
     path("reset_password_with_otp", views.reset_password_with_otp, name="reset_password_with_otp"),
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),
-
+    
 
     #  Profile #
 #   path('profile', views.profile_view, name='profile'),
@@ -169,10 +169,13 @@ urlpatterns = [
 
     #  HR4U #
     path('HR4U/', views.hr4u_dashboard, name='hr_dashboard'),
+    path('hr_services/', views.hr_services_page, name='hr_services'),
+    path('hr_services/edit/<int:pk>/', views.edit_hr_contact, name='edit_hr_contact'),
+    path('hr_services/delete/<int:pk>/', views.delete_hr_contact, name='delete_hr_contact'),
     path('employee_self_service/', views.employee_self_service, name='employee_self_service'),
     path('benefits_compensation', views.benefits_compensation, name='benefits_compensation'),
     path('career_development', views.career_development, name='career_development'),
-    path('help_desk', views.help_desk, name='help_desk'),
+    path('help_desk', views.help_desk_page, name='help_desk'),
     # clear notifications
     path('clear_notifications/', views.clear_notifications, name='clear_notifications'),
     path('teams/', views.list_teams, name='list_teams'),
