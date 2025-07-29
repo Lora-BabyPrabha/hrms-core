@@ -368,3 +368,21 @@ class TaskForm(forms.Form):
     task_name = forms.CharField(max_length=255)
     employee_emails = forms.CharField(max_length=1024)  # For comma-separated emails
     due_date = forms.DateField(widget=forms.SelectDateWidget())  # Date widget for picking a due date
+from django import forms
+from .models import Team
+
+class TeamForm(forms.ModelForm):
+    class Meta:
+        model = Team
+        fields = ['name', 'members']
+        widgets = {
+            'members': forms.CheckboxSelectMultiple
+        }
+    
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            # Only show users from the same company
+            self.fields['members'].queryset = CustomUser.objects.filter(
+                employee__company=user.employee.company
+            )

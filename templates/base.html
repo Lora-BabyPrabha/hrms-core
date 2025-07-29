@@ -352,37 +352,37 @@
                                         {% endif %}>
 
                                 </ul>
-
                                 </li>
+                                <!-- Profile section -->
                                 <!-- Profile section -->
                                 <li id="profileDropdownItem" class="nav-item dropdown">
                                     <a href="#" data-bs-toggle="dropdown" id="profileDropdownButton" style='color: black;'>
-                                        <img width="28" height="28" 
-                                             src="{% if employee_id.media and employee_id.media.profile_picture %}{{ employee_id.media.profile_picture.url }}{% elif employee.media and employee.media.profile_picture %}{{ employee.media.profile_picture.url }}{% else %}{% static 'person-circle.svg' %}{% endif %}"
-                                             alt="Profile Picture" 
-                                             id="profileImage" 
-                                             class="profile-icon" 
-                                             loading="lazy">
+                                        <img width="28" height="28" src="{% if user.employee.media.profile_picture %}{{ user.employee.media.profile_picture.url }}{% else %}{% static 'person-circle.svg' %}{% endif %}"
+                                            alt="Profile Picture" 
+                                            id="profileImage" 
+                                            class="profile-icon rounded-circle"
+                                            loading="lazy">
                                     </a>
-                                    <div id="profileDropdownMenu" class="dropdown-menu dropdown-menu-light dropdown-menu-end text-center" style="width: 250px;">
-                                        <a href="/profile" id="profileGreeting" class="dropdown-item">
-                                            <i class="fas fa-user-circle me-2"></i>
-                                            Hello, {{user.employee_id.title}}
-                                        </a>
-                                        <hr id="divider1" class="dropdown-divider">
-                                        <a href="/profile" id="profileLink" class="dropdown-item">
-                                            <i class="fas fa-user-cog me-2"></i>
-                                            Profile
-                                        </a>
-                                        <hr id="divider2" class="dropdown-divider">
-                                        <form method="POST" action="{% url 'logout' %}" class="dropdown-item">
-                                            {% csrf_token %}
+                                <div id="profileDropdownMenu" class="dropdown-menu dropdown-menu-light dropdown-menu-end text-center" style="width: 250px;">
+                                    <a href="/profile" id="profileGreeting" class="dropdown-item">
+                                        <i class="fas fa-user-circle me-2"></i>
+                                        Hello, {{ user.get_full_name|default:user.username }}
+                                    </a>
+                                    <hr id="divider1" class="dropdown-divider">
+                                    <a href="/profile" id="profileLink" class="dropdown-item">
+                                        <i class="fas fa-user-cog me-2"></i>
+                                        Profile
+                                    </a>
+                                    <hr id="divider2" class="dropdown-divider">
+                                    <form method="POST" action="{% url 'logout' %}" class="dropdown-item">
+                                        {% csrf_token %}
+                                        <button class="btn btn-link p-0 text-decoration-none" type="submit">
                                             <i class="fas fa-sign-out-alt me-2"></i>
-                                            <button class="btn" type="submit">Logout</button>
-                                        </form>
-                                        </a>
-                                    </div>
-                                </li>   
+                                            Logout
+                                        </button>
+                                    </form>
+                                </div>
+                            </li>
 
                             </div>
 
