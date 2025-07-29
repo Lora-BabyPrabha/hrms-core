@@ -3216,7 +3216,7 @@ def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
  
- 
+from .models import EmployeeProfile, Payroll, Benefit, Training  # Add all missing models
 @login_required
 def employee_self_service(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
