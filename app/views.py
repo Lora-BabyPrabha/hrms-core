@@ -1166,7 +1166,8 @@ def profile(request):
 def edit_personal_info(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
  
-    if request.user.employee_user != employee:
+    # Change this line from employee_user to employee
+    if request.user.employee != employee:
         messages.error(request, "You don't have permission to edit this profile.")
         return redirect('profile')
    
@@ -3224,7 +3225,6 @@ def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
  
-from .models import EmployeeProfile, Payroll, Benefit, Training  # Add all missing models
 @login_required
 def employee_self_service(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
