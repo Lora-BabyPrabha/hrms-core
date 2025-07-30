@@ -88,7 +88,7 @@ class Holiday(models.Model):
 #------------------------------------------------------------- Employee #
 
 class Employee(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
     employee_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     name = models.CharField(max_length=100)

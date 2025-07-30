@@ -434,3 +434,16 @@ class TaskForm(forms.Form):
     employee_emails = forms.CharField(max_length=1024)  # For comma-separated emails
     due_date = forms.DateField(widget=forms.SelectDateWidget())  # Date widget for picking a due date
 
+
+
+class PersonalInfoForm(forms.ModelForm):
+        class Meta:
+            model = Employee
+            fields = [
+             'name',
+             'date_of_birth',
+             'gender',
+             'nationality',
+             'phone_number',
+             'address',
+         ]
