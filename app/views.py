@@ -1151,11 +1151,13 @@ def reset_password(request):
 def profile(request):
     user = request.user
     employee = Employee.objects.filter(user=user).first()
-    employee_media = EmployeeMedia.objects.filter(employee=employee).first()
-   
+    
+    # Use select_related or prefetch_related for better performance
+    employee_with_media = Employee.objects.filter(user=user).select_related('media').first()
+    
     return render(request, 'profile.html', {
-        'employee': employee,
-        'employee_media': employee_media,
+        'employee': employee_with_media,  # Now includes media via select_related
+        'employee_id': employee_with_media,  # Add this for navbar compatibility
         'user': user,
     })
  
@@ -1164,7 +1166,8 @@ def profile(request):
 def edit_personal_info(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
  
-    if request.user.employee_user != employee:
+    # Change this line from employee_user to employee
+    if request.user.employee != employee:
         messages.error(request, "You don't have permission to edit this profile.")
         return redirect('profile')
    
@@ -1245,25 +1248,42 @@ def edit_banking_info(request, employee_id):
 @login_required(login_url='/')
 def task_management(request):
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = user.company
- 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
- 
-    # Show all tasks assigned to this user/company by default
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+        company = employee.company
+    except Employee.DoesNotExist:
+        return HttpResponse("Employee record not found", status=404)
+
+    # Get notifications
+    notifications = Notification.objects.filter(
+        recipient=request.user, 
+        is_read=False
+    ).order_by('-created_at')
+
+    # Get teams for dropdown - both created by or containing current company members
+    teams = Team.objects.filter(
+        Q(created_by__employee__company=company) |
+        Q(members__employee__company=company)
+    ).distinct()
+
+    # Base task query
     assigned_tasks = Task.objects.filter(
-        Q(created_by__employee__company=company) | Q(assigned_to__employee__company=company)
+        Q(created_by__employee__company=company) | 
+        Q(assigned_to__employee__company=company)
     ).distinct().order_by('-created_at')
- 
-    # Optional: Apply filters if present
+
+    # Apply filters if present
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
         try:
-            employee_filter = CustomUser.objects.get(employee_id=employee_id, company=company)
+            employee_filter = CustomUser.objects.get(
+                employee_id=employee_id,
+                employee__company=company
+            )
             assigned_tasks = assigned_tasks.filter(assigned_to=employee_filter)
         except CustomUser.DoesNotExist:
             assigned_tasks = Task.objects.none()
- 
+
     month = request.GET.get('month', '')
     if month:
         try:
@@ -1272,8 +1292,8 @@ def task_management(request):
             assigned_tasks = assigned_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
- 
-    # Remove duplicates (by name & due_date)
+
+    # Remove duplicates
     seen = set()
     unique_tasks = []
     for task in assigned_tasks:
@@ -1281,129 +1301,179 @@ def task_management(request):
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
- 
+
+    # Prepare months for filter
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
- 
+
     return render(request, 'task_management.html', {
         'employee_id': user.employee_id,
         'employee': employee,
         'notifications': notifications,
-        'assigned_tasks': unique_tasks,  # <-- This will show tasks by default
+        'assigned_tasks': unique_tasks,
+        'teams': teams,  # Now included!
         'months': months,
-        'current_month': datetime.now().strftime('%Y-%m')
+        'current_month': datetime.now().strftime('%Y-%m'),
+        'debug_info': {  # For template debugging
+            'company_id': company.id,
+            'teams_count': teams.count(),
+            'user_email': user.email
+        }
     })
- 
-   
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.shortcuts import render
-from .models import CustomUser, Employee, Task, Notification
-from django.db.models.functions import Lower
- 
- 
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from django.db.models import Q
+from django.db import transaction
+from datetime import datetime, timedelta
 from django.shortcuts import render
-from .models import CustomUser, Task, Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
- 
+from .models import Employee, Task, Team, CustomUser, Notification
+
+def staff_required(view_func):
+    """
+    Decorator that checks if user is staff member
+    """
+    actual_decorator = user_passes_test(
+        lambda u: u.is_staff,
+        login_url='/',
+        redirect_field_name=None
+    )
+    return actual_decorator(view_func)
+
 @login_required(login_url='/')
-@staff_member_required
+@staff_required  # Using our custom decorator
+@require_http_methods(["GET", "POST"])
 def assign_task(request):
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = employee.company
- 
-    # --- POST: Assign Task ---
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id)
+    except Employee.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Employee record not found'}, status=400)
+
     if request.method == 'POST':
-        try:
-            task_name = request.POST['task_name']
-            employee_input = request.POST['employee_emails']
-            due_date = request.POST['due_date']
- 
-            employee_input_list = [input.strip() for input in employee_input.split(",")]
- 
-            users = CustomUser.objects.filter(
-                (Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)),
-                employee__company=company
-            )
- 
-            if users.exists():
+        with transaction.atomic():
+            try:
+                # Validate required fields
+                task_name = request.POST.get('task_name', '').strip()
+                if not task_name:
+                    return JsonResponse({'status': 'error', 'message': 'Task name is required'}, status=400)
+
+                due_date = request.POST.get('due_date')
+                if not due_date:
+                    return JsonResponse({'status': 'error', 'message': 'Due date is required'}, status=400)
+
+                # Validate and parse due_date
+                try:
+                    due_date = datetime.strptime(due_date, '%Y-%m-%d').date()
+                    if due_date < datetime.now().date():
+                        return JsonResponse({'status': 'error', 'message': 'Due date cannot be in the past'}, status=400)
+                except ValueError:
+                    return JsonResponse({'status': 'error', 'message': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+
+                employee_input = request.POST.get('employee_emails', '').strip()
+                team_id = request.POST.get('team_id', '').strip()
+
+                # Validate assignment method
+                if not team_id and not employee_input:
+                    return JsonResponse({'status': 'error', 'message': 'Please assign to either a team or individuals'}, status=400)
+                if team_id and employee_input:
+                    return JsonResponse({'status': 'error', 'message': 'Please use either team OR individual assignment'}, status=400)
+
+                # Create task
                 task = Task.objects.create(
                     name=task_name,
                     due_date=due_date,
                     created_by=user
                 )
-                task.assigned_to.set(users)
- 
+
+                users = []
+
+                # Handle team assignment
+                if team_id:
+                    team = Team.objects.filter(id=team_id).first()
+                    if not team:
+                        return JsonResponse({'status': 'error', 'message': 'Team not found'}, status=404)
+                    
+                    task.assigned_team = team
+                    users = list(team.members.all())
+                    task.assigned_to.set(users)
+
+                # Handle individual assignment
+                else:
+                    employee_input_list = [input.strip() for input in employee_input.split(",") if input.strip()]
+                    users = CustomUser.objects.filter(
+                        Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)
+                    ).distinct()
+                    
+                    if not users.exists():
+                        return JsonResponse({'status': 'error', 'message': 'No valid employees found'}, status=404)
+                    
+                    task.assigned_to.set(users)
+
+                # Send notifications
                 for user_obj in users:
-                    notification_message = f"You have been assigned a task: {task_name}, with a due date of {due_date}."
-                    Notification.objects.create(recipient=user_obj, message=notification_message)
- 
-                task.save()
- 
-                return JsonResponse({'status': 'success', 'message': f"Task '{task_name}' has been assigned successfully!"})
-            else:
-                return JsonResponse({'status': 'error', 'message': f"Employee '{employee_input}' not found in your company!"}, status=400)
- 
-        except KeyError as e:
-            return JsonResponse({'status': 'error', 'message': f'Missing key: {e.args[0]}'}, status=400)
-        except Exception as e:
-            print(f"Error: {e}")
-            return JsonResponse({'status': 'error', 'message': 'An error occurred while assigning the task.'}, status=500)
- 
-    # --- GET: Always show all tasks by default ---
-    # Show all tasks created by this user for this company by default
-    all_tasks = Task.objects.filter(
-        created_by=user,
-        created_by__employee__company=company
-    ).order_by('-created_at')
- 
-    # Apply filters only if present
+                    Notification.objects.create(
+                        recipient=user_obj,
+                        message=f"You have been assigned a task: {task_name}, due on {due_date}."
+                    )
+
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': f"Task '{task_name}' assigned successfully!",
+                    'task_id': task.id
+                })
+
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    # GET request handling
+    teams = Team.objects.all()
+
+# Only show tasks CREATED BY the current user
+    assigned_tasks = Task.objects.filter(
+        created_by=user  # This is the key filter
+        ).order_by('-created_at')
+
+# Apply filters if present
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
         try:
-            employee_filter = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
-            all_tasks = all_tasks.filter(assigned_to=employee_filter)
+            employee_filter = CustomUser.objects.get(employee_id=employee_id)
+            assigned_tasks = assigned_tasks.filter(assigned_to=employee_filter)
         except CustomUser.DoesNotExist:
-            all_tasks = Task.objects.none()
- 
+            assigned_tasks = Task.objects.none()
+
     month = request.GET.get('month', '')
     if month:
         try:
             month_start = datetime.strptime(month, '%Y-%m').date()
             month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-            all_tasks = all_tasks.filter(due_date__range=[month_start, month_end])
+            assigned_tasks = assigned_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
- 
-    # Unique task filter (by name & due_date)
+
+# Remove duplicates (if still needed)
     seen = set()
     unique_tasks = []
-    for task in all_tasks:
+    for task in assigned_tasks:
         key = (task.name, task.due_date)
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
- 
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
- 
+
     return render(request, 'task_management.html', {
         'employee': employee,
-        'assigned_tasks': unique_tasks,  # always show tasks by default
+        'assigned_tasks': unique_tasks,
         'months': months,
-        'current_month': datetime.now().strftime('%Y-%m')
+        'current_month': datetime.now().strftime('%Y-%m'),
+        'teams': teams
     })
- 
- 
- 
- 
 @login_required
 def tasks_by_date(request):
     if request.method == 'GET':
@@ -1442,28 +1512,49 @@ def mark_task_complete(request, task_id):
         return JsonResponse({'status': 'error', 'message': 'Task not found'})
  
  
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+from django.db.models import Q
+
+@require_GET
+@login_required
 def my_tasks(request):
     try:
         user = request.user
- 
-        tasks = Task.objects.filter(assigned_to=user).order_by('-created_at')
- 
-        tasks_data = [
-            {
-                'id': task.id,
-                'name': task.name,
-                'due_date': task.due_date,
-                'completed': task.completed,
-                'assigned_to': [f"{user.first_name} {user.last_name}" for user in task.assigned_to.all()]
-            }
-            for task in tasks
-        ]
- 
-        return JsonResponse({'tasks': tasks_data})
- 
+        tasks = Task.objects.filter(
+            Q(assigned_to=user) | 
+            Q(assigned_team__members=user)
+        ).distinct().order_by('-created_at')
+
+        # Check if it's an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            tasks_data = [
+                {
+                    'id': task.id,
+                    'name': task.name,
+                    'due_date': task.due_date.strftime('%Y-%m-%d'),
+                    'completed': task.completed,
+                    'assigned_to': [f"{user.first_name} {user.last_name}" for user in task.assigned_to.all()]
+                }
+                for task in tasks
+            ]
+            return JsonResponse({'tasks': tasks_data})
+        else:
+            # Return HTML template for normal requests
+            return render(request, 'task_management.html', {
+                'tasks': tasks,
+                'show_my_tasks': True  # Flag to show my tasks interface
+            })
+
     except Exception as e:
         print(f"Error: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'error': str(e)}, status=500)
+        else:
+            # Return error page for normal requests
+            return render(request, 'error.html', {'error': str(e)})
  
 #------------------------------------------------------------- Expense claim #
  
@@ -3134,6 +3225,7 @@ def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
  
+<<<<<<< HEAD
 #------------------------------------------------------------- Employee Self Service #
  
 from django.contrib.auth.decorators import login_required
@@ -3144,6 +3236,9 @@ from django.contrib import messages
 from django.contrib import messages
  
 @login_required(login_url='/')
+=======
+@login_required
+>>>>>>> 86416029129b1b8746ff14dd1bbfd283937184de
 def employee_self_service(request):
     employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
  
@@ -3220,4 +3315,102 @@ def clear_notifications(request):
         Notification.objects.filter(recipient=request.user).delete()
         messages.success(request, "All notifications cleared.")
     return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
- 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Team, CustomUser
+from .forms import TeamForm
+
+@login_required
+def list_teams(request):
+    teams = Team.objects.filter(created_by=request.user)  # Only show user's teams
+    return render(request, 'list_teams.html', {'teams': teams})
+
+@login_required
+def create_team(request):
+    # Get all employees from the same company as the current user
+    employees = CustomUser.objects.filter(
+        employee__company=request.user.employee.company
+    ).exclude(id=request.user.id)  # Exclude current user if needed
+    
+    if request.method == 'POST':
+        team_name = request.POST.get('team_name')
+        description = request.POST.get('description', '')
+        member_ids = request.POST.getlist('members', [])
+        
+        if not team_name:
+            messages.error(request, 'Team name is required')
+            return render(request, 'create_team.html', {
+                'employees': employees,
+                'team_name': team_name,
+                'description': description
+            })
+        
+        try:
+            with transaction.atomic():
+                # Create the team
+                team = Team.objects.create(
+                    name=team_name,
+                    description=description,
+                    created_by=request.user
+                )
+                
+                # Add selected members
+                if member_ids:
+                    members = CustomUser.objects.filter(
+                        id__in=member_ids,
+                        employee__company=request.user.employee.company
+                    )
+                    team.members.set(members)
+                
+                messages.success(request, f'Team "{team_name}" created successfully!')
+                return redirect('list_teams')
+                
+        except Exception as e:
+            messages.error(request, f'Error creating team: {str(e)}')
+            return render(request, 'create_team.html', {
+                'employees': employees,
+                'team_name': team_name,
+                'description': description
+            })
+    
+    # GET request
+    return render(request, 'create_team.html', {
+        'employees': employees
+    })
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Team, CustomUser
+
+@login_required
+def edit_team(request, team_id):
+    team = get_object_or_404(Team, id=team_id, created_by=request.user)
+    employees = CustomUser.objects.filter(employee__company=request.user.employee.company)
+    
+    if request.method == 'POST':
+        team.name = request.POST.get('team_name')
+        team.description = request.POST.get('description', '')
+        team.save()
+        
+        # Update members
+        selected_members = request.POST.getlist('members')
+        team.members.set(selected_members)
+        
+        messages.success(request, 'Team updated successfully!')
+        return redirect('list_teams')
+    
+    return render(request, 'edit_team.html', {
+        'team': team,
+        'employees': employees
+    })
+
+@login_required
+def delete_team(request, team_id):
+    team = get_object_or_404(Team, id=team_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        team.delete()
+        messages.success(request, 'Team deleted successfully!')
+        return redirect('list_teams')
+    
+    return render(request, 'delete_team.html', {'team': team})

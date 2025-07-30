@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{% static 'css/task_management.css' %}">
 
 <li class="sidebar-item">
-    <a id="assignTaskBtn" class="btn btn-outline-none mt-4">
+    <a href="{% url 'assign_task' %}" class="btn btn-outline-none mt-4" id="assignTaskBtn">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-stopwatch mx-3" viewBox="0 0 16 16">
             <path d="M8.5 5.6a.5.5 0 1 0-1 0v2.9h-3a.5.5 0 0 0 0 1H8a.5.5 0 0 0 .5-.5z"/>
             <path d="M6.5 1A.5.5 0 0 1 7 .5h2a.5.5 0 0 1 0 1v.57c1.36.196 2.594.78 3.584 1.64l.012-.013.354-.354-.354-.353a.5.5 0 0 1 .707-.708l1.414 1.415a.5.5 0 1 1-.707.707l-.353-.354-.354.354-.013.012A7 7 0 1 1 7 2.071V1.5a.5.5 0 0 1-.5-.5M8 3a6 6 0 1 0 .001 12A6 6 0 0 0 8 3"/>
@@ -17,7 +17,7 @@
 </li>
 
 <li class="sidebar-item">
-    <a id="myTaskBtn" class="btn mt-4">
+    <a href="{% url 'my_tasks' %}" class="btn mt-4" id="myTaskBtn">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-calendar2-check mx-3" viewBox="0 0 16 16">
             <path d="M10.854 8.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 10.793l2.646-2.647a.5.5 0 0 1 .708 0"/>
             <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M2 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
@@ -26,12 +26,21 @@
         My Tasks
     </a>
 </li>
+<li class="sidebar-item">
+    <a href="{% url 'list_teams' %}" class="btn mt-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-people-fill mx-3" viewBox="0 0 16 16">
+            <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+            
+        </svg>
+        Manage Teams
+    </a>
+</li>
 {% endblock %}
 {% block content %}
 <div class="container mx-auto">
 
     <!-- ✅ Assign Task Section -->
-    <div id="assignTaskInterface" class="interface active">
+    <div id="assignTaskInterface" class="interface {% if not show_my_tasks %}active{% else %}d-none{% endif %}">
         <h3 class='pb-3 text-center'>Assign Task</h3>
 
         <!-- Task Form -->
@@ -40,9 +49,23 @@
             <label for="taskName">Task Name</label>
             <input type="text" id="taskName" name="task_name" placeholder="Enter Task Name" required>
 
-            <label for="employeeEmails">Assign To (Emails or IDs)</label>
-            <input type="text" id="employeeEmails" name="employee_emails" placeholder="Enter Emails/IDs (comma-separated)" required>
+            <label for="employeeEmails">Assign To Individuals (Emails or IDs)</label>
+            <input type="text" id="employeeEmails" name="employee_emails" placeholder="Enter Emails/IDs (comma-separated)">
 
+<!-- NEW: Team Assignment Dropdown -->
+            <div class="form-group mt-3">
+                <label for="teamSelect"> OR Assign to Team</label>
+                <!-- In your task_management.html -->
+                <select name="team_id" id="teamSelect" class="form-control">
+                    <option value="">-- Select Team --</option>
+                    {% for team in teams %}
+                        <option value="{{ team.id }}">{{ team.name }}</option>
+                    {% empty %}
+                        <option disabled>No teams available</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <br>
             <label for="dueDate">Due Date</label>
             <input type="date" id="dueDate" name="due_date" required>
 
@@ -87,35 +110,39 @@
                 </tr>
             </thead>
             <tbody>
-                {% for task in assigned_tasks %}
-                    <tr>
-                        <td>{{ task.name }}</td>
-                        <td>
-                            {% for user in task.assigned_to.all %}
-                                {{ user.employee_id }}{% if not forloop.last %}, {% endif %}
-                            {% endfor %}
-                        </td>
-                        <td>{{ task.due_date }}</td>
-                        <td>
-                            {% if task.completed %}
-                                <span class="badge bg-success">Completed</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ task.created_at|date:"d M Y, h:i A" }}</td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">No tasks assigned yet.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
+                    {% for task in assigned_tasks %}
+                        <tr data-task-id="{{ task.id }}">
+                            <td>{{ task.name }}</td>
+                            <td>
+                                {% if task.assigned_team %}
+                                    <strong>Team:</strong> {{ task.assigned_team.name }}
+                                {% else %}
+                                    {% for user in task.assigned_to.all %}
+                                        {{ user.employee_id }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </td>
+                            <td>{{ task.due_date }}</td>
+                            <td>
+                                {% if task.completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ task.created_at|date:"d M Y, h:i A" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No tasks assigned yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
         </table>
     </div>
 
     <!-- ✅ My Task Section -->
-    <div id="myTaskInterface" class="interface" style="display: none;">
+    <div id="myTaskInterface" class="interface {% if show_my_tasks %}active{% else %}d-none{% endif %}">
         <h3 class="text-center mb-4">My Tasks</h3>
         <div class="calendar-header d-flex justify-content-between mb-3">
             <button id="prevMonth">Previous</button>
@@ -197,5 +224,30 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+document.querySelectorAll('table tbody tr').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            if (taskId) {
+                fetch(`/task-detail/${taskId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('taskModalContent').innerHTML = `
+                            <h5>${data.name}</h5>
+                            <p><strong>Due:</strong> ${data.due_date}</p>
+                            <p><strong>Assigned To:</strong> ${data.assigned_to.join(', ')}</p>
+                            <p><strong>Status:</strong> ${data.completed ? 'Completed' : 'Pending'}</p>
+                        `;
+                        document.getElementById('taskModal').style.display = 'block';
+                    });
+            }
+        });
+    });
+
+    // Close modal handler
+    document.getElementById('closeModalBtn').addEventListener('click', function() {
+        document.getElementById('taskModal').style.display = 'none';
+    });
+    
 </script>
 {% endblock %}

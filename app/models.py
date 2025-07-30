@@ -309,15 +309,32 @@ class LoanRequest(models.Model):
 
 #------------------------------------------------------------- Task Management #
 
+from django.db import models
+
+class Team(models.Model):
+    name = models.CharField(max_length=100)
+    members = models.ManyToManyField(CustomUser, related_name='teams')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('name', 'created_by')  # Team names unique per creator
+
+    def __str__(self):
+        return self.name
+
 class Task(models.Model):
     name = models.CharField(max_length=255, default='No Task Name')
     assigned_to = models.ManyToManyField(CustomUser, related_name="tasks")
+    assigned_team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True, related_name="team_tasks")
     due_date = models.DateField()
     completed = models.BooleanField(default=False)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="tasks_created", null=True)
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
     class Meta:

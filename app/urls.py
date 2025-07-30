@@ -64,10 +64,11 @@ urlpatterns = [
 
     #  Task #
     path('task_management/', views.task_management, name='task_management'),
-    path('assign-task/', views.assign_task, name='assign_task'),
+    path('assign_task/', views.assign_task, name='assign_task'),
     path('mark-task-complete/<int:task_id>/', views.mark_task_complete, name='mark_task_complete'),
     path('my-tasks/', views.my_tasks, name='my_tasks'),
     path('tasks-by-date/', views.tasks_by_date, name='tasks_by_date'),
+    
 
 
     #  Salaries #
@@ -177,5 +178,9 @@ urlpatterns = [
     path('help_desk', views.help_desk_page, name='help_desk'),
     # clear notifications
     path('clear_notifications/', views.clear_notifications, name='clear_notifications'),
+    path('teams/', views.list_teams, name='list_teams'),
+    path('teams/create/', views.create_team, name='create_team'),
+    path('teams/<int:team_id>/edit/', views.edit_team, name='edit_team'),
+    path('teams/<int:team_id>/delete/', views.delete_team, name='delete_team'),
 
 ]
