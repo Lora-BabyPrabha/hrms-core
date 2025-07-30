@@ -35,7 +35,6 @@ ROLE_TYPE = (
 )
 
 #------------------------------------------------------------- Custom User #
-
 class CustomUser(AbstractUser):
     username = None
     name = models.CharField(max_length=100)
@@ -45,12 +44,13 @@ class CustomUser(AbstractUser):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
-    
+
     USERNAME_FIELD = "employee_id"
     REQUIRED_FIELDS = ['email']
 
-    def __unicode__(self):
-        return self.employee_id
+    # filepath: d:\hrms-core\hrms-core\app\models.py
+    def __str__(self):
+        return f"{self.name} ({self.employee_id})"# You can also return f"{self.name} ({self.employee_id})"
 
     def save(self, *args, **kwargs):
         if self.name == 'Unknown' or not self.name:

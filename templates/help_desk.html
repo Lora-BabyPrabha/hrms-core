@@ -104,14 +104,36 @@
             <tr>
                 <td>{{ ticket.get_category_display }}</td>
                 <td>{{ ticket.issue_type }}</td>
-                <td>{{ ticket.assigned_to.employee.name }}</td>
-                <td>{{ ticket.escalate_to_hr.employee.name }}</td>
-                <td>{{ ticket.manager.employee.name }}</td>
+
+                <td>
+                    {% if ticket.assigned_to and ticket.assigned_to.employee %}
+                        {{ ticket.assigned_to.employee.name }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if ticket.escalate_to_hr and ticket.escalate_to_hr.employee %}
+                        {{ ticket.escalate_to_hr.employee.name }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if ticket.manager and ticket.manager.employee %}
+                        {{ ticket.manager.employee.name }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
                 <td>{{ ticket.get_status_display }}</td>
                 <td>{{ ticket.created_at|date:"d M Y, H:i" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="7">No tickets raised yet.</td></tr>
+            <tr><td colspan="7" class="text-center">No tickets raised yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>
