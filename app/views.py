@@ -1151,13 +1151,11 @@ def reset_password(request):
 def profile(request):
     user = request.user
     employee = Employee.objects.filter(user=user).first()
-    
-    # Use select_related or prefetch_related for better performance
-    employee_with_media = Employee.objects.filter(user=user).select_related('media').first()
-    
+    employee_media = EmployeeMedia.objects.filter(employee=employee).first()
+   
     return render(request, 'profile.html', {
-        'employee': employee_with_media,  # Now includes media via select_related
-        'employee_id': employee_with_media,  # Add this for navbar compatibility
+        'employee': employee,
+        'employee_media': employee_media,
         'user': user,
     })
  

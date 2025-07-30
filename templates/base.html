@@ -357,11 +357,16 @@
                                 <!-- Profile section -->
                                 <li id="profileDropdownItem" class="nav-item dropdown">
                                     <a href="#" data-bs-toggle="dropdown" id="profileDropdownButton" style='color: black;'>
-                                        <img width="28" height="28" src="{% if user.employee.media.profile_picture %}{{ user.employee.media.profile_picture.url }}{% else %}{% static 'person-circle.svg' %}{% endif %}"
-                                            alt="Profile Picture" 
-                                            id="profileImage" 
-                                            class="profile-icon rounded-circle"
-                                            loading="lazy">
+                                        <img width="28" height="28"
+                                            src="{% if user.employee.media.profile_picture %}
+                                                    {{ user.employee.media.profile_picture.url }}
+                                                {% else %}
+                                                    {% static 'person-circle.svg' %}
+                                                {% endif %}"
+                                             alt="Profile Picture"
+                                             id="profileImage"
+                                             class="profile-icon"
+                                             loading="lazy">
                                     </a>
                                 <div id="profileDropdownMenu" class="dropdown-menu dropdown-menu-light dropdown-menu-end text-center" style="width: 250px;">
                                     <a href="/profile" id="profileGreeting" class="dropdown-item">
