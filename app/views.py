@@ -1351,6 +1351,17 @@ from datetime import datetime, timedelta # custom staff_required
 from .models import Task, Team, Employee, Notification, CustomUser
 
 
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_http_methods
+from django.db import transaction
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import render
+from datetime import datetime, timedelta
+
+from .models import Task, Notification, Team, Employee, CustomUser
+
 @login_required(login_url='/')
 @staff_member_required
 @require_http_methods(["GET", "POST"])
@@ -1388,22 +1399,27 @@ def assign_task(request):
                 if team_id and employee_input:
                     return JsonResponse({'status': 'error', 'message': 'Please use either team OR individual assignment'}, status=400)
 
+                # Create the task
                 task = Task.objects.create(
                     name=task_name,
                     due_date=due_date,
-                    created_by=user
+                    created_by=user,
+                    company=company
                 )
 
                 users = []
 
+                # === Team Assignment ===
                 if team_id:
                     team = Team.objects.filter(id=team_id, company=company).first()
                     if not team:
                         return JsonResponse({'status': 'error', 'message': 'Team not found in your company'}, status=404)
+
                     task.assigned_team = team
-                    users = list(team.members.filter(employee__company=company))  # filter team members by company
+                    users = list(team.members.filter(employee__company=company))
                     task.assigned_to.set(users)
 
+                # === Individual Assignment ===
                 else:
                     employee_input_list = [i.strip() for i in employee_input.split(",") if i.strip()]
                     users = CustomUser.objects.filter(
@@ -1416,10 +1432,12 @@ def assign_task(request):
 
                     task.assigned_to.set(users)
 
+                # === Notify all assigned users ===
                 for user_obj in users:
                     Notification.objects.create(
                         recipient=user_obj,
-                        message=f"You have been assigned a task: {task_name}, due on {due_date}."
+                        message=f"You have been assigned a task: '{task_name}', due on {due_date}.",
+                        company=company
                     )
 
                 task.save()
@@ -1482,6 +1500,7 @@ def assign_task(request):
         'current_month': datetime.now().strftime('%Y-%m'),
         'teams': teams
     })
+
 
 @login_required
 def tasks_by_date(request):
