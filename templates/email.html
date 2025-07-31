@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Assignment Notification</title>
+</head>
+<body>
+    <h2>Hello {{ recipient_name }},</h2>
+    <p>You have been assigned a new task:</p>
+    
+    <ul>
+        <li><strong>Task Name:</strong> {{ task_name }}</li>
+        <li><strong>Due Date:</strong> {{ due_date }}</li>
+        <li><strong>Assigned By:</strong> {{ assigned_by }}</li>
+    </ul>
+    
+    <p>Please log in to your account to view more details.</p>
+    
+    <footer>
+        <p>Best regards,<br>
+        {{ company_name }} Team</p>
+    </footer>
+</body>
+</html>

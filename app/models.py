@@ -317,6 +317,7 @@ class Team(models.Model):
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE) 
     
     class Meta:
         unique_together = ('name', 'created_by')  # Team names unique per creator

@@ -1266,9 +1266,10 @@ def task_management(request):
 
     # Base task query
     assigned_tasks = Task.objects.filter(
-        Q(created_by__employee__company=company) | 
-        Q(assigned_to__employee__company=company)
-    ).distinct().order_by('-created_at')
+        created_by=user
+    ).order_by('-created_at')
+
+
 
     # Apply filters if present
     employee_id = request.GET.get('employee_id', '')
@@ -1340,46 +1341,53 @@ def staff_required(view_func):
     )
     return actual_decorator(view_func)
 
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.db import transaction
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import render
+from datetime import datetime, timedelta # custom staff_required
+from .models import Task, Team, Employee, Notification, CustomUser
+
+
 @login_required(login_url='/')
-@staff_required  # Using our custom decorator
+@staff_member_required
 @require_http_methods(["GET", "POST"])
 def assign_task(request):
     user = request.user
     try:
         employee = Employee.objects.get(employee_id=user.employee_id)
+        company = employee.company
     except Employee.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Employee record not found'}, status=400)
 
+    # === POST: Task assignment ===
     if request.method == 'POST':
         with transaction.atomic():
             try:
-                # Validate required fields
                 task_name = request.POST.get('task_name', '').strip()
+                due_date_str = request.POST.get('due_date', '').strip()
+                employee_input = request.POST.get('employee_emails', '').strip()
+                team_id = request.POST.get('team_id', '').strip()
+
                 if not task_name:
                     return JsonResponse({'status': 'error', 'message': 'Task name is required'}, status=400)
-
-                due_date = request.POST.get('due_date')
-                if not due_date:
+                if not due_date_str:
                     return JsonResponse({'status': 'error', 'message': 'Due date is required'}, status=400)
 
-                # Validate and parse due_date
                 try:
-                    due_date = datetime.strptime(due_date, '%Y-%m-%d').date()
+                    due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
                     if due_date < datetime.now().date():
                         return JsonResponse({'status': 'error', 'message': 'Due date cannot be in the past'}, status=400)
                 except ValueError:
                     return JsonResponse({'status': 'error', 'message': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
 
-                employee_input = request.POST.get('employee_emails', '').strip()
-                team_id = request.POST.get('team_id', '').strip()
-
-                # Validate assignment method
                 if not team_id and not employee_input:
                     return JsonResponse({'status': 'error', 'message': 'Please assign to either a team or individuals'}, status=400)
                 if team_id and employee_input:
                     return JsonResponse({'status': 'error', 'message': 'Please use either team OR individual assignment'}, status=400)
 
-                # Create task
                 task = Task.objects.create(
                     name=task_name,
                     due_date=due_date,
@@ -1388,37 +1396,36 @@ def assign_task(request):
 
                 users = []
 
-                # Handle team assignment
                 if team_id:
-                    team = Team.objects.filter(id=team_id).first()
+                    team = Team.objects.filter(id=team_id, company=company).first()
                     if not team:
-                        return JsonResponse({'status': 'error', 'message': 'Team not found'}, status=404)
-                    
+                        return JsonResponse({'status': 'error', 'message': 'Team not found in your company'}, status=404)
                     task.assigned_team = team
-                    users = list(team.members.all())
+                    users = list(team.members.filter(employee__company=company))  # filter team members by company
                     task.assigned_to.set(users)
 
-                # Handle individual assignment
                 else:
-                    employee_input_list = [input.strip() for input in employee_input.split(",") if input.strip()]
+                    employee_input_list = [i.strip() for i in employee_input.split(",") if i.strip()]
                     users = CustomUser.objects.filter(
-                        Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)
+                        (Q(email__in=employee_input_list) | Q(employee_id__in=employee_input_list)),
+                        employee__company=company
                     ).distinct()
-                    
+
                     if not users.exists():
-                        return JsonResponse({'status': 'error', 'message': 'No valid employees found'}, status=404)
-                    
+                        return JsonResponse({'status': 'error', 'message': 'No valid employees found in your company'}, status=404)
+
                     task.assigned_to.set(users)
 
-                # Send notifications
                 for user_obj in users:
                     Notification.objects.create(
                         recipient=user_obj,
                         message=f"You have been assigned a task: {task_name}, due on {due_date}."
                     )
 
+                task.save()
+
                 return JsonResponse({
-                    'status': 'success', 
+                    'status': 'success',
                     'message': f"Task '{task_name}' assigned successfully!",
                     'task_id': task.id
                 })
@@ -1426,44 +1433,47 @@ def assign_task(request):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-    # GET request handling
-    teams = Team.objects.all()
+    # === GET: Show tasks created by this user in their company ===
+    all_tasks = Task.objects.filter(
+        created_by=user,
+        created_by__employee__company=company
+    ).order_by('-created_at')
 
-# Only show tasks CREATED BY the current user
-    assigned_tasks = Task.objects.filter(
-        created_by=user  # This is the key filter
-        ).order_by('-created_at')
-
-# Apply filters if present
+    # Optional filtering by employee_id
     employee_id = request.GET.get('employee_id', '')
     if employee_id:
         try:
-            employee_filter = CustomUser.objects.get(employee_id=employee_id)
-            assigned_tasks = assigned_tasks.filter(assigned_to=employee_filter)
+            filtered_user = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
+            all_tasks = all_tasks.filter(assigned_to=filtered_user)
         except CustomUser.DoesNotExist:
-            assigned_tasks = Task.objects.none()
+            all_tasks = Task.objects.none()
 
+    # Optional filtering by month
     month = request.GET.get('month', '')
     if month:
         try:
             month_start = datetime.strptime(month, '%Y-%m').date()
             month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-            assigned_tasks = assigned_tasks.filter(due_date__range=[month_start, month_end])
+            all_tasks = all_tasks.filter(due_date__range=[month_start, month_end])
         except ValueError:
             pass
 
-# Remove duplicates (if still needed)
+    # Remove duplicate tasks (based on name + due date)
     seen = set()
     unique_tasks = []
-    for task in assigned_tasks:
+    for task in all_tasks:
         key = (task.name, task.due_date)
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
+
+    # Month dropdown
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
+
+    teams = Team.objects.filter(company=company)
 
     return render(request, 'task_management.html', {
         'employee': employee,
@@ -1472,6 +1482,7 @@ def assign_task(request):
         'current_month': datetime.now().strftime('%Y-%m'),
         'teams': teams
     })
+
 @login_required
 def tasks_by_date(request):
     if request.method == 'GET':
