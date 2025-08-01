@@ -1,12 +1,33 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block title %}Task Management{% endblock %}
+<head>
+    <style>
+        .btn-gradient-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        }
+
+        .btn-gradient-primary:hover {
+        background: linear-gradient(135deg, #5a67d8, #6b46c1);
+        }
+        a:hover {
+        text-decoration: underline;
+        color: #5a67d8;
+    }
+
+    </style>
+
 
 {% block sidebar %}
 <link rel="stylesheet" href="{% static 'css/task_management.css' %}">
-
+</head>
 <li class="sidebar-item">
-    <a href="{% url 'task_management' %}" class="btn mt-4">
+    <a href="{% url 'assign_task' %}" class="btn mt-4">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-stopwatch mx-3" viewBox="0 0 16 16">
             <path d="M8.5 5.6a.5.5 0 1 0-1 0v2.9h-3a.5.5 0 0 0 0 1H8a.5.5 0 0 0 .5-.5z"/>
             <path d="M6.5 1A.5.5 0 0 1 7 .5h2a.5.5 0 0 1 0 1v.57c1.36.196 2.594.78 3.584 1.64l.012-.013.354-.354-.354-.353a.5.5 0 0 1 .707-.708l1.414 1.415a.5.5 0 1 1-.707.707l-.353-.354-.354.354-.013.012A7 7 0 1 1 7 2.071V1.5a.5.5 0 0 1-.5-.5M8 3a6 6 0 1 0 .001 12A6 6 0 0 0 8 3"/>
@@ -41,34 +62,48 @@
     <h2>My Teams</h2>
     <a href="{% url 'create_team' %}" class="btn btn-primary mb-3">Create New Team</a>
     
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Members</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for team in teams %}
-            <tr>
-                <td>{{ team.name }}</td>
-                <td>
-                    {% for member in team.members.all %}
-                        {{ member.get_full_name }}{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                </td>
-                <td>
-                    <a href="{% url 'edit_team' team.id %}" class="btn btn-sm btn-warning">Edit</a>
-                    <a href="{% url 'delete_team' team.id %}" class="btn btn-sm btn-danger">Delete</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3">No teams created yet.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+    <table>
+    <thead>
+        <tr>
+            <th>Team Name</th>
+            <th>Members</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for team in teams_created %}
+        <tr>
+            <td>{{ team.name }}</td>
+            <td>
+                {% for member in team.members.all %}
+                    {{ member.employee.name }}-{{ member.employee.employee_id }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </td>
+            <td>
+                <a href="{% url 'edit_team' team.id %}">Edit</a> |
+                <a href="{% url 'delete_team' team.id %}">Delete</a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="3">You haven’t created any teams.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<br><hr><br>
+
+<!-- Teams You're Part Of -->
+<h4>Teams You're Part Of:</h4>
+<ul style="list-style: none; padding-left: 0;">
+  {% for team in teams_part_of %}
+    <li style="margin-bottom: 8px;">
+      <i class="fas fa-users" style="color: #6c63ff;"></i>
+      <a href="{% url 'team_detail' team.id %}" style="margin-left: 8px;">{{ team.name }}</a>
+    </li>
+  {% empty %}
+    <li><i class="fas fa-exclamation-circle"></i> You are not a member of any team.</li>
+  {% endfor %}
+</ul>
+
 {% endblock %}
+

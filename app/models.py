@@ -318,6 +318,7 @@ class Team(models.Model):
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE) 
     
     class Meta:
         unique_together = ('name', 'created_by')  # Team names unique per creator
@@ -330,6 +331,7 @@ class Task(models.Model):
     assigned_to = models.ManyToManyField(CustomUser, related_name="tasks")
     assigned_team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True, related_name="team_tasks")
     due_date = models.DateField()
+    start_date = models.DateField()  # New field
     completed = models.BooleanField(default=False)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -468,6 +470,8 @@ class Skill(models.Model):
     
     def __str__(self):
         return self.name
+
+
 
 
 
