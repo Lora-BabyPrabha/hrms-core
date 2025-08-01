@@ -3627,14 +3627,6 @@ def delete_team(request, team_id):
     
     return render(request, 'delete_team.html', {'team': team})
 
-<<<<<<< HEAD
-
-
-@login_required
-def career_development(request):
-    return render(request, 'career_development.html')
- 
-=======
 from django.shortcuts import render, get_object_or_404
 from .models import Team
 
@@ -3646,4 +3638,8 @@ def team_detail(request, team_id):
         'team': team,
         'members': members
     })
->>>>>>> 631c617e624798e4578cb9711621f06e4f47093c
+
+
+@login_required
+def career_development(request):
+    return render(request, 'career_development.html')
