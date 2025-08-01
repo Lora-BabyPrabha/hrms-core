@@ -7,23 +7,26 @@ from app.models import HelpDeskTicket
 class Command(BaseCommand):
     help = "Escalate tickets to HR and Manager if unseen within 1 minute (for testing)."
 
-    HR_ISSUE_DISPLAY = dict([
-        ('login', 'Login Issue'),
-        ('attendance', 'Attendance Issue'),
-        ('other', 'Other'),
-    ])
-    IT_ISSUE_DISPLAY = dict([
-        ('email', 'Email Issue'),
-        ('hardware', 'Hardware Issue'),
-        ('software', 'Software Issue'),
-        ('other', 'Other'),
-    ])
-    AS_ISSUE_DISPLAY = dict([
-        ('exam', 'Exam Issue'),
-        ('marks', 'Marks Dispute'),
-        ('report', 'Assessment Report Issue'),
-        ('other', 'Other'),
-    ])
+    HR_ISSUE_DISPLAY = {
+        'attendance': 'Attendance Issue',
+        'payroll': 'Payroll Issue',
+        'leave': 'Leave Request',
+        'policy': 'Policy Clarification',
+    }
+
+    IT_ISSUE_DISPLAY = {
+        'login': 'Login Problem',
+        'hardware': 'Hardware Issue',
+        'software': 'Software Problem',
+        'network': 'Network Issue',
+    }
+
+    AS_ISSUE_DISPLAY = {  # Renamed category: AS = Asset
+        'exam': 'Laptop Not Working',
+        'grading': 'Missing Asset',
+        'result': 'Need New Equipment',
+        'reassessment': 'Return Asset Request',
+    }
 
     def get_issue_display(self, ticket):
         issue_type = ticket.issue_type
@@ -31,7 +34,7 @@ class Command(BaseCommand):
             return self.HR_ISSUE_DISPLAY.get(issue_type, issue_type)
         elif ticket.category == 'IT':
             return self.IT_ISSUE_DISPLAY.get(issue_type, issue_type)
-        elif ticket.category == 'AS':
+        elif ticket.category == 'AS':  # AS now means "Asset"
             return self.AS_ISSUE_DISPLAY.get(issue_type, issue_type)
         return issue_type
 
@@ -54,9 +57,11 @@ class Command(BaseCommand):
             if ticket.escalate_to_hr and ticket.escalate_to_hr.email:
                 send_mail(
                     subject=f"[Escalated to HR] Ticket #{ticket.id}",
-                    message=f"The ticket from {ticket.employee} has been escalated to you.\n\n"
-                            f"Issue Type: {issue_display}\n"
-                            f"Description: {ticket.description}",
+                    message=(
+                        f"The ticket from {ticket.employee} has been escalated to you.\n\n"
+                        f"Issue Type: {issue_display}\n"
+                        f"Description: {ticket.description}"
+                    ),
                     from_email=None,
                     recipient_list=[ticket.escalate_to_hr.email],
                     fail_silently=False,
@@ -80,9 +85,11 @@ class Command(BaseCommand):
             if ticket.manager and ticket.manager.email:
                 send_mail(
                     subject=f"[Escalated to Manager] Ticket #{ticket.id}",
-                    message=f"The ticket from {ticket.employee} has now been escalated to you.\n\n"
-                            f"Issue Type: {issue_display}\n"
-                            f"Description: {ticket.description}",
+                    message=(
+                        f"The ticket from {ticket.employee} has now been escalated to you.\n\n"
+                        f"Issue Type: {issue_display}\n"
+                        f"Description: {ticket.description}"
+                    ),
                     from_email=None,
                     recipient_list=[ticket.manager.email],
                     fail_silently=False,

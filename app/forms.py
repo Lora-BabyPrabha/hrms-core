@@ -412,13 +412,16 @@ class HelpDeskTicketForm(forms.ModelForm):
 
         # Set issue type choices based on category
         if category == 'HR':
-            self.fields['issue_type'].choices = HelpDeskTicket.HR_ISSUE_CHOICES
+            choices = HelpDeskTicket.HR_ISSUE_CHOICES
         elif category == 'IT':
-            self.fields['issue_type'].choices = HelpDeskTicket.IT_ISSUE_CHOICES
+            choices = HelpDeskTicket.IT_ISSUE_CHOICES
         elif category == 'AS':
-            self.fields['issue_type'].choices = HelpDeskTicket.AS_ISSUE_CHOICES
+            choices = HelpDeskTicket.AS_ISSUE_CHOICES
         else:
-            self.fields['issue_type'].choices = []
+            choices = []
+
+        # Add empty placeholder choice at the beginning
+        self.fields['issue_type'].choices = [('', '--- Select Issue Type ---')] + choices
 
         # Set TL and HR queryset using the new ForeignKey-based HRContact model
         if company:

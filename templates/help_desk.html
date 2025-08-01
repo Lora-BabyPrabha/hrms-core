@@ -3,6 +3,7 @@
 
 {% block title %}Help Desk{% endblock %}
 
+
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-4">Raise a Help Desk Ticket</h2>
@@ -59,28 +60,28 @@
         </div>
     </div>
 
-    <!-- Assessment Block -->
+    <!-- Asset Block  -->
     <div class="card mb-4">
-        <div class="card-header bg-warning text-dark">Assessment</div>
+        <div class="card-header bg-warning text-dark">Asset</div>
         <div class="card-body">
             <form method="POST">
                 {% csrf_token %}
-                {{ assessment_form.non_field_errors }}
+                {{ asset_form.non_field_errors }}
                 <div class="row">
                     <div class="col-md-4">
-                        {{ assessment_form.issue_type.label_tag }} {{ assessment_form.issue_type }}
+                        {{ asset_form.issue_type.label_tag }} {{ asset_form.issue_type }}
                     </div>
                     <div class="col-md-4">
-                        {{ assessment_form.team_leader.label_tag }} {{ assessment_form.team_leader }}
+                        {{ asset_form.team_leader.label_tag }} {{ asset_form.team_leader }}
                     </div>
                     <div class="col-md-4">
-                        {{ assessment_form.hr.label_tag }} {{ assessment_form.hr }}
+                        {{ asset_form.hr.label_tag }} {{ asset_form.hr }}
                     </div>
                 </div>
                 <div class="mt-3">
-                    {{ assessment_form.description.label_tag }} {{ assessment_form.description }}
+                    {{ asset_form.description.label_tag }} {{ asset_form.description }}
                 </div>
-                <button type="submit" name="as-submit" class="btn btn-success mt-3">Submit Assessment Ticket</button>
+                <button type="submit" name="as-submit" class="btn btn-success mt-3">Submit Asset Ticket</button>
             </form>
         </div>
     </div>
