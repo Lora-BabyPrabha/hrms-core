@@ -7,6 +7,7 @@ from app.forms import *
 
 admin.site.register(Company_check)
 admin.site.register(Muster)
+admin.site.register(Team)
 # app/admin.py
 
 

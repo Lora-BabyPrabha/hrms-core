@@ -44,6 +44,7 @@
         <h3 class='pb-3 text-center'>Assign Task</h3>
 
         <!-- Task Form -->
+         <!-- In your task_management.html, update the form section -->
         <form id="assignTaskForm" method="POST" action="{% url 'assign_task' %}">
             {% csrf_token %}
             <label for="taskName">Task Name</label>
@@ -52,10 +53,8 @@
             <label for="employeeEmails">Assign To Individuals (Emails or IDs)</label>
             <input type="text" id="employeeEmails" name="employee_emails" placeholder="Enter Emails/IDs (comma-separated)">
 
-<!-- NEW: Team Assignment Dropdown -->
             <div class="form-group mt-3">
                 <label for="teamSelect"> OR Assign to Team</label>
-                <!-- In your task_management.html -->
                 <select name="team_id" id="teamSelect" class="form-control">
                     <option value="">-- Select Team --</option>
                     {% for team in teams %}
@@ -66,12 +65,18 @@
                 </select>
             </div>
             <br>
-            <label for="dueDate">Due Date</label>
+            
+            <!-- Add new fields for start date and due date -->
+            <label for="startDate">Task Start Date</label>
+            <input type="date" id="startDate" name="start_date" required>
+            
+            <label for="dueDate">Task Deadline</label>
             <input type="date" id="dueDate" name="due_date" required>
 
             <button type="submit" class='btn btn-dark mt-3'>Assign Task</button>
         </form>
-
+        <br>
+        <br>
         <!-- Filters + Table below form -->
         <hr class="my-4">
         <h4 class="mb-3">Filter Assigned Tasks</h4>
@@ -97,47 +102,51 @@
                 <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
             </div>
         </form>
-
-        <h4 class="mb-3">Your Previously Assigned Tasks</h4>
+        <h3>You'r previously Assigned Tasks</h3>
+        <!-- Add this above your table -->
+<!-- Your existing table code -->
+        <!-- Update the table structure -->
         <table class="table table-bordered">
             <thead class="table-dark">
                 <tr>
                     <th>Task Name</th>
                     <th>Assigned To</th>
-                    <th>Due Date</th>
+                    <th>Start Date</th>
+                    <th>Deadline</th>
                     <th>Status</th>
                     <th>Assigned On</th>
                 </tr>
             </thead>
             <tbody>
-                    {% for task in assigned_tasks %}
-                        <tr data-task-id="{{ task.id }}">
-                            <td>{{ task.name }}</td>
-                            <td>
-                                {% if task.assigned_team %}
-                                    <strong>Team:</strong> {{ task.assigned_team.name }}
-                                {% else %}
-                                    {% for user in task.assigned_to.all %}
-                                        {{ user.employee_id }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% endif %}
-                            </td>
-                            <td>{{ task.due_date }}</td>
-                            <td>
-                                {% if task.completed %}
-                                    <span class="badge bg-success">Completed</span>
-                                {% else %}
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ task.created_at|date:"d M Y, h:i A" }}</td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center">No tasks assigned yet.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
+                {% for task in assigned_tasks %}
+                    <tr data-task-id="{{ task.id }}">
+                        <td>{{ task.name }}</td>
+                        <td>
+                            {% if task.assigned_team %}
+                                <strong>Team:</strong> {{ task.assigned_team.name }}
+                            {% else %}
+                                {% for user in task.assigned_to.all %}
+                                    {{ user.employee_id }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        <td>{{ task.start_date|date:"d M Y" }}</td>
+                        <td>{{ task.due_date|date:"d M Y" }}</td>
+                        <td>
+                            {% if task.completed %}
+                                <span class="badge bg-success">Completed</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ task.created_at|date:"d M Y, h:i A" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No tasks assigned yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 

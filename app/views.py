@@ -380,40 +380,26 @@ def base(request):
  
 #------------------------------------------------------------- Dashboard #
  
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from datetime import datetime
-from .models import Employee, Notification
- 
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.core.exceptions import ObjectDoesNotExist
+
 @login_required(login_url='/')
 def dashboard(request):
     user = request.user
- 
-    if not user.is_authenticated:
-        return render(request, 'index.html')
- 
-    today = datetime.now().date()
     employee = Employee.objects.get(employee_id=user.employee_id)
-    company = user.company  # get company from CustomUser
- 
-    # birthdays filtered by company
-    employees_with_birthday = Employee.objects.filter(
-        date_of_birth__month=today.month,
-        date_of_birth__day=today.day,
-        company=company
-    )
- 
-    notifications = Notification.objects.filter(
-        recipient=user,
-        is_read=False
-    ).order_by('-created_at')[:5]
- 
-    return render(request, 'dashboard.html', {
+    company = user.company
+
+    # Get all unread notifications for the user
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
+
+    context = {
         'employee': employee,
-        'employees_with_birthday': employees_with_birthday,
-        'today': today,
         'notifications': notifications,
-    })
+        # ...other context variables...
+    }
+    return render(request, 'dashboard.html', context)
+
  
    
  
@@ -445,58 +431,73 @@ def employee_requests(request):
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
- 
-    # Base queryset filtered by company and today (initial)
+    
+    # Base querysets - initialize with all company data
+    users_qs = CustomUser.objects.filter(company=company)
     muster_requests = Muster.objects.filter(user__company=company, date__date=today)
     leave_requests = LeaveRequest.objects.filter(employee__company=company, start_date=today)
     expense_claims = ExpenseClaim.objects.filter(employee__company=company, date=today)
     loan_requests = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
     time_entries = TimeEntry.objects.filter(user__company=company, clock_in_time__date=today)
     employees = CustomUser.objects.filter(company=company)
- 
-    # Filters
+
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
         request_type = request.POST.get('request_type')
         month_filter = request.POST.get('month')
         specific_date = request.POST.get('specific_date')
-        filtered_employee = None
- 
-        # Apply employee ID filter if provided
+
+        # Apply employee filter first (if provided)
         if employee_id_input:
             try:
-                filtered_employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
+                filtered_user = CustomUser.objects.get(employee_id=employee_id_input, company=company)
+                # Update all querysets to filter by this employee
+                muster_requests = muster_requests.filter(user=filtered_user)
+                leave_requests = leave_requests.filter(employee=filtered_user)
+                expense_claims = expense_claims.filter(employee=filtered_user)
+                loan_requests = loan_requests.filter(employee=filtered_user)
+                time_entries = time_entries.filter(user=filtered_user)
             except CustomUser.DoesNotExist:
-                filtered_employee = None
- 
-        # If no employee filter, get all users from company
-        users_qs = CustomUser.objects.filter(company=company)
-        if filtered_employee:
-            users_qs = users_qs.filter(id=filtered_employee.id)
- 
-        # Apply month filter
+                messages.error(request, "Employee not found")
+                # Clear all results if invalid employee ID
+                muster_requests = muster_requests.none()
+                leave_requests = leave_requests.none()
+                expense_claims = expense_claims.none()
+                loan_requests = loan_requests.none()
+                time_entries = time_entries.none()
+
+        # Apply month filter (if provided)
         if month_filter:
             year, month = map(int, month_filter.split('-'))
- 
-            muster_requests = Muster.objects.filter(user__in=users_qs, date__year=year, date__month=month)
-            leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date__year=year, start_date__month=month)
-            expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date__year=year, date__month=month)
-            loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__year=year, date_requested__month=month)
-            time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__year=year, clock_in_time__month=month)
- 
-        # Apply specific date filter
+            # Start fresh with filtered user (if any was specified)
+            base_qs = CustomUser.objects.filter(company=company)
+            if employee_id_input and 'filtered_user' in locals():
+                base_qs = base_qs.filter(id=filtered_user.id)
+                
+            muster_requests = Muster.objects.filter(user__in=base_qs, date__year=year, date__month=month)
+            leave_requests = LeaveRequest.objects.filter(employee__in=base_qs, start_date__year=year, start_date__month=month)
+            expense_claims = ExpenseClaim.objects.filter(employee__in=base_qs, date__year=year, date__month=month)
+            loan_requests = LoanRequest.objects.filter(employee__in=base_qs, date_requested__year=year, date_requested__month=month)
+            time_entries = TimeEntry.objects.filter(user__in=base_qs, clock_in_time__year=year, clock_in_time__month=month)
+
+        # Apply specific date filter (if provided)
         elif specific_date:
             try:
                 date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
-                muster_requests = Muster.objects.filter(user__in=users_qs, date__date=date_obj)
-                leave_requests = LeaveRequest.objects.filter(employee__in=users_qs, start_date=date_obj)
-                expense_claims = ExpenseClaim.objects.filter(employee__in=users_qs, date=date_obj)
-                loan_requests = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=date_obj)
-                time_entries = TimeEntry.objects.filter(user__in=users_qs, clock_in_time__date=date_obj)
+                # Start fresh with filtered user (if any was specified)
+                base_qs = CustomUser.objects.filter(company=company)
+                if employee_id_input and 'filtered_user' in locals():
+                    base_qs = base_qs.filter(id=filtered_user.id)
+                    
+                muster_requests = Muster.objects.filter(user__in=base_qs, date__date=date_obj)
+                leave_requests = LeaveRequest.objects.filter(employee__in=base_qs, start_date=date_obj)
+                expense_claims = ExpenseClaim.objects.filter(employee__in=base_qs, date=date_obj)
+                loan_requests = LoanRequest.objects.filter(employee__in=base_qs, date_requested__date=date_obj)
+                time_entries = TimeEntry.objects.filter(user__in=base_qs, clock_in_time__date=date_obj)
             except ValueError:
                 pass
- 
-        # Apply request_type filter
+
+        # Apply request type filter (if provided)
         if request_type:
             if request_type == 'muster':
                 leave_requests = []
@@ -523,10 +524,10 @@ def employee_requests(request):
                 leave_requests = []
                 expense_claims = []
                 loan_requests = []
- 
+
     # Notifications
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
- 
+
     return render(request, 'employee_data.html', {
         'employee': employee,
         'employees': employees,
@@ -570,50 +571,56 @@ def staff_notifications(request):
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
- 
-    # Default: today's pending requests for the company
-    musters = Muster.objects.filter(status='Pending', user__company=company, date__date=today)
-    leaves = LeaveRequest.objects.filter(status='pending', employee__company=company, start_date=today)
-    expenses = ExpenseClaim.objects.filter(status='pending', employee__company=company, date=today)
-    pendings_loan = LoanRequest.objects.filter(status='pending', employee__company=company, date_requested__date=today)
- 
+    
+    # Base querysets
+    users_qs = CustomUser.objects.filter(company=company)
+    musters = Muster.objects.filter(user__company=company, date__date=today)
+    leaves = LeaveRequest.objects.filter(employee__company=company, start_date=today)
+    expenses = ExpenseClaim.objects.filter(employee__company=company, date=today)
+    pendings_loan = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
+
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
         request_type = request.POST.get('request_type')
         month_filter = request.POST.get('month')
         specific_date = request.POST.get('specific_date')
- 
-        filtered_employee = None
+
+        # Apply employee filter if provided
         if employee_id_input:
             try:
-                filtered_employee = CustomUser.objects.get(employee_id=employee_id_input, company=company)
+                filtered_user = CustomUser.objects.get(employee_id=employee_id_input, company=company)
+                users_qs = users_qs.filter(id=filtered_user.id)
+                musters = musters.filter(user=filtered_user)
+                leaves = leaves.filter(employee=filtered_user)
+                expenses = expenses.filter(employee=filtered_user)
+                pendings_loan = pendings_loan.filter(employee=filtered_user)
             except CustomUser.DoesNotExist:
-                filtered_employee = None
- 
-        # Base user filter by company
-        users_qs = CustomUser.objects.filter(company=company)
-        if filtered_employee:
-            users_qs = users_qs.filter(id=filtered_employee.id)
- 
+                messages.error(request, "Employee not found")
+                # Optionally clear all results if invalid employee ID
+                musters = musters.none()
+                leaves = leaves.none()
+                expenses = expenses.none()
+                pendings_loan = pendings_loan.none()
+
         # Apply month filter
         if month_filter:
             year, month = map(int, month_filter.split('-'))
-            musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__year=year, date__month=month)
-            leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date__year=year, start_date__month=month)
-            expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date__year=year, date__month=month)
-            pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__year=year, date_requested__month=month)
- 
+            musters = Muster.objects.filter(user__in=users_qs, date__year=year, date__month=month)
+            leaves = LeaveRequest.objects.filter(employee__in=users_qs, start_date__year=year, start_date__month=month)
+            expenses = ExpenseClaim.objects.filter(employee__in=users_qs, date__year=year, date__month=month)
+            pendings_loan = LoanRequest.objects.filter(employee__in=users_qs, date_requested__year=year, date_requested__month=month)
+
         # Apply specific date filter
         elif specific_date:
             try:
                 date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
-                musters = Muster.objects.filter(status='Pending', user__in=users_qs, date__date=date_obj)
-                leaves = LeaveRequest.objects.filter(status='pending', employee__in=users_qs, start_date=date_obj)
-                expenses = ExpenseClaim.objects.filter(status='pending', employee__in=users_qs, date=date_obj)
-                pendings_loan = LoanRequest.objects.filter(status='pending', employee__in=users_qs, date_requested__date=date_obj)
+                musters = Muster.objects.filter(user__in=users_qs, date__date=date_obj)
+                leaves = LeaveRequest.objects.filter(employee__in=users_qs, start_date=date_obj)
+                expenses = ExpenseClaim.objects.filter(employee__in=users_qs, date=date_obj)
+                pendings_loan = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=date_obj)
             except ValueError:
                 pass
- 
+
         # Apply request type filter
         if request_type:
             if request_type == 'muster':
@@ -632,10 +639,10 @@ def staff_notifications(request):
                 musters = []
                 leaves = []
                 expenses = []
- 
+
     # Notifications for header
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
- 
+
     return render(request, 'staff_notifications.html', {
         'employee': employee,
         'musters': musters,
@@ -644,7 +651,6 @@ def staff_notifications(request):
         'pendings_loan': pendings_loan,
         'notifications': notifications,
     })
- 
  
  
 #------------------------------------------------------------- clock In #
@@ -1259,10 +1265,7 @@ def task_management(request):
     ).order_by('-created_at')
 
     # Get teams for dropdown - both created by or containing current company members
-    teams = Team.objects.filter(
-        Q(created_by__employee__company=company) |
-        Q(members__employee__company=company)
-    ).distinct()
+    teams = Team.objects.filter(members=user, company=company).distinct()
 
     # Base task query
     assigned_tasks = Task.objects.filter(
@@ -1370,27 +1373,35 @@ def assign_task(request):
     try:
         employee = Employee.objects.get(employee_id=user.employee_id)
         company = employee.company
+        teams = Team.objects.filter(members=request.user, company=company).distinct()
     except Employee.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Employee record not found'}, status=400)
-
+    
     # === POST: Task assignment ===
     if request.method == 'POST':
         with transaction.atomic():
             try:
                 task_name = request.POST.get('task_name', '').strip()
+                start_date_str = request.POST.get('start_date', '').strip()
                 due_date_str = request.POST.get('due_date', '').strip()
                 employee_input = request.POST.get('employee_emails', '').strip()
                 team_id = request.POST.get('team_id', '').strip()
 
                 if not task_name:
                     return JsonResponse({'status': 'error', 'message': 'Task name is required'}, status=400)
-                if not due_date_str:
-                    return JsonResponse({'status': 'error', 'message': 'Due date is required'}, status=400)
+                if not start_date_str or not due_date_str:
+                    return JsonResponse({'status': 'error', 'message': 'Both start date and deadline are required'}, status=400)
 
                 try:
+                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
                     due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                    
+                    if start_date > due_date:
+                        return JsonResponse({'status': 'error', 'message': 'Deadline cannot be before start date'}, status=400)
+                        
                     if due_date < datetime.now().date():
-                        return JsonResponse({'status': 'error', 'message': 'Due date cannot be in the past'}, status=400)
+                        return JsonResponse({'status': 'error', 'message': 'Deadline cannot be in the past'}, status=400)
+                        
                 except ValueError:
                     return JsonResponse({'status': 'error', 'message': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
 
@@ -1399,9 +1410,10 @@ def assign_task(request):
                 if team_id and employee_input:
                     return JsonResponse({'status': 'error', 'message': 'Please use either team OR individual assignment'}, status=400)
 
-                # Create the task
+                # === Create the task ===
                 task = Task.objects.create(
                     name=task_name,
+                    start_date=start_date,
                     due_date=due_date,
                     created_by=user,
                     company=company
@@ -1436,7 +1448,7 @@ def assign_task(request):
                 for user_obj in users:
                     Notification.objects.create(
                         recipient=user_obj,
-                        message=f"You have been assigned a task: '{task_name}', due on {due_date}.",
+                        message=f"You have been assigned a task: '{task_name}', starting on {start_date} with deadline on {due_date}.",
                         company=company
                     )
 
@@ -1445,20 +1457,24 @@ def assign_task(request):
                 return JsonResponse({
                     'status': 'success',
                     'message': f"Task '{task_name}' assigned successfully!",
-                    'task_id': task.id
+                    'task_id': task.id,
+                    'assignment_type': 'team' if team_id else 'individual'
                 })
 
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-    # === GET: Show tasks created by this user in their company ===
+    # === GET: Show tasks ===
+    today = timezone.now().date()
     all_tasks = Task.objects.filter(
         created_by=user,
         created_by__employee__company=company
     ).order_by('-created_at')
 
-    # Optional filtering by employee_id
+    # === Apply filters ===
     employee_id = request.GET.get('employee_id', '')
+    month = request.GET.get('month', '')
+
     if employee_id:
         try:
             filtered_user = CustomUser.objects.get(employee_id=employee_id, employee__company=company)
@@ -1466,78 +1482,121 @@ def assign_task(request):
         except CustomUser.DoesNotExist:
             all_tasks = Task.objects.none()
 
-    # Optional filtering by month
-    month = request.GET.get('month', '')
     if month:
         try:
             month_start = datetime.strptime(month, '%Y-%m').date()
             month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-            all_tasks = all_tasks.filter(due_date__range=[month_start, month_end])
+            all_tasks = all_tasks.filter(created_at__range=[month_start, month_end])
         except ValueError:
             pass
 
-    # Remove duplicate tasks (based on name + due date)
+    # === Default: Show today's tasks ===
+    if not employee_id and not month:
+        all_tasks = all_tasks.filter(created_at__date=today)
+
+    # === Remove duplicates ===
     seen = set()
     unique_tasks = []
     for task in all_tasks:
-        key = (task.name, task.due_date)
+        key = (task.name, task.start_date, task.due_date, 
+            tuple(u.id for u in task.assigned_to.all()), 
+            task.assigned_team.id if task.assigned_team else None)
         if key not in seen:
             seen.add(key)
             unique_tasks.append(task)
 
-    # Month dropdown
+    # === Month dropdown ===
     months = [
         {'num': f"{i:02d}", 'name': datetime(2025, i, 1).strftime('%B')}
         for i in range(1, 13)
     ]
-
-    teams = Team.objects.filter(company=company)
 
     return render(request, 'task_management.html', {
         'employee': employee,
         'assigned_tasks': unique_tasks,
         'months': months,
         'current_month': datetime.now().strftime('%Y-%m'),
-        'teams': teams
+        'teams': teams,
+        'today': today.strftime('%Y-%m-%d'),
+        'filter_employee_id': employee_id,
+        'filter_month': month
     })
-
+from django.utils import timezone
+from django.db.models import Q
 
 @login_required
 def tasks_by_date(request):
     if request.method == 'GET':
         date_str = request.GET.get('date')
- 
-        date = parse_date(date_str)
- 
-        if not date:
-            return JsonResponse({'error': 'Invalid date format'}, status=400)
- 
-        tasks = Task.objects.filter(due_date=date, assigned_to=request.user)
-       
-        tasks_data = [
-            {
-                'id': task.id,
-                'name': task.name,
-                'due_date': task.due_date,
-                'completed': task.completed,
-                'assigned_to': [f"{user.first_name} {user.last_name}" for user in task.assigned_to.all()]
-            }
-            for task in tasks
-        ]
-       
-        return JsonResponse({'tasks': tasks_data})
- 
- 
+        
+        try:
+            date = parse_date(date_str)
+            if not date:
+                return JsonResponse({'error': 'Invalid date format'}, status=400)
+            
+            # Get tasks that should be visible on this date:
+            # - Start date is before or on this date
+            # - Due date is after or on this date
+            # - Assigned to current user (directly or via team)
+            tasks = Task.objects.filter(
+                Q(start_date__lte=date) & Q(due_date__gte=date),
+                Q(assigned_to=request.user) | Q(assigned_team__members=request.user),
+                completed=False
+            ).distinct().order_by('due_date')
+            
+            tasks_data = [
+                {
+                    'id': task.id,
+                    'name': task.name,
+                    'start_date': task.start_date.strftime('%Y-%m-%d'),
+                    'due_date': task.due_date.strftime('%Y-%m-%d'),
+                    'completed': task.completed,
+                    'assigned_by': task.created_by.get_full_name(),
+                    'assigned_to': [user.get_full_name() for user in task.assigned_to.all()],
+                    'is_team_task': bool(task.assigned_team),
+                    'team_name': task.assigned_team.name if task.assigned_team else None
+                }
+                for task in tasks
+            ]
+            
+            return JsonResponse({
+                'tasks': tasks_data,
+                'date': date.strftime('%Y-%m-%d')
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+
 @csrf_exempt
 def mark_task_complete(request, task_id):
     try:
-        task = Task.objects.get(id=task_id)
+        task = Task.objects.get(
+           Q(id=task_id) &
+            (Q(assigned_to=request.user) | Q(assigned_team__members=request.user))
+        )
         task.completed = True
+        task.completed_at = timezone.now()
         task.save()
-        return JsonResponse({'status': 'success', 'message':'Task marked as completed'})
+        
+        # Add notification if needed
+        Notification.objects.create(
+            recipient=task.created_by,
+            message=f"Task '{task.name}' was completed by {request.user.get_full_name()}",
+            company=request.user.employee.company
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Task marked as completed',
+            'completed_at': task.completed_at.strftime('%Y-%m-%d %H:%M:%S')
+        })
    
     except Task.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Task not found'})
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Task not found or you are not authorized'
+        }, status=404)
  
  
 from django.http import JsonResponse
@@ -1545,45 +1604,87 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 from django.db.models import Q
+import logging
+
+logger = logging.getLogger(__name__)
 
 @require_GET
 @login_required
 def my_tasks(request):
     try:
         user = request.user
+        current_date = timezone.now().date()  # Using timezone-aware now()
+        
+        # Get all tasks assigned to user (directly or via team membership)
         tasks = Task.objects.filter(
-            Q(assigned_to=user) | 
-            Q(assigned_team__members=user)
-        ).distinct().order_by('-created_at')
+            Q(assigned_to=user) |  # Direct assignment
+            Q(assigned_team__members=user)  # Team assignment
+        ).distinct().select_related('created_by', 'assigned_team').prefetch_related('assigned_to')
+        
+        # Filter tasks based on dates and status
+        active_tasks = tasks.filter(
+            start_date__lte=current_date,
+            due_date__gte=current_date,
+            completed=False
+        )
+        
+        upcoming_tasks = tasks.filter(
+            start_date__gt=current_date,
+            completed=False
+        )
+        
+        completed_tasks = tasks.filter(completed=True)
+        overdue_tasks = tasks.filter(
+            due_date__lt=current_date,
+            completed=False
+        )
 
-        # Check if it's an AJAX request
+        # For AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            tasks_data = [
-                {
-                    'id': task.id,
-                    'name': task.name,
-                    'due_date': task.due_date.strftime('%Y-%m-%d'),
-                    'completed': task.completed,
-                    'assigned_to': [f"{user.first_name} {user.last_name}" for user in task.assigned_to.all()]
-                }
-                for task in tasks
-            ]
-            return JsonResponse({'tasks': tasks_data})
-        else:
-            # Return HTML template for normal requests
-            return render(request, 'task_management.html', {
-                'tasks': tasks,
-                'show_my_tasks': True  # Flag to show my tasks interface
+            tasks_data = [{
+                'id': task.id,
+                'name': task.name,
+                'start_date': task.start_date.strftime('%Y-%m-%d'),
+                'due_date': task.due_date.strftime('%Y-%m-%d'),
+                'status': get_task_status(task, current_date),
+                'assigned_by': task.created_by.get_full_name(),
+                'assigned_to': [u.get_full_name() for u in task.assigned_to.all()],
+                'is_team_task': bool(task.assigned_team),
+                'team_name': task.assigned_team.name if task.assigned_team else None
+            } for task in tasks]
+            
+            return JsonResponse({
+                'tasks': tasks_data,
+                'current_date': current_date.strftime('%Y-%m-%d')
             })
+        
+        # For normal requests
+        return render(request, 'task_management.html', {
+            'active_tasks': active_tasks.order_by('due_date'),
+            'upcoming_tasks': upcoming_tasks.order_by('start_date'),
+            'completed_tasks': completed_tasks.order_by('-due_date'),
+            'overdue_tasks': overdue_tasks.order_by('due_date'),
+            'current_date': current_date,
+            'show_my_tasks': True
+        })
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error in my_tasks view: {str(e)}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'error': str(e)}, status=500)
-        else:
-            # Return error page for normal requests
-            return render(request, 'error.html', {'error': str(e)})
- 
+        return render(request, 'error.html', {'error': str(e)})
+def get_task_status(task, current_date):
+    """Helper function to determine task status"""
+    if task.completed:
+        return 'completed'
+    elif task.due_date < current_date:
+        return 'overdue'
+    elif task.start_date > current_date:
+        return 'upcoming'
+    else:
+        return 'active'
+
+
 #------------------------------------------------------------- Expense claim #
  
 @login_required(login_url='/')
@@ -3294,34 +3395,72 @@ def career_development(request):
 
  
 
+from django.contrib import messages
+
 @login_required(login_url='/')
-def clear_notifications(request):
-    if request.method == 'POST':
-        Notification.objects.filter(recipient=request.user).delete()
-        messages.success(request, "All notifications cleared.")
-    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+
+def clear_single_notification(request, notification_id):
+    Notification.objects.filter(id=notification_id, recipient=request.user).delete()
+    messages.success(request, "Notification cleared successfully.")
+    return redirect('dashboard')
+from django.views.decorators.http import require_POST
+
+@login_required(login_url='/')
+@require_POST
+def clear_all_notifications(request):
+    Notification.objects.filter(recipient=request.user).delete()
+    messages.success(request, "All notifications cleared successfully.")
+    return redirect('dashboard')
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Team, CustomUser
 from .forms import TeamForm
 
+# views.py
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Team
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Team
+
 @login_required
 def list_teams(request):
-    teams = Team.objects.filter(created_by=request.user)  # Only show user's teams
-    return render(request, 'list_teams.html', {'teams': teams})
+    user = request.user
+
+    # Teams created by the user
+    teams_created = Team.objects.filter(created_by=user)
+
+    # Teams user is a member of (excluding ones they created)
+    teams_part_of = Team.objects.filter(members=user)
+
+    return render(request, 'list_teams.html', {
+        'teams_created': teams_created,
+        'teams_part_of': teams_part_of
+    })
+
+
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.db import transaction
+from .models import Team, CustomUser
 
 @login_required
 def create_team(request):
-    # Get all employees from the same company as the current user
-    employees = CustomUser.objects.filter(
-        employee__company=request.user.employee.company
-    ).exclude(id=request.user.id)  # Exclude current user if needed
+    current_user = request.user
+    company = current_user.employee.company
     
+    # All employees from the same company (excluding current user)
+    employees = CustomUser.objects.filter(employee__company=company)
+
     if request.method == 'POST':
         team_name = request.POST.get('team_name')
         description = request.POST.get('description', '')
         member_ids = request.POST.getlist('members', [])
-        
+
         if not team_name:
             messages.error(request, 'Team name is required')
             return render(request, 'create_team.html', {
@@ -3329,27 +3468,32 @@ def create_team(request):
                 'team_name': team_name,
                 'description': description
             })
-        
+
         try:
             with transaction.atomic():
                 # Create the team
                 team = Team.objects.create(
                     name=team_name,
                     description=description,
-                    created_by=request.user
+                    created_by=current_user,
+                    company=company
                 )
-                
-                # Add selected members
-                if member_ids:
-                    members = CustomUser.objects.filter(
-                        id__in=member_ids,
-                        employee__company=request.user.employee.company
-                    )
-                    team.members.set(members)
-                
+
+                # Only add explicitly selected members (don't auto-add creator)
+                unique_member_ids = list(set(member_ids))  # remove duplicates
+
+                # Fetch CustomUser objects for valid employee members in the same company
+                members = CustomUser.objects.filter(
+                    id__in=unique_member_ids,
+                    employee__company=company
+                )
+
+                # Add members to team
+                team.members.set(members)
+
                 messages.success(request, f'Team "{team_name}" created successfully!')
                 return redirect('list_teams')
-                
+
         except Exception as e:
             messages.error(request, f'Error creating team: {str(e)}')
             return render(request, 'create_team.html', {
@@ -3357,12 +3501,11 @@ def create_team(request):
                 'team_name': team_name,
                 'description': description
             })
-    
+
     # GET request
     return render(request, 'create_team.html', {
         'employees': employees
     })
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Team, CustomUser
@@ -3399,3 +3542,15 @@ def delete_team(request, team_id):
         return redirect('list_teams')
     
     return render(request, 'delete_team.html', {'team': team})
+
+from django.shortcuts import render, get_object_or_404
+from .models import Team
+
+@login_required
+def team_detail(request, team_id):
+    team = get_object_or_404(Team, id=team_id)
+    members = team.members.all()
+    return render(request, 'team_detail.html', {
+        'team': team,
+        'members': members
+    })

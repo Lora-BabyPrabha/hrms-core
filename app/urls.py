@@ -177,10 +177,15 @@ urlpatterns = [
     path('career_development', views.career_development, name='career_development'),
     path('help_desk', views.help_desk_page, name='help_desk'),
     # clear notifications
-    path('clear_notifications/', views.clear_notifications, name='clear_notifications'),
+    path('clear-all-notifications/', views.clear_all_notifications, name='clear_all_notifications'),
+    path('clear_single_notification/<int:notification_id>', views.clear_single_notification, name='clear_single_notification'),
+   #  Team Management 
     path('teams/', views.list_teams, name='list_teams'),
     path('teams/create/', views.create_team, name='create_team'),
     path('teams/<int:team_id>/edit/', views.edit_team, name='edit_team'),
     path('teams/<int:team_id>/delete/', views.delete_team, name='delete_team'),
+    path('team/<int:team_id>/', views.team_detail, name='team_detail'),
+
+
 
 ]
