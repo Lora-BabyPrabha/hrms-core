@@ -30,6 +30,11 @@
                     <ul class="sidebar-nav">
  
                         <h6 class='text-center mt-3 pt-3'>{{user.employee_id.title}}</h6>
+                        <li class="breadcrumb-item text-center mb-3">
+                            <a href="/dashboard" class="text-decoration-none">
+                                <small>{% block page_title %}Dashboard{% endblock %}</small>
+                            </a>
+                        </li>
                         <hr class='col-8 text-center mx-auto'>
  
                         {% block sidebar %}

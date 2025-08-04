@@ -39,3 +39,18 @@ def notifications_count(request):
             'notifications': Notification.objects.filter(recipient=request.user, is_read=False)
         }
     return {'notifications': []}
+from django.urls import resolve
+
+def current_page_name(request):
+    try:
+        url_name = resolve(request.path_info).url_name
+        if url_name:
+            return {
+                'current_page_name': url_name.replace('_', ' ').title()
+            }
+    except:
+        pass
+    return {
+        'current_page_name': ''
+    }
+

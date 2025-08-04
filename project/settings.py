@@ -64,6 +64,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.common_data',
                 'app.context_processors.notifications_context',
+                'app.context_processors.current_page_name',
             ],
         },
     },
