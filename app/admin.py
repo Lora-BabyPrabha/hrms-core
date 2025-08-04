@@ -24,6 +24,8 @@ admin.site.register(ExpenseClaim)
 admin.site.register(LoanRequest)
 admin.site.register(Holiday)
 admin.site.register(Performance)
+admin.site.register(HelpDeskTicket)
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser

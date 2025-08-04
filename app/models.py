@@ -35,7 +35,6 @@ ROLE_TYPE = (
 )
 
 #------------------------------------------------------------- Custom User #
-
 class CustomUser(AbstractUser):
     username = None
     name = models.CharField(max_length=100)
@@ -45,20 +44,22 @@ class CustomUser(AbstractUser):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
-    
+
     USERNAME_FIELD = "employee_id"
     REQUIRED_FIELDS = ['email']
 
-    def __unicode__(self):
-        return self.employee_id
+    def __str__(self):
+        return f"{self.employee_id} - {self.name}"  # ✅ Shows ID and Name in dropdowns
 
     def save(self, *args, **kwargs):
-        if self.name == 'Unknown' or not self.name:
+        if self.name == 'unknown' or not self.name:
             full_name = f"{self.first_name} {self.last_name}".strip()
             self.name = full_name if full_name else self.email.split('@')[0]
         super().save(*args, **kwargs)
 
     objects = UserManager()
+
+
 
 
 #------------------------------------------------------------- Notification #
@@ -88,7 +89,7 @@ class Holiday(models.Model):
 #------------------------------------------------------------- Employee #
 
 class Employee(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
     employee_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     name = models.CharField(max_length=100)
@@ -405,7 +406,7 @@ class HelpDeskTicket(models.Model):
     CATEGORY_CHOICES = [
         ('HR', 'HR Support'),
         ('IT', 'IT Support'),
-        ('AS', 'Assessment'),
+        ('AS', 'Asset Support'),  # Changed from "Assessment"
     ]
 
     STATUS_CHOICES = [
@@ -419,6 +420,7 @@ class HelpDeskTicket(models.Model):
         ('payroll', 'Payroll Issue'),
         ('leave', 'Leave Request'),
         ('policy', 'Policy Clarification'),
+        ('other', 'Other HR Issue'),
     ]
 
     IT_ISSUE_CHOICES = [
@@ -426,13 +428,15 @@ class HelpDeskTicket(models.Model):
         ('hardware', 'Hardware Issue'),
         ('software', 'Software Problem'),
         ('network', 'Network Issue'),
+        ('other', 'Other IT Issue'),
     ]
 
-    AS_ISSUE_CHOICES = [
-        ('exam', 'Exam Schedule Issue'),
-        ('grading', 'Grading Dispute'),
-        ('result', 'Result Delay'),
-        ('reassessment', 'Reassessment Request'),
+    AS_ISSUE_CHOICES = [ 
+        ('laptop', 'Laptop Not Working'),
+        ('mouse', 'Mouse Not Working'),
+        ('keyboard', 'Need New Equipment'),
+        ('return', 'Return Asset Request'),
+        ('other', 'Other Asset Issue'),
     ]
 
     employee = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -455,6 +459,7 @@ class HelpDeskTicket(models.Model):
 
     def __str__(self):
         return f"{self.get_category_display()} - {self.issue_type} ({self.employee})"
+
 
 
 

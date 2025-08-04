@@ -3252,13 +3252,24 @@ def assign_manager(ticket, company):
         except User.DoesNotExist:
             ticket.manager = None
 
+from django.utils.timezone import now
+from datetime import timedelta
 
-from django.contrib.auth.decorators import login_required
+
+@login_required
+def hr4u_dashboard(request):
+    """Main HR4U dashboard view"""
+    return render(request, 'HR4U.html')
+ 
+#---------------------------------from django.shortcuts import render, redirect
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from .models import HelpDeskTicket, HRContact, Employee, Notification
 from .forms import HelpDeskTicketForm
 from django.contrib.auth import get_user_model
+from django.utils.timezone import now
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -3267,23 +3278,22 @@ def help_desk_page(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
+    current_time = now()
 
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
 
-    # Fetch Team Leaders and HRs linked to employees from the same company
+    # TL and HR QuerySets
     tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
     hr_ids = HRContact.objects.filter(role='HR', employee__company=company).values_list('employee__user_id', flat=True)
-
     team_leader_qs = User.objects.filter(id__in=tl_ids)
     hr_qs = User.objects.filter(id__in=hr_ids)
 
-    # Initialize all forms
-    hr_form = HelpDeskTicketForm(prefix='hr', category='HR')
-    it_form = HelpDeskTicketForm(prefix='it', category='IT')
-    assessment_form = HelpDeskTicketForm(prefix='as', category='AS')
+    # Forms
+    hr_form = HelpDeskTicketForm(prefix='hr', category='HR', company=company)
+    it_form = HelpDeskTicketForm(prefix='it', category='IT', company=company)
+    asset_form = HelpDeskTicketForm(prefix='as', category='AS', company=company)
 
-    # Assign team_leader and hr queryset to each form
-    for form in [hr_form, it_form, assessment_form]:
+    for form in [hr_form, it_form, asset_form]:
         form.fields['team_leader'].queryset = team_leader_qs
         form.fields['hr'].queryset = hr_qs
 
@@ -3302,67 +3312,141 @@ def help_desk_page(request):
                 recipient_list=[to_user.email],
                 fail_silently=False
             )
-
-    # Handle submitted form
     if request.method == 'POST':
+        # Handle ticket close request
+        if 'close_ticket_id' in request.POST:
+            ticket_id = request.POST.get('close_ticket_id')
+            try:
+                ticket = HelpDeskTicket.objects.get(id=ticket_id, employee=user)
+                ticket.status = 'closed'
+                ticket.save()
+            except HelpDeskTicket.DoesNotExist:
+                pass
+            return redirect('help_desk')
+
+
+    if request.method == 'POST':
+        if 'mark_seen_tl' in request.POST:
+            ticket_id = request.POST.get('ticket_id')
+            HelpDeskTicket.objects.filter(id=ticket_id, assigned_to=user).update(viewed_by_tl=True)
+            return redirect('help_desk')
+
+        if 'mark_seen_hr' in request.POST:
+            ticket_id = request.POST.get('ticket_id')
+            HelpDeskTicket.objects.filter(id=ticket_id, escalate_to_hr=user).update(viewed_by_hr=True)
+            return redirect('help_desk')
+
         submitted_category = None
         if 'hr-submit' in request.POST:
-            hr_form = HelpDeskTicketForm(request.POST, prefix='hr', category='HR')
+            hr_form = HelpDeskTicketForm(request.POST, prefix='hr', category='HR', company=company)
             submitted_category = 'HR'
         elif 'it-submit' in request.POST:
-            it_form = HelpDeskTicketForm(request.POST, prefix='it', category='IT')
+            it_form = HelpDeskTicketForm(request.POST, prefix='it', category='IT', company=company)
             submitted_category = 'IT'
         elif 'as-submit' in request.POST:
-            assessment_form = HelpDeskTicketForm(request.POST, prefix='as', category='AS')
+            asset_form = HelpDeskTicketForm(request.POST, prefix='as', category='AS', company=company)
             submitted_category = 'AS'
 
         selected_form = {
             'HR': hr_form,
             'IT': it_form,
-            'AS': assessment_form
+            'AS': asset_form
         }.get(submitted_category)
 
-        if selected_form:
-            selected_form.fields['team_leader'].queryset = team_leader_qs
-            selected_form.fields['hr'].queryset = hr_qs
+        if selected_form and selected_form.is_valid():
+            ticket = selected_form.save(commit=False)
+            ticket.employee = user
+            ticket.category = submitted_category
+            ticket.assigned_to = selected_form.cleaned_data['team_leader']
+            ticket.escalate_to_hr = selected_form.cleaned_data['hr']
+            ticket.save()
+            send_ticket_email(ticket, ticket.assigned_to, f"{submitted_category} Support")
+            return redirect('help_desk')
 
-            if selected_form.is_valid():
-                ticket = selected_form.save(commit=False)
-                ticket.employee = user
-                ticket.category = submitted_category
-                ticket.assigned_to = selected_form.cleaned_data['team_leader']
-                ticket.escalate_to_hr = selected_form.cleaned_data['hr']
-                assign_manager(ticket, company)  # <-- Ensure you have this function defined
-                ticket.save()
-                send_ticket_email(ticket, ticket.assigned_to, f"{submitted_category} Support")
-                return redirect('help_desk')
+    # Filters (optional - for date/status/category)
+    category_filter = request.GET.get('category')
+    status_filter = request.GET.get('status')
+    date_filter = request.GET.get('date')  # Expecting YYYY-MM-DD format
 
     tickets = HelpDeskTicket.objects.filter(employee=user).order_by('-created_at')
+    if category_filter:
+        tickets = tickets.filter(category=category_filter)
+    if status_filter:
+        tickets = tickets.filter(status=status_filter)
+    if date_filter:
+        tickets = tickets.filter(created_at__date=date_filter)
+
+    # TL & HR escalated tickets
+    tl_pending_tickets = HelpDeskTicket.objects.filter(
+        assigned_to=user, viewed_by_tl=False
+    ).order_by('-created_at')
+
+    hr_escalated_tickets = HelpDeskTicket.objects.filter(
+        escalate_to_hr=user,
+        viewed_by_tl=False,
+        viewed_by_hr=False,
+        created_at__lte=current_time - timedelta(hours=2)
+    ).order_by('-created_at')
 
     return render(request, 'help_desk.html', {
         'hr_form': hr_form,
         'it_form': it_form,
-        'assessment_form': assessment_form,
+        'asset_form': asset_form,
         'tickets': tickets,
         'employee': employee,
         'notifications': notifications,
+        'tl_pending_tickets': tl_pending_tickets,
+        'hr_escalated_tickets': hr_escalated_tickets,
     })
 
-
-@login_required
-def hr4u_dashboard(request):
-    """Main HR4U dashboard view"""
-    return render(request, 'HR4U.html')
+#---------------------------- Employee Self Service #
  
-@login_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404
+from .models import Employee
+from .forms import PersonalInfoForm, ProfessionalInfoForm  # Make sure forms.py has these
+from django.contrib import messages
+from django.contrib import messages
+ 
+@login_required(login_url='/')
 def employee_self_service(request):
-    employee = get_object_or_404(EmployeeProfile, user=request.user)
-    context = {'employee': employee}
-   
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'hr/partials/employee_self_service.html', context)
-    return render(request, 'hr/employee_self_service.html', context)
+    employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
  
+    if request.method == 'POST':
+        if 'personal_submit' in request.POST:
+            personal_form = PersonalInfoForm(request.POST, instance=employee)
+            professional_form = ProfessionalInfoForm(instance=employee)
+ 
+            if personal_form.is_valid():
+                if personal_form.has_changed():
+                    changed_fields = personal_form.changed_data
+                    personal_form.save()
+                    messages.success(request, "Updated personal info: " + ", ".join(changed_fields))
+                else:
+                    messages.info(request, "No changes detected in personal information.")
+ 
+        elif 'professional_submit' in request.POST:
+            professional_form = ProfessionalInfoForm(request.POST, instance=employee)
+            personal_form = PersonalInfoForm(instance=employee)
+ 
+            if professional_form.is_valid():
+                if professional_form.has_changed():
+                    changed_fields = professional_form.changed_data
+                    professional_form.save()
+                    messages.success(request, "Updated professional info: " + ", ".join(changed_fields))
+                else:
+                    messages.info(request, "No changes detected in professional information.")
+ 
+    else:
+        personal_form = PersonalInfoForm(instance=employee)
+        professional_form = ProfessionalInfoForm(instance=employee)
+ 
+    return render(request, 'employee_self_service.html', {
+        'employee': employee,
+        'user': request.user,
+        'personal_form': personal_form,
+        'professional_form': professional_form,
+    })
 @login_required
 def benefits_compensation(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
@@ -3554,3 +3638,8 @@ def team_detail(request, team_id):
         'team': team,
         'members': members
     })
+
+
+@login_required
+def career_development(request):
+    return render(request, 'career_development.html')

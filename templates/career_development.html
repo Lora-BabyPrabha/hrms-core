@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}HR4U{% endblock %}
+{% block title %}Career Development{% endblock %}
 
 {% block sidebar %}
 <link rel="stylesheet" href="{% static 'css/HR4U.css' %}">
@@ -64,58 +64,55 @@
 {% endblock %}
 
 {% block content %}
-    <h2 class="mb-4">{% if form.instance.pk %}Edit Contact{% else %}Add HR Contact{% endif %}</h2>
+  <h3>Soft Skills</h3>
+  <p class="section-description">Enhance your communication, collaboration, and problem-solving abilities to thrive in any workplace.</p>
+  <div class="row g-4 mb-5">
+    <div class="col-md-4 d-flex">
+      <div class="card p-4 text-center d-flex flex-column h-100 w-100">
+        <h5>Effective Communication</h5>
+        <p>Master clear, confident, and professional communication techniques.</p>
+        <a href="#" class="text-primary mt-auto">View Resource</a>
+      </div>
+    </div>
+    <div class="col-md-4 d-flex">
+      <div class="card p-4 text-center d-flex flex-column h-100 w-100">
+        <h5>Time Management</h5>
+        <p>Boost productivity by prioritizing and planning your time effectively.</p>
+        <a href="#" class="text-primary mt-auto">View Resource</a>
+      </div>
+    </div>
+    <div class="col-md-4 d-flex">
+      <div class="card p-4 text-center d-flex flex-column h-100 w-100">
+        <h5>Team Collaboration</h5>
+        <p>Work seamlessly with team members to achieve shared goals.</p>
+        <a href="#" class="text-primary mt-auto">View Resource</a>
+      </div>
+    </div>
+  </div>
 
-    <form method="POST" action="{% url 'hr_services' %}">
-        {% csrf_token %}
-        <div class="row">
-            <div class="col-md-6">
-                <div class="form-group">
-                    {{ form.employee.label_tag }} {{ form.employee }}
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    {{ form.role.label_tag }} {{ form.role }}
-                </div>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-primary mt-3">
-            {% if form.instance.pk %}Update{% else %}Add Contact{% endif %}
-        </button>
-        {% if form.instance.pk %}
-            <a href="{% url 'hr_services' %}" class="btn btn-secondary mt-3">Cancel</a>
-        {% endif %}
-    </form>
-
-    <hr>
-    <h4>Saved Contacts</h4>
-    <table class="table table-bordered mt-3">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for contact in contacts %}
-            <tr>
-                <td>{{ contact.name }}</td>
-                <td>{{ contact.email }}</td>
-                <td>{{ contact.get_role_display }}</td>
-                <td>
-                    <a href="{% url 'edit_hr_contact' contact.id %}" class="btn btn-sm btn-warning">Edit</a>
-                    <a href="{% url 'delete_hr_contact' contact.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this contact?')">Delete</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" class="text-center">No contacts yet.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+  <h3>Leadership Skills</h3>
+  <p class="section-description">Develop core leadership traits to manage, inspire, and lead with confidence.</p>
+  <div class="row g-4">
+    <div class="col-md-4 d-flex">
+      <div class="card p-4 text-center d-flex flex-column h-100 w-100">
+        <h5>Strategic Thinking</h5>
+        <p>Think critically and plan strategically for long-term success.</p>
+        <a href="#" class="text-primary mt-auto">View Resource</a>
+      </div>
+    </div>
+    <div class="col-md-4 d-flex">
+      <div class="card p-4 text-center d-flex flex-column h-100 w-100">
+        <h5>Conflict Resolution</h5>
+        <p>Address challenges with calm, clarity, and collaboration.</p>
+        <a href="#" class="text-primary mt-auto">View Resource</a>
+      </div>
+    </div>
+    <div class="col-md-4 d-flex">
+      <div class="card p-4 text-center d-flex flex-column h-100 w-100">
+        <h5>Mentorship</h5>
+        <p>Guide and support peers or team members to reach their potential.</p>
+        <a href="#" class="text-primary mt-auto">View Resource</a>
+      </div>
+    </div>
+  </div>
 {% endblock %}
