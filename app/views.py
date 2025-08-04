@@ -384,21 +384,92 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.core.exceptions import ObjectDoesNotExist
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.utils import timezone
+from .models import Employee, Notification
+from datetime import datetime
+
 @login_required(login_url='/')
 def dashboard(request):
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = user.company
+    if request.user.is_authenticated:
+        user = request.user
+        company = user.company  # Assuming user has a company field
 
-    # Get all unread notifications for the user
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
+        if user.role == 'Employee':
+            # Get employee data for current user
+            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
 
-    context = {
-        'employee': employee,
-        'notifications': notifications,
-        # ...other context variables...
-    }
-    return render(request, 'dashboard.html', context)
+            # Get birthdays (company specific)
+            today = datetime.now().date()
+            employees_with_birthday = Employee.objects.filter(
+                company=company,
+                date_of_birth__month=today.month, 
+                date_of_birth__day=today.day
+            )
+
+            # Get notifications
+            notifications = Notification.objects.filter(
+                recipient=request.user, 
+                is_read=False
+            ).order_by('-created_at')[:5]
+
+            # Add company-specific stats
+            total_employees = Employee.objects.filter(company=company).count()
+            todays_clockins = ...  # Add your clock-in query filtered by company
+            approved_leaves_today = ...  # Add your leave query filtered by company
+
+            return render(request, 'dashboard.html', {
+                'employee': employee,
+                'notifications': notifications,
+                'employees_with_birthday': employees_with_birthday,
+                'today': today,
+                'total_employees': total_employees,
+                'todays_clockins': todays_clockins,
+                'approved_leaves_today': approved_leaves_today,
+                'current_time': timezone.now().strftime("%I:%M %p")
+            })
+        
+        elif user.role in ['HR', 'Manager'] or user.is_superuser:
+            # Get employee data for current user
+            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
+
+            # Get birthdays (company specific)
+            today = datetime.now().date()
+            employees_with_birthday = Employee.objects.filter(
+                company=company,
+                date_of_birth__month=today.month, 
+                date_of_birth__day=today.day
+            )
+
+            # Get notifications
+            notifications = Notification.objects.filter(
+                recipient=request.user, 
+                is_read=False
+            ).order_by('-created_at')[:5]
+
+            # Add admin-specific stats
+            total_employees = Employee.objects.filter(company=company).count()
+            todays_clockins = ...  # Add your clock-in query filtered by company
+            approved_leaves_today = ...  # Add your leave query filtered by company
+            pending_requests = ...  # Add any pending approval counts
+
+            return render(request, 'dashboard.html', {
+                'employee': employee,
+                'employees_with_birthday': employees_with_birthday,
+                'today': today,
+                'notifications': notifications,
+                'total_employees': total_employees,
+                'todays_clockins': todays_clockins,
+                'approved_leaves_today': approved_leaves_today,
+                'pending_requests': pending_requests,
+                'current_time': timezone.now().strftime("%I:%M %p")
+            })
+        
+        return render(request, 'dashboard.html')
+    
+    else:
+        return render(request, 'index.html')
 
  
    
