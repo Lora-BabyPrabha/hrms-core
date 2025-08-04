@@ -74,7 +74,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
-    margin-top: 1rem;
+    margin-top: -10px;
     width: 100%
 }
 
@@ -87,8 +87,9 @@ body {
     box-shadow: var(--card-shadow);
     background: #f5f6f7;
     transition: all 0.3s ease;
-    height: 100%;
-    min-height: 200px;
+    height: 50%;
+    min-height: 150px;
+    margin-top: -5px;
     overflow: hidden;
 }
 

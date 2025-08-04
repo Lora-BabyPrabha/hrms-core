@@ -179,6 +179,7 @@ class TimeEntry(models.Model):
     clock_in_longitude = models.FloatField(null=True, blank=True)
     clock_out_latitude = models.FloatField(null=True, blank=True)
     clock_out_longitude = models.FloatField(null=True, blank=True)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='time_entries')
 
     def __str__(self):
         return f"{self.user.employee_id} - Clock In: {self.clock_in_time} - Clock Out: {self.clock_out_time}"
