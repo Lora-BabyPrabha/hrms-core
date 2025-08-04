@@ -472,6 +472,17 @@ class Skill(models.Model):
         return self.name
 
 
+class TrainingTopic(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    content = models.TextField()
+    video = models.FileField(upload_to='training_videos/', blank=True, null=True)
+    file = models.FileField(upload_to='training_files/', blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_trainings')
+    company = models.ForeignKey('app.Company_check', on_delete=models.CASCADE)  # ✅ Use string ref
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return self.title
 
 

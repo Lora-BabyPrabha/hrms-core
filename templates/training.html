@@ -1,24 +1,46 @@
 {% extends 'base.html' %}
-{% load static %}
-
-{% block title %}Training{% endblock %}
-
-{% block sidebar %}
-
-<link rel="stylesheet" href="{% static 'css/training.css' %}">
-
-<li class="sidebar-item">
-    <a href="/dashboard" class="sidebar-link active" style='color: black;'>
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-columns-gap mx-3" viewBox="0 0 16 16">
-            <path d="M6 1v3H1V1zM1 0a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1zm14 12v3h-5v-3zm-5-1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1zM6 8v7H1V8zM1 7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zm14-6v7h-5V1zm-5-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1z"/>
-        </svg>
-        Dashboard
-    </a>
-</li>
-{% endblock %}
 
 {% block content %}
-<div class="container-fluid dashboard-wrapper">
-    <h1 class="text-center mx-auto">Under maintaince</h1>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Training Modules</h2>
+        {% if request.user.is_authenticated and request.user.role in "HR Manager" %}
+            <a href="{% url 'create_training_topic' %}" class="btn btn-success">+ Add Training Content</a>
+        {% endif %}
+    </div>
+
+    {% if topics %}
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            {% for topic in topics %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ topic.title }}</h5>
+                            <p class="text-muted small">
+                                Created by: {{ topic.created_by.username }} <br>
+                                On: {{ topic.created_at|date:"d M Y, H:i" }}
+                            </p>
+                            <p class="card-text">{{ topic.description|truncatechars:100 }}</p>
+                            <a href="{% url 'training_detail' topic.pk %}" class="btn btn-outline-primary btn-sm">View Details</a>
+
+                            {% if request.user.role in "HR Manager" %}
+                                <a href="{% url 'edit_training' topic.pk %}" class="btn btn-outline-warning btn-sm ms-2">Edit</a>
+
+                                <form action="{% url 'delete_training' topic.pk %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm ms-1"
+                                            onclick="return confirm('Are you sure you want to delete this training module?');">
+                                        Delete
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-center text-muted">No training topics available yet.</p>
+    {% endif %}
 </div>
 {% endblock %}
