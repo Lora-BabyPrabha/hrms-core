@@ -1,7 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
+{% block page_title %}
+<li class="breadcrumb-item text-center mb-3">
+    <a href="/dashboard" class="text-decoration-none">
+        <small>All Users</small>
+    </a>
+</li>
+{% endblock %}
 
-{% block title %}All users{% endblock %}
 
 {% block sidebar %}
 <link rel="stylesheet" href="{% static 'css/base.css' %}">

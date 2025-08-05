@@ -390,86 +390,72 @@ from django.utils import timezone
 from .models import Employee, Notification
 from datetime import datetime
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.utils.timezone import localdate
+from django.utils import timezone
+from datetime import datetime
+from django.contrib import messages
+from .models import Employee, TimeEntry, LeaveRequest, Notification
+
 @login_required(login_url='/')
 def dashboard(request):
     if request.user.is_authenticated:
         user = request.user
-        company = user.company  # Assuming user has a company field
+        company = getattr(user, 'company', None)
 
-        if user.role == 'Employee':
-            # Get employee data for current user
+        today = datetime.now().date()
+        context = {
+            'today': today,
+            'current_time': timezone.now().strftime("%I:%M %p")
+        }
+
+        # Get employee profile
+        try:
             employee = Employee.objects.get(employee_id=user.employee_id, company=company)
+            context['employee'] = employee
+        except Employee.DoesNotExist:
+            messages.error(request, "Employee profile not found.")
+            return redirect('logout')
 
-            # Get birthdays (company specific)
-            today = datetime.now().date()
-            employees_with_birthday = Employee.objects.filter(
-                company=company,
-                date_of_birth__month=today.month, 
-                date_of_birth__day=today.day
-            )
+        # Get notifications
+        notifications = Notification.objects.filter(
+            recipient=request.user, 
+            is_read=False
+        ).order_by('-created_at')[:5]
+        context['notifications'] = notifications
 
-            # Get notifications
-            notifications = Notification.objects.filter(
-                recipient=request.user, 
-                is_read=False
-            ).order_by('-created_at')[:5]
+        # Get birthday list
+        employees_with_birthday = Employee.objects.filter(
+            company=company,
+            date_of_birth__month=today.month,
+            date_of_birth__day=today.day
+        )
+        context['employees_with_birthday'] = employees_with_birthday
 
-            # Add company-specific stats
+        # Show these stats only to HR, Manager, or Superuser
+        if user.role in ['HR', 'Manager'] or user.is_superuser:
             total_employees = Employee.objects.filter(company=company).count()
-            todays_clockins = ...  # Add your clock-in query filtered by company
-            approved_leaves_today = ...  # Add your leave query filtered by company
+            todays_clockins = TimeEntry.objects.filter(
+                user__employee__company=company,
+                clock_in_time__date=localdate()
+            ).count()
+            approved_leaves_today = LeaveRequest.objects.filter(
+                employee__company=company,
+                status='approved',
+                start_date__lte=localdate(),
+                end_date__gte=localdate()
+            ).count()
 
-            return render(request, 'dashboard.html', {
-                'employee': employee,
-                'notifications': notifications,
-                'employees_with_birthday': employees_with_birthday,
-                'today': today,
+            context.update({
                 'total_employees': total_employees,
                 'todays_clockins': todays_clockins,
                 'approved_leaves_today': approved_leaves_today,
-                'current_time': timezone.now().strftime("%I:%M %p")
             })
-        
-        elif user.role in ['HR', 'Manager'] or user.is_superuser:
-            # Get employee data for current user
-            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
 
-            # Get birthdays (company specific)
-            today = datetime.now().date()
-            employees_with_birthday = Employee.objects.filter(
-                company=company,
-                date_of_birth__month=today.month, 
-                date_of_birth__day=today.day
-            )
+        return render(request, 'dashboard.html', context)
 
-            # Get notifications
-            notifications = Notification.objects.filter(
-                recipient=request.user, 
-                is_read=False
-            ).order_by('-created_at')[:5]
-
-            # Add admin-specific stats
-            total_employees = Employee.objects.filter(company=company).count()
-            todays_clockins = ...  # Add your clock-in query filtered by company
-            approved_leaves_today = ...  # Add your leave query filtered by company
-            pending_requests = ...  # Add any pending approval counts
-
-            return render(request, 'dashboard.html', {
-                'employee': employee,
-                'employees_with_birthday': employees_with_birthday,
-                'today': today,
-                'notifications': notifications,
-                'total_employees': total_employees,
-                'todays_clockins': todays_clockins,
-                'approved_leaves_today': approved_leaves_today,
-                'pending_requests': pending_requests,
-                'current_time': timezone.now().strftime("%I:%M %p")
-            })
-        
-        return render(request, 'dashboard.html')
-    
-    else:
-        return render(request, 'index.html')
+    return render(request, 'index.html')
 
  
    
@@ -726,29 +712,46 @@ def staff_notifications(request):
  
 #------------------------------------------------------------- clock In #
  
+from django.utils import timezone
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from .models import TimeEntry, Employee
+
 @login_required(login_url='/')
 def clock_in(request):
     if request.method == 'POST':
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
- 
+
         if latitude and longitude:
             if TimeEntry.objects.filter(user=request.user, clock_out_time__isnull=True).exists():
                 messages.warning(request, "You have already clocked in.")
             else:
                 clock_in_time = timezone.now()
-                time_entry = TimeEntry(
+
+                # ✅ Get company from Employee profile
+                try:
+                    employee = Employee.objects.get(user=request.user)
+                    company = employee.company
+                except Employee.DoesNotExist:
+                    company = None  # Or handle error appropriately
+
+                # ✅ Save company into TimeEntry
+                time_entry = TimeEntry.objects.create(
                     user=request.user,
                     clock_in_time=clock_in_time,
                     clock_in_latitude=latitude,
-                    clock_in_longitude=longitude
+                    clock_in_longitude=longitude,
+                    company=company
                 )
-                time_entry.save()
+
                 messages.success(request, "Clocked in successfully.")
         else:
             messages.error(request, "Unable to capture your location. Please try again.")
-   
+
     return redirect('dashboard')
+
    
  
 #------------------------------------------------------------- clock Out #
