@@ -49,6 +49,7 @@ import zoneinfo
 from django.http import JsonResponse
 from django.http import JsonResponse
 from .models import Company_check
+from django.db.models import Q
  
 CustomUser = get_user_model()
  
@@ -384,21 +385,92 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.core.exceptions import ObjectDoesNotExist
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.utils import timezone
+from .models import Employee, Notification
+from datetime import datetime
+
 @login_required(login_url='/')
 def dashboard(request):
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = user.company
+    if request.user.is_authenticated:
+        user = request.user
+        company = user.company  # Assuming user has a company field
 
-    # Get all unread notifications for the user
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
+        if user.role == 'Employee':
+            # Get employee data for current user
+            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
 
-    context = {
-        'employee': employee,
-        'notifications': notifications,
-        # ...other context variables...
-    }
-    return render(request, 'dashboard.html', context)
+            # Get birthdays (company specific)
+            today = datetime.now().date()
+            employees_with_birthday = Employee.objects.filter(
+                company=company,
+                date_of_birth__month=today.month, 
+                date_of_birth__day=today.day
+            )
+
+            # Get notifications
+            notifications = Notification.objects.filter(
+                recipient=request.user, 
+                is_read=False
+            ).order_by('-created_at')[:5]
+
+            # Add company-specific stats
+            total_employees = Employee.objects.filter(company=company).count()
+            todays_clockins = ...  # Add your clock-in query filtered by company
+            approved_leaves_today = ...  # Add your leave query filtered by company
+
+            return render(request, 'dashboard.html', {
+                'employee': employee,
+                'notifications': notifications,
+                'employees_with_birthday': employees_with_birthday,
+                'today': today,
+                'total_employees': total_employees,
+                'todays_clockins': todays_clockins,
+                'approved_leaves_today': approved_leaves_today,
+                'current_time': timezone.now().strftime("%I:%M %p")
+            })
+        
+        elif user.role in ['HR', 'Manager'] or user.is_superuser:
+            # Get employee data for current user
+            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
+
+            # Get birthdays (company specific)
+            today = datetime.now().date()
+            employees_with_birthday = Employee.objects.filter(
+                company=company,
+                date_of_birth__month=today.month, 
+                date_of_birth__day=today.day
+            )
+
+            # Get notifications
+            notifications = Notification.objects.filter(
+                recipient=request.user, 
+                is_read=False
+            ).order_by('-created_at')[:5]
+
+            # Add admin-specific stats
+            total_employees = Employee.objects.filter(company=company).count()
+            todays_clockins = ...  # Add your clock-in query filtered by company
+            approved_leaves_today = ...  # Add your leave query filtered by company
+            pending_requests = ...  # Add any pending approval counts
+
+            return render(request, 'dashboard.html', {
+                'employee': employee,
+                'employees_with_birthday': employees_with_birthday,
+                'today': today,
+                'notifications': notifications,
+                'total_employees': total_employees,
+                'todays_clockins': todays_clockins,
+                'approved_leaves_today': approved_leaves_today,
+                'pending_requests': pending_requests,
+                'current_time': timezone.now().strftime("%I:%M %p")
+            })
+        
+        return render(request, 'dashboard.html')
+    
+    else:
+        return render(request, 'index.html')
 
  
    
@@ -3644,17 +3716,16 @@ def team_detail(request, team_id):
 def career_development(request):
     return render(request, 'career_development.html')
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.http import HttpResponseForbidden
+
+#------------------------------------------------------------- Training#
 from .models import TrainingTopic
 from .forms import TrainingTopicForm
 
-# ✅ Helper: Check if user is HR or Manager
+# Check if user is HR or Manager
 def is_hr_or_manager(user):
     return hasattr(user, 'role') and user.role in ['HR', 'Manager']
 
-# ✅ Create training topic
+# Create training topic
 @login_required
 @user_passes_test(is_hr_or_manager)
 def create_training(request):
@@ -3672,21 +3743,23 @@ def create_training(request):
         form = TrainingTopicForm()
     return render(request, 'create_training.html', {'form': form})
 
-# ✅ List training topics (company-specific)
+# List training topics
+
 @login_required
 def training(request):
-    topics = TrainingTopic.objects.filter(company=request.user.company).order_by('-created_at')  # 🔒 Filter by company
+    search_query = request.GET.get('search', '')
+
+    topics = TrainingTopic.objects.filter(company=request.user.company)
+
+    if search_query:
+        topics = topics.filter(
+            Q(title__icontains=search_query)
+        )
+
+    topics = topics.order_by('-created_at')
     return render(request, 'training.html', {'topics': topics})
 
-# ✅ View training topic detail (company-specific access)
-@login_required
-def training_detail(request, pk):
-    training = get_object_or_404(TrainingTopic, pk=pk)
-    if training.company != request.user.company:
-        return HttpResponseForbidden("You are not authorized to view this training.")
-    return render(request, 'training_detail.html', {'training': training})
-
-# ✅ Edit training topic (with company check)
+# Edit training topic
 @login_required
 @user_passes_test(is_hr_or_manager)
 def edit_training(request, pk):
@@ -3702,13 +3775,15 @@ def edit_training(request, pk):
         form = TrainingTopicForm(request.POST, request.FILES, instance=training)
         if form.is_valid():
             form.save()
-            return redirect('training_detail', pk=training.pk)
+            messages.success(request, "Training topic updated successfully.")  # ✅ success message
+            return redirect('training')
     else:
         form = TrainingTopicForm(instance=training)
 
     return render(request, 'edit_training.html', {'form': form, 'training': training})
 
-# ✅ Delete training topic (with company check)
+
+# Delete training topic 
 @login_required
 @user_passes_test(is_hr_or_manager)
 def delete_training(request, pk):

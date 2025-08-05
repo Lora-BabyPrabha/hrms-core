@@ -469,13 +469,11 @@ class PersonalInfoForm(forms.ModelForm):
              'address',
          ]
             
+#------------------------------------------------------------- Training #
+from django import forms
 from .models import TrainingTopic
 
 class TrainingTopicForm(forms.ModelForm):
     class Meta:
         model = TrainingTopic
-        fields = ['title', 'description', 'content', 'video', 'file']
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'content': forms.Textarea(attrs={'rows': 5}),
-        }
+        fields = ['title', 'topic_link']

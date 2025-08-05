@@ -472,17 +472,21 @@ class Skill(models.Model):
         return self.name
 
 
+#------------------------------------------------------------- Training #
+
+from django.db import models
+from django.conf import settings
+
 class TrainingTopic(models.Model):
     title = models.CharField(max_length=200)
-    description = models.TextField()
-    content = models.TextField()
-    video = models.FileField(upload_to='training_videos/', blank=True, null=True)
-    file = models.FileField(upload_to='training_files/', blank=True, null=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_trainings')
-    company = models.ForeignKey('app.Company_check', on_delete=models.CASCADE)  # ✅ Use string ref
+    topic_link = models.URLField(verbose_name="Link to topic")  # ✅ Add this line
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    company = models.ForeignKey('app.Company_check', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
+
+
 
 
