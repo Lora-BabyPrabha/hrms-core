@@ -32,7 +32,8 @@ body {
     padding: 1.5rem;
     width: 100%;
     box-sizing: border-box;
-    margin-top:-40px;
+    margin-top: 0px; /* was -40px, unnecessary */
+    padding-top: 0.5rem; /* reduce padding */
    
 }
 
@@ -44,7 +45,8 @@ body {
     margin: 0 auto;
     gap: 1.5rem;
     padding: 1rem;
-    margin-top:-10px;
+    margin-top: 0px; /* was -10px */
+    gap: 1rem;       /* slightly tighter spacing */
 }
 
 .dashboard-header {
@@ -73,8 +75,8 @@ body {
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1rem;
+    gap: 1rem;
+    margin-top:0px;
     width: 100%
 }
 
@@ -87,8 +89,9 @@ body {
     box-shadow: var(--card-shadow);
     background: #f5f6f7;
     transition: all 0.3s ease;
-    height: 100%;
-    min-height: 200px;
+    height: 50%;
+    min-height: 150px;
+    margin-top: -35px;
     overflow: hidden;
 }
 
@@ -105,6 +108,7 @@ body {
     background: none;
     border-bottom: 1px solid #e5e7eb;
     padding: 1.25rem;
+
 }
 
 .card-title {
@@ -114,9 +118,6 @@ body {
     font-weight: 600;
 }
 
-.card-body {
-    padding: 1.25rem;
-}
 
 /* Stats Grid */
 .stats-grid {

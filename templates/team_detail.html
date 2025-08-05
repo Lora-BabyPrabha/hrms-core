@@ -1,6 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Team Details{% endblock %}
+{% block page_title %}
+<li class="breadcrumb-item text-center mb-3">
+    <a href="/dashboard" class="text-decoration-none">
+        <small>Team Details</small>
+    </a>
+</li>
+{% endblock %}
+
 
 {% block sidebar %}
 <link rel="stylesheet" href="{% static 'css/task_management.css' %}">
