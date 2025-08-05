@@ -49,6 +49,7 @@ import zoneinfo
 from django.http import JsonResponse
 from django.http import JsonResponse
 from .models import Company_check
+from django.db.models import Q
  
 CustomUser = get_user_model()
  
@@ -3717,3 +3718,88 @@ def team_detail(request, team_id):
 @login_required
 def career_development(request):
     return render(request, 'career_development.html')
+
+
+#------------------------------------------------------------- Training#
+from .models import TrainingTopic
+from .forms import TrainingTopicForm
+
+# Check if user is HR or Manager
+def is_hr_or_manager(user):
+    return hasattr(user, 'role') and user.role in ['HR', 'Manager']
+
+# Create training topic
+@login_required
+@user_passes_test(is_hr_or_manager)
+def create_training(request):
+    if request.method == 'POST':
+        form = TrainingTopicForm(request.POST, request.FILES)
+        if form.is_valid():
+            training = form.save(commit=False)
+            training.created_by = request.user
+            training.company = request.user.company  # 🔒 Assign user's company
+            training.save()
+            return redirect('training')
+        else:
+            print("Form errors:", form.errors)
+    else:
+        form = TrainingTopicForm()
+    return render(request, 'create_training.html', {'form': form})
+
+# List training topics
+
+@login_required
+def training(request):
+    search_query = request.GET.get('search', '')
+
+    topics = TrainingTopic.objects.filter(company=request.user.company)
+
+    if search_query:
+        topics = topics.filter(
+            Q(title__icontains=search_query)
+        )
+
+    topics = topics.order_by('-created_at')
+    return render(request, 'training.html', {'topics': topics})
+
+# Edit training topic
+@login_required
+@user_passes_test(is_hr_or_manager)
+def edit_training(request, pk):
+    training = get_object_or_404(TrainingTopic, pk=pk)
+
+    if training.company != request.user.company:
+        return HttpResponseForbidden("You are not allowed to edit this training module.")
+
+    if training.created_by != request.user and request.user.role not in ['HR', 'Manager']:
+        return HttpResponseForbidden("You are not allowed to edit this training module.")
+
+    if request.method == 'POST':
+        form = TrainingTopicForm(request.POST, request.FILES, instance=training)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Training topic updated successfully.")  # ✅ success message
+            return redirect('training')
+    else:
+        form = TrainingTopicForm(instance=training)
+
+    return render(request, 'edit_training.html', {'form': form, 'training': training})
+
+
+# Delete training topic 
+@login_required
+@user_passes_test(is_hr_or_manager)
+def delete_training(request, pk):
+    training = get_object_or_404(TrainingTopic, pk=pk)
+
+    if training.company != request.user.company:
+        return HttpResponseForbidden("You are not allowed to delete this training module.")
+
+    if training.created_by != request.user and request.user.role not in ['HR', 'Manager']:
+        return HttpResponseForbidden("You are not allowed to delete this training module.")
+
+    if request.method == 'POST':
+        training.delete()
+        return redirect('training')
+
+    return render(request, 'delete_training.html', {'training': training})

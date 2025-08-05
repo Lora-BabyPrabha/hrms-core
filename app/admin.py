@@ -78,3 +78,21 @@ class EmployeeAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EmployeeMedia)
+
+
+#------------------------------------------------------------- Training #
+from .models import TrainingTopic
+
+@admin.register(TrainingTopic)
+class TrainingTopicAdmin(admin.ModelAdmin):
+    list_display = ('title', 'created_by', 'company', 'created_at')
+    search_fields = ('title', 'description', 'created_by__username')
+    list_filter = ('company', 'created_at')
+    readonly_fields = ('created_by', 'company', 'created_at')
+    ordering = ('-created_at',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:  # Only set created_by and company on creation
+            obj.created_by = request.user
+            obj.company = request.user.company
+        super().save_model(request, obj, form, change)

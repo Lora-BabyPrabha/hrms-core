@@ -468,3 +468,12 @@ class PersonalInfoForm(forms.ModelForm):
              'phone_number',
              'address',
          ]
+            
+#------------------------------------------------------------- Training #
+from django import forms
+from .models import TrainingTopic
+
+class TrainingTopicForm(forms.ModelForm):
+    class Meta:
+        model = TrainingTopic
+        fields = ['title', 'topic_link']
