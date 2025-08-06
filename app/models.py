@@ -347,13 +347,13 @@ class Task(models.Model):
 
 #------------------------------------------------------------- Performance #
 
-class Performance(models.Model):
+'''class Performance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     performance_score = models.IntegerField()
     date = models.DateField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-date']
+        ordering = ['-date']'''
 
 
 from django.db import models
@@ -487,6 +487,7 @@ class TrainingTopic(models.Model):
 
     def __str__(self):
         return self.title
+
 
 
 

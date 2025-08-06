@@ -26,67 +26,45 @@
 {% endblock %}
 
 {% block content %}
+<div class="container mt-4">
+    <h2>Working Days Summary</h2>
 
-<div id="workingDaysContainer">
-    <h1 id="workingDaysTitle">Employee Working Days Overview</h1>
+    <form method="get" class="form-inline mb-3">
+        <label class="me-2">Select Month:</label>
+        <select name="month" class="form-select me-3" style="width: 200px;" onchange="this.form.submit()">
+            {% for option in month_options %}
+                <option value="{{ option.value }}" {% if selected_month == option.value %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+        </select>
 
-    <!-- Filter Form -->
-    <div id="workingDaysFilterForm">
-        <form method="GET" action="{% url 'working_days' %}" class="d-flex gap-4">
-            <div class="flex-grow-1">
-                <label for="monthYearSelect">Select Month and Year</label>
-                <select name="month_year" id="monthYearSelect">
-                    {% for month_num, year, month_year in months %}
-                        <option value="{{ month_num }}-{{ year }}" {% if month_num == selected_month and year == selected_year %}selected{% endif %}>
-                            {{ month_year }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+        <label class="me-2">Employee ID:</label>
+        <input type="text" name="employee_id" value="{{ selected_emp_id }}" class="form-control me-2" placeholder="Search..." style="width: 200px;">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
 
-            <div class="flex-grow-1">
-                <label for="employeeIdInput">Employee ID</label>
-                <input type="text" name="employee_id" id="employeeIdInput" value="{{ employee_id_filter }}" placeholder="Enter Employee ID">
-            </div>
-
-            <div>
-                <label>&nbsp;</label><br>
-                <button type="submit" id="filterSubmitBtn">Apply Filters</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Working Days Table -->
-    <div id="workingDaysTableContainer">
-        <div id="tableResponsiveWrapper">
-            <table id="workingDaysTable">
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Employee Name</th>
-                        <th>Working Days</th>
-                        <th>Remaining Leaves</th>
-                        <th>Leaves Taken</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for data in employee_data %}
-                        <tr>
-                            <td>{{ data.employee.employee_id }}</td>
-                            <td>{{ data.employee.get_full_name }}</td>
-                            <td>{{ data.working_days.0.working_days }}</td>
-                            <td>{{ data.remaining_leave_days }}</td>
-                            <td>{{ data.leaves_taken|default:"0" }}</td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" style="text-align: center;">No records found for selected filters.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Working Days</th>
+                <th>Leaves Taken</th>
+                <th>Total Working Days</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in employee_data %}
+            <tr>
+                <td>{{ row.employee_id }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.working_days }}</td>
+                <td>{{ row.leaves }}</td>
+                <td>{{ row.total_days }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">No data found</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
-
 {% endblock %}

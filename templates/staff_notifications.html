@@ -90,14 +90,14 @@
     </a>
 </li>
 
-<li class="sidebar-item">
+<!--<li class="sidebar-item">
     <a href="/performance_list" class="sidebar-link" style='color: black;'>
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-graph-up mx-3" viewBox="0 0 16 16">
             <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
         </svg>
         Performance
     </a>
-</li>
+</li>-->
 {% endblock %}
 
 {% block content %}
@@ -155,8 +155,8 @@
                         <th>Clock-in Time</th>
                         <th>Clock-out Time</th>
                         <th>Reason</th>
-                        <th>Status</th>
                         <th>Notes</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -169,20 +169,20 @@
                         <td>{{ muster.clock_in_time }}</td>
                         <td>{{ muster.clock_out_time }}</td>
                         <td>{{ muster.reason }}</td>
-                        <td><span class="status-badge">{{ muster.status }}</span></td>
                         <td>{{ muster.notes }}</td>
+                        <td><span class="status-badge">{{ muster.status }}</span></td>
                         <td>
                             <form method="POST" action="{% url 'review_muster' %}" class="action-buttons">
                                 {% csrf_token %}
                                 <input type="hidden" name="muster_id" value="{{ muster.id }}">
                                 {% if muster.status == 'Pending' %}
-                                    <button type="submit" name="status" value="Accepted">Accept</button>
-                                    <button type="submit" name="status" value="Rejected">Reject</button>
-                                {% elif muster.status == 'Accepted' %}
-                                    <button type="submit" name="status" value="Rejected">Reject</button>
-                                {% elif muster.status == 'Rejected' %}
-                                    <button type="submit" name="status" value="Accepted">Accept</button>
-                                {% endif %}
+                                <button type="submit" name="status" value="Approved">Approve</button>
+                                <button type="submit" name="status" value="Rejected">Reject</button>
+                            {% elif muster.status == 'Approved' %}
+                                <button type="submit" name="status" value="Rejected">Reject</button>
+                            {% elif muster.status == 'Rejected' %}
+                                <button type="submit" name="status" value="Approved">Approve</button>
+                            {% endif %}
                             </form>
                         </td>
                     </tr>
@@ -232,12 +232,12 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="leave_id" value="{{ leave.id }}">
                                 {% if leave.status == 'pending' %}
-                                    <button type="submit" name="status" value="Accepted">Accept</button>
+                                    <button type="submit" name="status" value="Approved">Approve</button>
                                     <button type="submit" name="status" value="Rejected">Reject</button>
-                                {% elif leave.status == 'Accepted' %}
+                                {% elif leave.status == 'Approved' %}
                                     <button type="submit" name="status" value="Rejected">Reject</button>
                                 {% elif leave.status == 'Rejected' %}
-                                    <button type="submit" name="status" value="Accepted">Accept</button>
+                                    <button type="submit" name="status" value="Approved">Approve</button>
                                 {% endif %}
                             </form>
                         </td>
@@ -270,8 +270,8 @@
             <th>Description</th>
             <th>Bill No.</th>
             <th>Receipt</th>
-            <th>Review</th>
             <th>Status</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -291,12 +291,12 @@
                     {% csrf_token %}
                     <input type="hidden" name="expense_id" value="{{ expense.id }}">
                     {% if expense.status == 'pending' %}
-                        <button type="submit" name="status" value="Accepted">Accept</button>
+                        <button type="submit" name="status" value="Approved">Approve</button>
                         <button type="submit" name="status" value="Rejected">Reject</button>
-                    {% elif expense.status == 'Accepted' %}
+                    {% elif expense.status == 'Approved' %}
                         <button type="submit" name="status" value="Rejected">Reject</button>
                     {% elif expense.status == 'Rejected' %}
-                        <button type="submit" name="status" value="Accepted">Accept</button>
+                        <button type="submit" name="status" value="Approved">Approve</button>
                     {% endif %}
                 </form>
             </td>
@@ -330,8 +330,8 @@
             <th>Repayment Duration</th>
             <th>Interest Rate</th>
             <th>Date Requested</th>
-            <th>Review</th>
             <th>Status</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -344,18 +344,19 @@
             <td>{{ loan.repayment_duration }}</td>
             <td>{{ loan.interest_rate }}%</td>
             <td>{{ loan.date_requested }}</td>
+
             <td><span class="status-badge">{{ loan.status }}</span></td>
             <td>
             <form method="POST" action="{% url 'review_loan' %}" class="action-buttons">
                 {% csrf_token %}
                 <input type="hidden" name="loan_id" value="{{ loan.id }}">
                 {% if loan.status == 'pending' %}
-                    <button type="submit" name="status" value="Accepted">Accept</button>
+                    <button type="submit" name="status" value="Approved">Approve</button>
                     <button type="submit" name="status" value="Rejected">Reject</button>
-                {% elif loan.status == 'Accepted' %}
+                {% elif loan.status == 'Approved' %}
                     <button type="submit" name="status" value="Rejected">Reject</button>
                 {% elif loan.status == 'Rejected' %}
-                    <button type="submit" name="status" value="Accepted">Accept</button>
+                    <button type="submit" name="status" value="Approved">Approve</button>
                 {% endif %}
             </form>
         </td>

@@ -151,14 +151,30 @@ class UserCreationForm(forms.ModelForm):
 
 
 # forms.py (frontend form)
+from django.contrib.auth.hashers import make_password
 
 class FrontendUserForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput)
-
+    password = forms.CharField(
+        widget=forms.PasswordInput,
+        help_text="Enter a strong password"
+    )
+    
     class Meta:
         model = CustomUser
         fields = '__all__'
         exclude = ['company']
+    
+    def save(self, commit=True):
+        # Get the user instance without saving yet
+        user = super().save(commit=False)
+        
+        # Hash the password before saving
+        if 'password' in self.cleaned_data:
+            user.set_password(self.cleaned_data['password'])
+        
+        if commit:
+            user.save()
+        return user
 
 
 class MusterForm(forms.ModelForm):
