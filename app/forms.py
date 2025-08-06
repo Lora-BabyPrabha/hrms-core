@@ -362,13 +362,9 @@ class EmployeeMediaForm(forms.ModelForm):
         model = EmployeeMedia
         fields = ['profile_picture', 'cover_picture']
 
-
-
-# forms.py
-
 from django import forms
 from .models import HRContact
-from app.models import Employee  # Adjust if needed
+from app.models import Employee
 
 class HRContactForm(forms.ModelForm):
     class Meta:
@@ -376,8 +372,28 @@ class HRContactForm(forms.ModelForm):
         fields = ['employee', 'role']
         widgets = {
             'employee': forms.Select(attrs={'class': 'form-control'}),
-            'role': forms.Select(choices=HRContact.ROLE_CHOICES, attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        company = kwargs.pop('company', None)
+        super().__init__(*args, **kwargs)
+
+        if company:
+            exclude_ids = HRContact.objects.filter(
+                employee__company=company
+            ).exclude(pk=self.instance.pk).values_list('employee_id', flat=True)
+
+            employee_queryset = Employee.objects.filter(company=company).exclude(id__in=exclude_ids)
+
+            # Custom label formatting: EMP ID - Name
+            self.fields['employee'] = forms.ModelChoiceField(
+                queryset=employee_queryset,
+                widget=forms.Select(attrs={'class': 'form-control'}),
+                label='Employee',
+                required=True
+            )
+            self.fields['employee'].label_from_instance = lambda obj: f"{obj.employee_id} - {obj.name}"
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -396,11 +412,16 @@ class HelpDeskTicketForm(forms.ModelForm):
         label='HR',
         required=True
     )
+    manager = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        label='Manager',
+        required=True
+    )
     issue_type = forms.ChoiceField(choices=[], label='Issue Type', required=True)
 
     class Meta:
         model = HelpDeskTicket
-        fields = ['issue_type', 'description', 'team_leader', 'hr']
+        fields = ['issue_type', 'description', 'team_leader', 'hr', 'manager']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Describe your issue'}),
         }
@@ -427,9 +448,11 @@ class HelpDeskTicketForm(forms.ModelForm):
         if company:
             tl_contacts = HRContact.objects.filter(role='TL', employee__company=company)
             hr_contacts = HRContact.objects.filter(role='HR', employee__company=company)
+            manager_contacts = HRContact.objects.filter(role='MG', employee__company=company)
 
             self.fields['team_leader'].queryset = User.objects.filter(id__in=tl_contacts.values_list('employee__user_id', flat=True))
             self.fields['hr'].queryset = User.objects.filter(id__in=hr_contacts.values_list('employee__user_id', flat=True))
+            self.fields['manager'].queryset = User.objects.filter(id__in=manager_contacts.values_list('employee__user_id', flat=True))
 
 
 class TaskForm(forms.Form):
@@ -468,3 +491,12 @@ class PersonalInfoForm(forms.ModelForm):
              'phone_number',
              'address',
          ]
+            
+#------------------------------------------------------------- Training #
+from django import forms
+from .models import TrainingTopic
+
+class TrainingTopicForm(forms.ModelForm):
+    class Meta:
+        model = TrainingTopic
+        fields = ['title', 'topic_link']

@@ -118,6 +118,10 @@ body {
     font-weight: 600;
 }
 
+.card-body {
+    transform: translateY(-20px); /* moves everything 10px up */
+    
+}
 
 /* Stats Grid */
 .stats-grid {

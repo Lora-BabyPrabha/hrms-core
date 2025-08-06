@@ -49,6 +49,7 @@ import zoneinfo
 from django.http import JsonResponse
 from django.http import JsonResponse
 from .models import Company_check
+from django.db.models import Q
  
 CustomUser = get_user_model()
  
@@ -3256,67 +3257,73 @@ def leave_delete(request, pk):
 
 
 
-
-# views.py
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import HRContact
-from .forms import HRContactForm
-from app.models import Employee
-from django.contrib.auth.decorators import login_required
-
 @login_required
 def hr_services_page(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
 
-    if request.method == 'POST':
-        form = HRContactForm(request.POST)
-        form.fields['employee'].queryset = Employee.objects.filter(company=company)
-        if form.is_valid():
-            form.save()
-            return redirect('hr_services')
-    else:
-        form = HRContactForm()
-        form.fields['employee'].queryset = Employee.objects.filter(company=company)
+    form = HRContactForm(request.POST or None, company=company)
 
-    contacts = HRContact.objects.filter(employee__company=company)
+    if request.method == 'POST':
+        if form.is_valid():
+            instance = form.save(commit=False)
+
+            # Prevent assigning duplicate role to same employee
+            existing = HRContact.objects.filter(
+                employee=instance.employee,
+            ).exclude(pk=instance.pk).first()
+
+            if existing:
+                form.add_error('employee', 'This employee already has an assigned role.')
+            else:
+                instance.save()
+                return redirect('hr_services')
+
+    contacts = HRContact.objects.filter(employee__company=company).order_by('role')
+    return render(request, 'hr_services.html', {
+        'form': form,
+        'contacts': contacts,
+    })
+
+@login_required
+def edit_hr_contact(request, pk):
+    contact = get_object_or_404(HRContact, pk=pk)
+
+    employee = Employee.objects.get(employee_id=request.user.employee_id)
+    company = employee.company
+
+    if request.method == 'POST':
+        form = HRContactForm(request.POST, instance=contact, company=company)
+        if form.is_valid():
+            instance = form.save(commit=False)
+
+            # Check for duplication (except self)
+            existing = HRContact.objects.filter(
+                employee=instance.employee
+            ).exclude(pk=contact.pk).first()
+
+            if existing:
+                form.add_error('employee', 'This employee is already assigned a role.')
+            else:
+                instance.save()
+                return redirect('hr_services')
+    else:
+        form = HRContactForm(instance=contact, company=company)
+
+    contacts = HRContact.objects.filter(employee__company=company).order_by('role')
     return render(request, 'hr_services.html', {
         'form': form,
         'contacts': contacts
     })
 
 
-
-@login_required(login_url='/')
-def edit_hr_contact(request, pk):
-    contact = get_object_or_404(HRContact, pk=pk)
-    if request.method == 'POST':
-        form = HRContactForm(request.POST, instance=contact)
-        if form.is_valid():
-            form.save()
-            return redirect('hr_services')
-    else:
-        form = HRContactForm(instance=contact)
-    
-    contacts = HRContact.objects.all().order_by('role')
-    return render(request, 'hr_services.html', {
-        'form': form,
-        'contacts': contacts,
-    })
-
-@login_required(login_url='/')
+@login_required
 def delete_hr_contact(request, pk):
     contact = get_object_or_404(HRContact, pk=pk)
     contact.delete()
     return redirect('hr_services')
 
-
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
-# views.py
 
 def assign_manager(ticket, company):
     manager_contact = HRContact.objects.filter(role='MG').first()
@@ -3359,9 +3366,11 @@ def help_desk_page(request):
     # TL and HR QuerySets
     tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
     hr_ids = HRContact.objects.filter(role='HR', employee__company=company).values_list('employee__user_id', flat=True)
+    manager_ids = HRContact.objects.filter(role='MG', employee__company=company).values_list('employee__user_id', flat=True)
+
     team_leader_qs = User.objects.filter(id__in=tl_ids)
     hr_qs = User.objects.filter(id__in=hr_ids)
-
+    manager_qs = User.objects.filter(id__in=manager_ids)
     # Forms
     hr_form = HelpDeskTicketForm(prefix='hr', category='HR', company=company)
     it_form = HelpDeskTicketForm(prefix='it', category='IT', company=company)
@@ -3370,7 +3379,7 @@ def help_desk_page(request):
     for form in [hr_form, it_form, asset_form]:
         form.fields['team_leader'].queryset = team_leader_qs
         form.fields['hr'].queryset = hr_qs
-
+        form.fields['manager'].queryset = manager_qs
     def send_ticket_email(ticket, to_user, subject_prefix):
         if to_user and to_user.email:
             send_mail(
@@ -3461,6 +3470,13 @@ def help_desk_page(request):
         viewed_by_hr=False,
         created_at__lte=current_time - timedelta(hours=2)
     ).order_by('-created_at')
+    manager_escalated_tickets = HelpDeskTicket.objects.filter(
+    manager=user,
+    viewed_by_hr=False,
+    viewed_by_tl=False,
+    created_at__lte=current_time - timedelta(hours=4)
+    ).order_by('-created_at')
+
 
     return render(request, 'help_desk.html', {
         'hr_form': hr_form,
@@ -3471,6 +3487,11 @@ def help_desk_page(request):
         'notifications': notifications,
         'tl_pending_tickets': tl_pending_tickets,
         'hr_escalated_tickets': hr_escalated_tickets,
+        'manager_escalated_tickets': manager_escalated_tickets,
+        'current_time': current_time,
+        'team_leader_qs': team_leader_qs,
+        'hr_qs': hr_qs,
+        'manager_qs': manager_qs,
     })
 
 #---------------------------- Employee Self Service #
@@ -3717,3 +3738,88 @@ def team_detail(request, team_id):
 @login_required
 def career_development(request):
     return render(request, 'career_development.html')
+
+
+#------------------------------------------------------------- Training#
+from .models import TrainingTopic
+from .forms import TrainingTopicForm
+
+# Check if user is HR or Manager
+def is_hr_or_manager(user):
+    return hasattr(user, 'role') and user.role in ['HR', 'Manager']
+
+# Create training topic
+@login_required
+@user_passes_test(is_hr_or_manager)
+def create_training(request):
+    if request.method == 'POST':
+        form = TrainingTopicForm(request.POST, request.FILES)
+        if form.is_valid():
+            training = form.save(commit=False)
+            training.created_by = request.user
+            training.company = request.user.company  # 🔒 Assign user's company
+            training.save()
+            return redirect('training')
+        else:
+            print("Form errors:", form.errors)
+    else:
+        form = TrainingTopicForm()
+    return render(request, 'create_training.html', {'form': form})
+
+# List training topics
+
+@login_required
+def training(request):
+    search_query = request.GET.get('search', '')
+
+    topics = TrainingTopic.objects.filter(company=request.user.company)
+
+    if search_query:
+        topics = topics.filter(
+            Q(title__icontains=search_query)
+        )
+
+    topics = topics.order_by('-created_at')
+    return render(request, 'training.html', {'topics': topics})
+
+# Edit training topic
+@login_required
+@user_passes_test(is_hr_or_manager)
+def edit_training(request, pk):
+    training = get_object_or_404(TrainingTopic, pk=pk)
+
+    if training.company != request.user.company:
+        return HttpResponseForbidden("You are not allowed to edit this training module.")
+
+    if training.created_by != request.user and request.user.role not in ['HR', 'Manager']:
+        return HttpResponseForbidden("You are not allowed to edit this training module.")
+
+    if request.method == 'POST':
+        form = TrainingTopicForm(request.POST, request.FILES, instance=training)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Training topic updated successfully.")  # ✅ success message
+            return redirect('training')
+    else:
+        form = TrainingTopicForm(instance=training)
+
+    return render(request, 'edit_training.html', {'form': form, 'training': training})
+
+
+# Delete training topic 
+@login_required
+@user_passes_test(is_hr_or_manager)
+def delete_training(request, pk):
+    training = get_object_or_404(TrainingTopic, pk=pk)
+
+    if training.company != request.user.company:
+        return HttpResponseForbidden("You are not allowed to delete this training module.")
+
+    if training.created_by != request.user and request.user.role not in ['HR', 'Manager']:
+        return HttpResponseForbidden("You are not allowed to delete this training module.")
+
+    if request.method == 'POST':
+        training.delete()
+        return redirect('training')
+
+    return render(request, 'delete_training.html', {'training': training})
