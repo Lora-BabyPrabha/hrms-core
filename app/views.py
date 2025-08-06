@@ -3217,67 +3217,73 @@ def leave_delete(request, pk):
 
 
 
-
-# views.py
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import HRContact
-from .forms import HRContactForm
-from app.models import Employee
-from django.contrib.auth.decorators import login_required
-
 @login_required
 def hr_services_page(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
 
-    if request.method == 'POST':
-        form = HRContactForm(request.POST)
-        form.fields['employee'].queryset = Employee.objects.filter(company=company)
-        if form.is_valid():
-            form.save()
-            return redirect('hr_services')
-    else:
-        form = HRContactForm()
-        form.fields['employee'].queryset = Employee.objects.filter(company=company)
+    form = HRContactForm(request.POST or None, company=company)
 
-    contacts = HRContact.objects.filter(employee__company=company)
+    if request.method == 'POST':
+        if form.is_valid():
+            instance = form.save(commit=False)
+
+            # Prevent assigning duplicate role to same employee
+            existing = HRContact.objects.filter(
+                employee=instance.employee,
+            ).exclude(pk=instance.pk).first()
+
+            if existing:
+                form.add_error('employee', 'This employee already has an assigned role.')
+            else:
+                instance.save()
+                return redirect('hr_services')
+
+    contacts = HRContact.objects.filter(employee__company=company).order_by('role')
+    return render(request, 'hr_services.html', {
+        'form': form,
+        'contacts': contacts,
+    })
+
+@login_required
+def edit_hr_contact(request, pk):
+    contact = get_object_or_404(HRContact, pk=pk)
+
+    employee = Employee.objects.get(employee_id=request.user.employee_id)
+    company = employee.company
+
+    if request.method == 'POST':
+        form = HRContactForm(request.POST, instance=contact, company=company)
+        if form.is_valid():
+            instance = form.save(commit=False)
+
+            # Check for duplication (except self)
+            existing = HRContact.objects.filter(
+                employee=instance.employee
+            ).exclude(pk=contact.pk).first()
+
+            if existing:
+                form.add_error('employee', 'This employee is already assigned a role.')
+            else:
+                instance.save()
+                return redirect('hr_services')
+    else:
+        form = HRContactForm(instance=contact, company=company)
+
+    contacts = HRContact.objects.filter(employee__company=company).order_by('role')
     return render(request, 'hr_services.html', {
         'form': form,
         'contacts': contacts
     })
 
 
-
-@login_required(login_url='/')
-def edit_hr_contact(request, pk):
-    contact = get_object_or_404(HRContact, pk=pk)
-    if request.method == 'POST':
-        form = HRContactForm(request.POST, instance=contact)
-        if form.is_valid():
-            form.save()
-            return redirect('hr_services')
-    else:
-        form = HRContactForm(instance=contact)
-    
-    contacts = HRContact.objects.all().order_by('role')
-    return render(request, 'hr_services.html', {
-        'form': form,
-        'contacts': contacts,
-    })
-
-@login_required(login_url='/')
+@login_required
 def delete_hr_contact(request, pk):
     contact = get_object_or_404(HRContact, pk=pk)
     contact.delete()
     return redirect('hr_services')
 
-
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
-# views.py
 
 def assign_manager(ticket, company):
     manager_contact = HRContact.objects.filter(role='MG').first()
@@ -3320,9 +3326,11 @@ def help_desk_page(request):
     # TL and HR QuerySets
     tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
     hr_ids = HRContact.objects.filter(role='HR', employee__company=company).values_list('employee__user_id', flat=True)
+    manager_ids = HRContact.objects.filter(role='MG', employee__company=company).values_list('employee__user_id', flat=True)
+
     team_leader_qs = User.objects.filter(id__in=tl_ids)
     hr_qs = User.objects.filter(id__in=hr_ids)
-
+    manager_qs = User.objects.filter(id__in=manager_ids)
     # Forms
     hr_form = HelpDeskTicketForm(prefix='hr', category='HR', company=company)
     it_form = HelpDeskTicketForm(prefix='it', category='IT', company=company)
@@ -3331,7 +3339,7 @@ def help_desk_page(request):
     for form in [hr_form, it_form, asset_form]:
         form.fields['team_leader'].queryset = team_leader_qs
         form.fields['hr'].queryset = hr_qs
-
+        form.fields['manager'].queryset = manager_qs
     def send_ticket_email(ticket, to_user, subject_prefix):
         if to_user and to_user.email:
             send_mail(
@@ -3422,6 +3430,13 @@ def help_desk_page(request):
         viewed_by_hr=False,
         created_at__lte=current_time - timedelta(hours=2)
     ).order_by('-created_at')
+    manager_escalated_tickets = HelpDeskTicket.objects.filter(
+    manager=user,
+    viewed_by_hr=False,
+    viewed_by_tl=False,
+    created_at__lte=current_time - timedelta(hours=4)
+    ).order_by('-created_at')
+
 
     return render(request, 'help_desk.html', {
         'hr_form': hr_form,
@@ -3432,6 +3447,11 @@ def help_desk_page(request):
         'notifications': notifications,
         'tl_pending_tickets': tl_pending_tickets,
         'hr_escalated_tickets': hr_escalated_tickets,
+        'manager_escalated_tickets': manager_escalated_tickets,
+        'current_time': current_time,
+        'team_leader_qs': team_leader_qs,
+        'hr_qs': hr_qs,
+        'manager_qs': manager_qs,
     })
 
 #---------------------------- Employee Self Service #

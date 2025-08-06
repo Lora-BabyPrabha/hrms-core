@@ -383,6 +383,8 @@ class HRContact(models.Model):
     ]
 
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    
+
     role = models.CharField(max_length=2, choices=ROLE_CHOICES)
 
     def __str__(self):
