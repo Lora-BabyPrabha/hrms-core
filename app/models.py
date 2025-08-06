@@ -44,7 +44,8 @@ class CustomUser(AbstractUser):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
-
+    is_first_login = models.BooleanField(default=True)
+    
     USERNAME_FIELD = "employee_id"
     REQUIRED_FIELDS = ['email']
 

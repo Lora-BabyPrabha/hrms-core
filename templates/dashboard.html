@@ -344,7 +344,133 @@ margin-top:20px;
   });
 
 </script>
+{% if show_tips %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tips = [
+        {
+            selector: '#clock-in-button',
+            message: 'Click here to clock in when your day starts.'
+        },
+        {
+            selector: '#clock-out-button',
+            message: 'Click here to clock out at the end of your shift.'
+        },
+            // Sidebar items 
+        {
+            selector: 'a[href="/dashboard/hr4u"]',
+            message: 'Access your HR-related data here.'
+        },
+        {
+            selector: 'a[href="/dashboard/muster"]',
+            message: 'View your attendance records (Muster).'
+        },
+        {
+            selector: 'a[href="/dashboard/financial"]',
+            message: 'Manage your financial details here.'
+        },
+        {
+            selector: 'a[href="/dashboard/company"]',
+            message: 'Company-related info and posts live here.'
+        },
+        {
+            selector: 'a[href="/dashboard/employees"]',
+            message: 'Explore employee data.'
+        },
+        {
+            selector: 'a[href="/dashboard/working-days"]',
+            message: 'Check working day details here.'
+        },
+        {
+            selector: 'a[href="/dashboard/performance"]',
+            message: 'Track your performance metrics.'
+        },
+        {
+            selector: 'a[href="/dashboard/tasks"]',
+            message: 'Stay on top of your assigned tasks.'
+        },
+        {
+            selector: 'a[href="/dashboard/training"]',
+            message: 'Explore available training programs.'
+        },
+        {
+            selector: 'a[href="/dashboard/policies"]',
+            message: 'Review company policies here.'
+        },
 
-  
+        // Dashboard widgets
+        {
+            selector: '.birthday-list',
+            message: 'Here you will see employees with birthdays today.'
+        },
+        {
+            selector: '.hover-textt-container',
+            message: 'Meet the best employee of the month!'
+        },
+
+        // Top bar features (update these selectors based on actual class/id)
+        {
+            selector: '.search-input',  // Ensure this class exists on your search bar
+            message: 'Search any page using this bar.'
+        },
+        {
+            selector: '.notification-icon',  // Update this to match your bell icon
+            message: 'View latest notifications here.'
+        },
+        {
+            selector: '.profile-icon',  // Update this to match your profile icon
+            message: 'View or edit your profile from here.'
+        },
+
+      ];
+
+    let step = 0;
+
+    function showTip(index) {
+        if (index >= tips.length) {
+            fetch('{% url "clear_tips" %}');  // Clear session after all tips
+            return;
+        }
+
+        const tip = tips[index];
+        const target = document.querySelector(tip.selector);
+
+        if (target) {
+            const tipBox = document.createElement('div');
+            tipBox.className = 'guide-tip';
+            tipBox.innerHTML = `
+                <div>${tip.message}</div>
+                <button class="btn btn-sm btn-primary mt-2">Next</button>
+            `;
+            tipBox.style.position = 'absolute';
+            tipBox.style.background = 'white';
+            tipBox.style.padding = '10px';
+            tipBox.style.border = '2px solid #007bff';
+            tipBox.style.borderRadius = '8px';
+            tipBox.style.zIndex = 1000;
+
+            document.body.appendChild(tipBox);
+            const rect = target.getBoundingClientRect();
+            tipBox.style.top = `${rect.bottom + window.scrollY + 10}px`;
+            tipBox.style.left = `${rect.left + window.scrollX}px`;
+
+            const nextBtn = tipBox.querySelector('button');
+            nextBtn.addEventListener('click', () => {
+                tipBox.remove();
+                showTip(index + 1);
+            });
+
+            // Highlight target
+            target.classList.add('highlight-box');
+        } else {
+            showTip(index + 1); // Skip if not found
+        }
+    }
+
+    showTip(step);
+});
+</script>
+{% endif %}
 
 {% endblock %}
+

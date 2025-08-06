@@ -92,18 +92,20 @@ def company_autocomplete(request):
  
  
 #------------------------------------------------------------- Login #
- 
- 
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from app.models import User  # adjust import if User is custom
+
 def loginview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
- 
+
     company_id = request.GET.get('company_id') or request.POST.get('company_id')
- 
+
     if request.method == 'POST':
-        employee_id = request.POST.get('username')  
+        employee_id = request.POST.get('username')
         password = request.POST.get('password')
- 
+
         try:
             user_obj = User.objects.get(employee_id=employee_id)
         except User.DoesNotExist:
@@ -111,27 +113,33 @@ def loginview(request):
                 'message': 'User not found',
                 'company_id': company_id
             })
- 
-        # Check if user belongs to this company
+
         if str(user_obj.company_id) != str(company_id):
             return render(request, 'login.html', {
                 'message': 'You are not authorized for this company',
                 'company_id': company_id
             })
- 
+
         user = authenticate(request, employee_id=employee_id, password=password)
- 
+
         if user is not None:
             login(request, user)
+
+            # First login logic
+            if user.is_first_login:
+                request.session['show_tips'] = True
+                user.is_first_login = False
+                user.save()
+
             return redirect("dashboard")
         else:
             return render(request, 'login.html', {
-                'message': 'Incorrect Password',
+                'message': 'Incorrect password',
                 'company_id': company_id
             })
- 
-    return render(request, "login.html", {'company_id': company_id})
- 
+
+    return render(request, 'login.html', {'company_id': company_id})
+
  
 #------------------------------------------------------------- Search bar #
  
@@ -401,65 +409,71 @@ from .models import Employee, TimeEntry, LeaveRequest, Notification
 
 @login_required(login_url='/')
 def dashboard(request):
-    if request.user.is_authenticated:
-        user = request.user
-        company = getattr(user, 'company', None)
+    user = request.user
+    company = getattr(user, 'company', None)
+    today = datetime.now().date()
 
-        today = datetime.now().date()
-        context = {
-            'today': today,
-            'current_time': timezone.now().strftime("%I:%M %p")
-        }
+    context = {
+        'today': today,
+        'current_time': timezone.now().strftime("%I:%M %p"),
+    }
 
-        # Get employee profile
-        try:
-            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
-            context['employee'] = employee
-        except Employee.DoesNotExist:
-            messages.error(request, "Employee profile not found.")
-            return redirect('logout')
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id, company=company)
+        context['employee'] = employee
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('logout')
 
-        # Get notifications
-        notifications = Notification.objects.filter(
-            recipient=request.user, 
-            is_read=False
-        ).order_by('-created_at')[:5]
-        context['notifications'] = notifications
+    # Show tips logic
+    if request.session.get('show_tips'):
+        context['show_tips'] = True
+        del request.session['show_tips']
+    elif user.is_first_login:
+        request.session['show_tips'] = True
+        context['show_tips'] = True
+        user.is_first_login = False
+        user.save()
 
-        # Get birthday list
-        employees_with_birthday = Employee.objects.filter(
-            company=company,
-            date_of_birth__month=today.month,
-            date_of_birth__day=today.day
-        )
-        context['employees_with_birthday'] = employees_with_birthday
+    # Notifications
+    context['notifications'] = Notification.objects.filter(
+        recipient=user, 
+        is_read=False
+    ).order_by('-created_at')[:5]
 
-        # Show these stats only to HR, Manager, or Superuser
-        if user.role in ['HR', 'Manager'] or user.is_superuser:
-            total_employees = Employee.objects.filter(company=company).count()
-            todays_clockins = TimeEntry.objects.filter(
+    # Birthdays
+    context['employees_with_birthday'] = Employee.objects.filter(
+        company=company,
+        date_of_birth__month=today.month,
+        date_of_birth__day=today.day
+    )
+
+    # Stats for HR/Manager/Admin
+    if user.role in ['HR', 'Manager'] or user.is_superuser:
+        context.update({
+            'total_employees': Employee.objects.filter(company=company).count(),
+            'todays_clockins': TimeEntry.objects.filter(
                 user__employee__company=company,
                 clock_in_time__date=localdate()
-            ).count()
-            approved_leaves_today = LeaveRequest.objects.filter(
+            ).count(),
+            'approved_leaves_today': LeaveRequest.objects.filter(
                 employee__company=company,
                 status='approved',
                 start_date__lte=localdate(),
                 end_date__gte=localdate()
-            ).count()
+            ).count(),
+        })
 
-            context.update({
-                'total_employees': total_employees,
-                'todays_clockins': todays_clockins,
-                'approved_leaves_today': approved_leaves_today,
-            })
+    return render(request, 'dashboard.html', context)
 
-        return render(request, 'dashboard.html', context)
 
-    return render(request, 'index.html')
-
- 
-   
+# ---------------------- Clear Tips ----------------------
+from django.views.decorators.http import require_POST
+@require_POST
+@login_required
+def clear_tips(request):
+    request.session.pop('show_tips', None)
+    return JsonResponse({'status': 'cleared'})
  
 #------------------------------------------------------------- Employee requests - Notifications  #
 from django.shortcuts import render
