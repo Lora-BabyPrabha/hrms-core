@@ -544,38 +544,38 @@ class LoggedInUser(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     session_key = models.CharField(max_length=40, blank=True, null=True)
 
-import base64
-import os
-from cryptography.fernet import Fernet
-from django.db import models
+import hashlib
+from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
+from django.db import models
 
-# Store your encryption key in settings securely
-key = getattr(settings, "ENCRYPTION_KEY", None)
-if not key:
-    # Generate a new key only for dev/test – store this securely in production
-    key = Fernet.generate_key()
-    print("Generated encryption key:", key.decode())
-
-fernet = Fernet(key)
+fernet = Fernet(settings.ENCRYPTION_KEY)
 
 class LoginLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     _ip_address = models.BinaryField(db_column="ip_address")
     _device_info = models.BinaryField(db_column="device_info")
+    ip_hash = models.CharField(max_length=64, blank=True)
     login_time = models.DateTimeField(auto_now_add=True)
 
     @property
     def ip_address(self):
-        return fernet.decrypt(self._ip_address).decode()
+        try:
+            return fernet.decrypt(self._ip_address).decode()
+        except (InvalidToken, TypeError):
+            return "Invalid IP"
 
     @ip_address.setter
     def ip_address(self, value):
         self._ip_address = fernet.encrypt(value.encode())
+        self.ip_hash = hashlib.sha256(value.encode()).hexdigest()
 
     @property
     def device_info(self):
-        return fernet.decrypt(self._device_info).decode()
+        try:
+            return fernet.decrypt(self._device_info).decode()
+        except (InvalidToken, TypeError):
+            return "Invalid Device"
 
     @device_info.setter
     def device_info(self, value):
@@ -583,6 +583,3 @@ class LoginLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.ip_address} - {self.device_info[:30]}"
-
-
-

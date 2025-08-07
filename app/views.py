@@ -90,25 +90,34 @@ def company_autocomplete(request):
     companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
     return JsonResponse(list(companies), safe=False)
  
- #ip and device 
+import hashlib
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, get_user_model
+from django.contrib.sessions.models import Session
+from django.utils import timezone
+from django.conf import settings
+from cryptography.fernet import Fernet
+from .models import LoggedInUser, LoginLog
+
+User = get_user_model()
+fernet = Fernet(settings.ENCRYPTION_KEY)
+
+
+# Utility functions
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
+    return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
+
+
 def get_device_info(request):
     return request.META.get('HTTP_USER_AGENT', 'Unknown device')
 
-#------------------------------------------------------------- Login #
-from django.contrib.auth import authenticate, login
-from django.contrib.sessions.models import Session
-from django.shortcuts import render, redirect
-from django.contrib.auth import get_user_model
-from .models import LoggedInUser
 
-User = get_user_model()
+def hash_ip(ip):
+    return hashlib.sha256(ip.encode()).hexdigest()
+
+
+# Login view
 def loginview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -137,15 +146,13 @@ def loginview(request):
 
         if user is not None:
             existing_login = LoggedInUser.objects.filter(user=user).first()
-
-            if existing_login:
-                if Session.objects.filter(session_key=existing_login.session_key).exists():
-                    return render(request, 'login.html', {
-                        'message': 'You are already logged in on another device or browser.',
-                        'company_id': company_id
-                    })
-                else:
-                    existing_login.delete()
+            if existing_login and Session.objects.filter(session_key=existing_login.session_key).exists():
+                return render(request, 'login.html', {
+                    'message': 'You are already logged in on another device or browser.',
+                    'company_id': company_id
+                })
+            elif existing_login:
+                existing_login.delete()
 
             login(request, user)
 
@@ -157,22 +164,30 @@ def loginview(request):
                 'session_key': request.session.session_key
             })
 
-            # Log IP and device info
+            # Log IP & device info only once per IP per day
             ip = get_client_ip(request)
+            ip_hash = hash_ip(ip)
             device = get_device_info(request)
-            LoginLog.objects.create(
+            today = timezone.now().date()
+
+            already_logged = LoginLog.objects.filter(
                 user=user,
-                ip_address=ip,
-                device_info=device
-            )
+                ip_hash=ip_hash,
+                login_time__date=today
+            ).exists()
+
+            if not already_logged:
+                log = LoginLog(user=user)
+                log.ip_address = ip  # Encrypted by property setter
+                log.device_info = device
+                log.save()  # Automatically sets ip_hash
 
             return redirect("dashboard")
 
-        else:
-            return render(request, 'login.html', {
-                'message': 'Incorrect password',
-                'company_id': company_id
-            })
+        return render(request, 'login.html', {
+            'message': 'Incorrect password',
+            'company_id': company_id
+        })
 
     return render(request, "login.html", {'company_id': company_id})
 

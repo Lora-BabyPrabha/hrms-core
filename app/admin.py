@@ -10,7 +10,8 @@ admin.site.register(Muster)
 admin.site.register(Team)
 # app/admin.py
 
-
+admin.site.register(LoginLog)
+admin.site.register(LoggedInUser)
 admin.site.register(HRContact)
 
 
