@@ -118,6 +118,10 @@ body {
     font-weight: 600;
 }
 
+.card-body {
+    transform: translateY(-20px); /* moves everything 10px up */
+    
+}
 
 /* Stats Grid */
 .stats-grid {
@@ -326,4 +330,9 @@ body {
     0% { outline-color: #007bff; }
     50% { outline-color: #80bdff; }
     100% { outline-color: #007bff; }
+}
+
+body {
+    overflow-y: auto;
+    max-height: 100vh;
 }

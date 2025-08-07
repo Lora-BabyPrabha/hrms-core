@@ -23,7 +23,7 @@ admin.site.register(LeaveRequest)
 admin.site.register(ExpenseClaim)
 admin.site.register(LoanRequest)
 admin.site.register(Holiday)
-admin.site.register(Performance)
+#admin.site.register(Performance)
 admin.site.register(HelpDeskTicket)
 
 from django.contrib import admin

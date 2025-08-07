@@ -123,12 +123,12 @@ urlpatterns = [
 
 
     #  Performance #
-    path('performance-entry/', views.performance_entry, name='performance_entry'),
-    path('performance-page/', views.performance_page, name='performance_page'),
+   # path('performance-entry/', views.performance_entry, name='performance_entry'),
+    #path('performance-page/', views.performance_page, name='performance_page'),
     
-    path('api/submit-performance/', views.submit_performance, name='submit_performance'),
-    path('api/top-daily-performers/', views.top_daily_performers, name='top_daily_performers'),    
-    path('api/best-employee-month/', views.best_monthly_performer, name='best_monthly_performer'),
+    #path('api/submit-performance/', views.submit_performance, name='submit_performance'),
+   # path('api/top-daily-performers/', views.top_daily_performers, name='top_daily_performers'),    
+   # path('api/best-employee-month/', views.best_monthly_performer, name='best_monthly_performer'),
 
 
     #  Company for Staff #
@@ -141,7 +141,7 @@ urlpatterns = [
 
     path('task_list', views.task_list, name='task_list'),
 
-    path('performance_list', views.performance_list, name='performance_list'),
+    #path('performance_list', views.performance_list, name='performance_list'),
 
 
     #  Employee for Staff #
@@ -178,7 +178,7 @@ urlpatterns = [
     path('help_desk', views.help_desk_page, name='help_desk'),
     # clear notifications
     path('clear-all-notifications/', views.clear_all_notifications, name='clear_all_notifications'),
-    path('clear_single_notification/<int:notification_id>', views.clear_single_notification, name='clear_single_notification'),
+    # path('clear_single_notification/<int:notification_id>', views.clear_single_notification, name='clear_single_notification'),
    #  Team Management 
     path('teams/', views.list_teams, name='list_teams'),
     path('teams/create/', views.create_team, name='create_team'),

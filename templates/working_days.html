@@ -14,77 +14,57 @@
 <link rel="stylesheet" href="{% static 'css/working_days.css' %}">
 
 <li class="sidebar-item">
-    <a href="/dashboard" class="sidebar-link active" style='color: black;'>
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-columns-gap mx-3" viewBox="0 0 16 16">
-            <path d="M6 1v3H1V1zM1 0a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1zm14 12v3h-5v-3zm-5-1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1zM6 8v7H1V8zM1 7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zm14-6v7h-5V1zm-5-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1z"/>
+    <a href="/working_days" class="sidebar-link" style='color: black;'>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-calendar2-day mx-3" viewBox="0 0 16 16">
+            <path d="M4.684 12.523v-2.3h2.261v-.61H4.684V7.801h2.464v-.61H4v5.332zm3.296 0h.676V9.98c0-.554.227-1.007.953-1.007.125 0 .258.004.329.015v-.613a2 2 0 0 0-.254-.02c-.582 0-.891.32-1.012.567h-.02v-.504H7.98zm2.805-5.093c0 .238.192.425.43.425a.428.428 0 1 0 0-.855.426.426 0 0 0-.43.43m.094 5.093h.672V8.418h-.672z"/>
+            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M2 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
+            <path d="M2.5 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z"/>
         </svg>
-        Dashboard
+        Working days
     </a>
 </li>
 {% endblock %}
 
 {% block content %}
+<div class="container mt-4">
+    <h2>Working Days Summary</h2>
 
-<div id="workingDaysContainer">
-    <h1 id="workingDaysTitle">Employee Working Days Overview</h1>
+    <form method="get" class="form-inline mb-3">
+        <label class="me-2">Select Month:</label>
+        <select name="month" class="form-select me-3" style="width: 200px;" onchange="this.form.submit()">
+            {% for option in month_options %}
+                <option value="{{ option.value }}" {% if selected_month == option.value %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+        </select>
 
-    <!-- Filter Form -->
-    <div id="workingDaysFilterForm">
-        <form method="GET" action="{% url 'working_days' %}" class="d-flex gap-4">
-            <div class="flex-grow-1">
-                <label for="monthYearSelect">Select Month and Year</label>
-                <select name="month_year" id="monthYearSelect">
-                    {% for month_num, year, month_year in months %}
-                        <option value="{{ month_num }}-{{ year }}" {% if month_num == selected_month and year == selected_year %}selected{% endif %}>
-                            {{ month_year }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+        <label class="me-2">Employee ID:</label>
+        <input type="text" name="employee_id" value="{{ selected_emp_id }}" class="form-control me-2" placeholder="Search..." style="width: 200px;">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
 
-            <div class="flex-grow-1">
-                <label for="employeeIdInput">Employee ID</label>
-                <input type="text" name="employee_id" id="employeeIdInput" value="{{ employee_id_filter }}" placeholder="Enter Employee ID">
-            </div>
-
-            <div>
-                <label>&nbsp;</label><br>
-                <button type="submit" id="filterSubmitBtn">Apply Filters</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Working Days Table -->
-    <div id="workingDaysTableContainer">
-        <div id="tableResponsiveWrapper">
-            <table id="workingDaysTable">
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Employee Name</th>
-                        <th>Working Days</th>
-                        <th>Remaining Leaves</th>
-                        <th>Leaves Taken</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for data in employee_data %}
-                        <tr>
-                            <td>{{ data.employee.employee_id }}</td>
-                            <td>{{ data.employee.get_full_name }}</td>
-                            <td>{{ data.working_days.0.working_days }}</td>
-                            <td>{{ data.remaining_leave_days }}</td>
-                            <td>{{ data.leaves_taken|default:"0" }}</td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" style="text-align: center;">No records found for selected filters.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Working Days</th>
+                <th>Leaves Taken</th>
+                <th>Total Working Days</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in employee_data %}
+            <tr>
+                <td>{{ row.employee_id }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.working_days }}</td>
+                <td>{{ row.leaves }}</td>
+                <td>{{ row.total_days }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">No data found</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
-
 {% endblock %}

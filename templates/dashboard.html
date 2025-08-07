@@ -145,6 +145,62 @@
         </div>
       </div>
       <style>
+        body {
+    overflow-y: auto;
+    max-height: 100vh;
+}
+.guide-tip {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95); /* Transparent white box */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+    padding: 16px;
+    border-radius: 12px;
+    max-width: 280px;
+    z-index: 9999;
+    font-family: 'Segoe UI', sans-serif;
+    animation: fadeIn 0.3s ease-in-out;
+    border: 1px solid #ccc;
+}
+
+.guide-tip-message {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.guide-tip-next {
+    padding: 6px 12px;
+    font-size: 14px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.guide-tip-next:hover {
+    background-color: #0056b3;
+}
+
+/* Highlighted area */
+.highlight-box {
+    outline: 3px solid #007bff;
+    border-radius: 8px;
+    transition: outline 0.2s ease-in-out;
+}
+
+/* Smooth fade-in */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .metric-strip {
   display: flex;
   justify-content: center;
@@ -396,16 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             selector: 'a[href="/dashboard/policies"]',
             message: 'Review company policies here.'
-        },
-
-        // Dashboard widgets
-        {
-            selector: '.birthday-list',
-            message: 'Here you will see employees with birthdays today.'
-        },
-        {
-            selector: '.hover-textt-container',
-            message: 'Meet the best employee of the month!'
         },
 
         // Top bar features (update these selectors based on actual class/id)
