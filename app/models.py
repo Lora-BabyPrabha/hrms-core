@@ -89,87 +89,41 @@ class Holiday(models.Model):
 
 #------------------------------------------------------------- Employee #
 from django.db import models
-from django.core.validators import RegexValidator
-import hashlib
 from .utils import EncryptedCharField  # ✅ Only import what you actually use
 
 class Employee(models.Model):
-    user = models.OneToOneField('CustomUser', on_delete=models.CASCADE, related_name='employee')
-    company = models.ForeignKey('Company_check', on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
-
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
     employee_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     name = models.CharField(max_length=100)
     designation = models.CharField(max_length=50)
     department = models.CharField(max_length=50)
-
-    uan_number = EncryptedCharField(max_length=20)
-    uan_hash = models.CharField(max_length=64, unique=True, null=True, blank=True)
-
-    pan_number = EncryptedCharField(max_length=20)
-    pan_hash = models.CharField(max_length=64, unique=True, null=True, blank=True)
-
-    pf_number = EncryptedCharField(max_length=30, blank=True, null=True)
-
+    uan_number = EncryptedCharField(max_length=20, unique=True)
+    pan_number = EncryptedCharField(max_length=20, unique=True)
+    pf_number = models.CharField(max_length=30, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], null=True, blank=True)
     nationality = models.CharField(max_length=50, null=True, blank=True)
     address = models.CharField(max_length=30, null=True, blank=True)
-
-    phone_number = EncryptedCharField(
-        max_length=15,
-        validators=[RegexValidator(regex=r'^\+?\d{10,15}$')],
-        null=True, blank=True
-    )
-
+    phone_number = models.CharField(max_length=15, validators=[RegexValidator(regex=r'^\+?\d{10,15}$')], null=True, blank=True)
     reporting_manager = models.CharField(max_length=100, null=True, blank=True)
-    employee_type = models.CharField(
-        max_length=20,
-        choices=[('Full-time', 'Full-time'), ('Part-time', 'Part-time'), ('Contract', 'Contract')],
-        null=True, blank=True
-    )
-
-    work_location = models.CharField(
-        max_length=20,
-        choices=[('On-site', 'On-site'), ('Remote', 'Remote'), ('Hybrid', 'Hybrid')],
-        null=True, blank=True
-    )
-
+    employee_type = models.CharField(max_length=20, choices=[('Full-time', 'Full-time'), ('Part-time', 'Part-time'), ('Contract', 'Contract')], null=True, blank=True)
+    work_location = models.CharField(max_length=20, choices=[('On-site', 'On-site'), ('Remote', 'Remote'), ('Hybrid', 'Hybrid')], null=True, blank=True)
     bank_account_number = EncryptedCharField(max_length=20, null=True, blank=True)
-    bank_account_hash = models.CharField(max_length=64, unique=True, null=True, blank=True)
-    bank_name = EncryptedCharField(max_length=100, null=True, blank=True)
-    ifsc_code = EncryptedCharField(max_length=11, null=True, blank=True)
-
-    aadhar_number = EncryptedCharField(max_length=12, null=True, blank=True)
-    aadhar_hash = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    bank_name = models.CharField(max_length=100, null=True, blank=True)
+    ifsc_code = models.CharField(max_length=11, null=True, blank=True)
+    aadhar_number = EncryptedCharField(max_length=12, unique=True, null=True, blank=True)
+    
 
     def save(self, *args, **kwargs):
-        # Check for duplicates before hashing
-        if self.aadhar_number:
-            aadhar_hash = hashlib.sha256(self.aadhar_number.encode()).hexdigest()
-            if Employee.objects.filter(aadhar_hash=aadhar_hash).exclude(pk=self.pk).exists():
-                raise ValueError("An employee with this Aadhar number already exists")
-
-        if self.pan_number:
-            pan_hash = hashlib.sha256(self.pan_number.encode()).hexdigest()
-            if Employee.objects.filter(pan_hash=pan_hash).exclude(pk=self.pk).exists():
-                raise ValueError("An employee with this PAN number already exists")
-
-        if self.uan_number:
-            uan_hash = hashlib.sha256(self.uan_number.encode()).hexdigest()
-            if Employee.objects.filter(uan_hash=uan_hash).exclude(pk=self.pk).exists():
-                raise ValueError("An employee with this UAN number already exists")
-
-        if self.bank_account_number:
-            bank_hash = hashlib.sha256(self.bank_account_number.encode()).hexdigest()
-            if Employee.objects.filter(bank_account_hash=bank_hash).exclude(pk=self.pk).exists():
-                raise ValueError("An employee with this bank account number already exists")
-
-        # Rest of your save method remains the same...
-        return super().save(*args, **kwargs)
+        if not self.employee_id and self.user:
+            self.employee_id = self.user.employee_id
+        if not self.company and self.user:
+            self.company = self.user.company  # 👈 This line should exist
+        super(Employee, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.name
-
 
 
 #------------------------------------------------------------- Salary #
