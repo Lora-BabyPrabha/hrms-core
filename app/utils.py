@@ -315,3 +315,34 @@ def send_expense_claim_email(request, expense_claiming):
         [settings.EMAIL_HOST_USER],  # Recipient's email address (admin's email)
         fail_silently=False
     )
+from django.db import models
+from django.conf import settings
+from cryptography.fernet import Fernet, InvalidToken
+import base64
+
+class EncryptedCharField(models.CharField):
+    def __init__(self, *args, **kwargs):
+        self.fernet = Fernet(settings.ENCRYPTION_KEY.encode())
+        super().__init__(*args, **kwargs)
+
+    def get_prep_value(self, value):
+        if value:
+            value = str(value).encode()
+            return self.fernet.encrypt(value).decode()
+        return value
+
+    def from_db_value(self, value, expression, connection):
+        if value:
+            try:
+                return self.fernet.decrypt(value.encode()).decode()
+            except InvalidToken:
+                return value  # Already decrypted or corrupted
+        return value
+
+    def to_python(self, value):
+        if value and isinstance(value, str):
+            try:
+                return self.fernet.decrypt(value.encode()).decode()
+            except InvalidToken:
+                return value
+        return value

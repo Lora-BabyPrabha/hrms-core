@@ -2836,48 +2836,61 @@ def employee_list(request):
  
  
  
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from .forms import EmployeeProfileForm, EmployeeMediaForm
+from .models import CustomUser, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES)
         media_form = EmployeeMediaForm(request.POST, request.FILES)
+
         if form.is_valid() and media_form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
- 
+
                 if not user.company:
-                    messages.error(request, "This user has no company assigned. Please assign it first.")
+                    messages.error(request, "This user has no company assigned. Please assign a company first.")
                 else:
+                    # Create employee and media instance
                     employee = form.save(commit=False)
                     media = media_form.save(commit=False)
- 
+
                     employee.user = user
                     employee.company = user.company
                     employee.save()
- 
+
                     media.employee = employee
-                    media.save()  # ✅ Save after setting FK
- 
+                    media.save()
+
                     messages.success(request, 'Employee added successfully!')
                     return redirect('employee_list')
- 
+
             except CustomUser.DoesNotExist:
                 messages.error(request, 'No user found with the provided employee ID.')
+        else:
+            messages.error(request, "Please correct the errors in the form.")
     else:
         form = EmployeeProfileForm()
         media_form = EmployeeMediaForm()
- 
-    current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
+
+    # Optional: Get logged-in employee record and recent notifications
+    current_employee = Employee.objects.filter(user=request.user).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
- 
+
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
         'employee': current_employee,
         'notifications': notifications
     })
+
  
 @login_required
 def upload_employee_media(request):

@@ -87,6 +87,7 @@ class Holiday(models.Model):
 
 
 #------------------------------------------------------------- Employee #
+from .utils import EncryptedCharField
 
 class Employee(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
@@ -95,21 +96,21 @@ class Employee(models.Model):
     name = models.CharField(max_length=100)
     designation = models.CharField(max_length=50)
     department = models.CharField(max_length=50)
-    uan_number = models.CharField(max_length=20, unique=True)
-    pan_number = models.CharField(max_length=20, unique=True)
-    pf_number = models.CharField(max_length=30, blank=True, null=True)
+    uan_number = EncryptedCharField(max_length=20, unique=True)
+    pan_number = EncryptedCharField(max_length=20, unique=True)
+    pf_number = EncryptedCharField(max_length=30, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], null=True, blank=True)
     nationality = models.CharField(max_length=50, null=True, blank=True)
     address = models.CharField(max_length=30, null=True, blank=True)
-    phone_number = models.CharField(max_length=15, validators=[RegexValidator(regex=r'^\+?\d{10,15}$')], null=True, blank=True)
+    phone_number = EncryptedCharField(max_length=15, validators=[RegexValidator(regex=r'^\+?\d{10,15}$')], null=True, blank=True)
     reporting_manager = models.CharField(max_length=100, null=True, blank=True)
     employee_type = models.CharField(max_length=20, choices=[('Full-time', 'Full-time'), ('Part-time', 'Part-time'), ('Contract', 'Contract')], null=True, blank=True)
     work_location = models.CharField(max_length=20, choices=[('On-site', 'On-site'), ('Remote', 'Remote'), ('Hybrid', 'Hybrid')], null=True, blank=True)
-    bank_account_number = models.CharField(max_length=20, null=True, blank=True)
-    bank_name = models.CharField(max_length=100, null=True, blank=True)
-    ifsc_code = models.CharField(max_length=11, null=True, blank=True)
-    aadhar_number = models.CharField(max_length=12, unique=True, null=True, blank=True)
+    bank_account_number = EncryptedCharField(max_length=20, null=True, blank=True)
+    bank_name = EncryptedCharField(max_length=100, null=True, blank=True)
+    ifsc_code = EncryptedCharField(max_length=11, null=True, blank=True)
+    aadhar_number = EncryptedCharField(max_length=12, unique=True, null=True, blank=True)
     
 
     def save(self, *args, **kwargs):
