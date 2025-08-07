@@ -315,3 +315,5 @@ def send_expense_claim_email(request, expense_claiming):
         [settings.EMAIL_HOST_USER],  # Recipient's email address (admin's email)
         fail_silently=False
     )
+
+

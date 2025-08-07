@@ -90,20 +90,35 @@ def company_autocomplete(request):
     companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
     return JsonResponse(list(companies), safe=False)
  
- 
+ #ip and device 
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+def get_device_info(request):
+    return request.META.get('HTTP_USER_AGENT', 'Unknown device')
+
 #------------------------------------------------------------- Login #
- 
- 
+from django.contrib.auth import authenticate, login
+from django.contrib.sessions.models import Session
+from django.shortcuts import render, redirect
+from django.contrib.auth import get_user_model
+from .models import LoggedInUser
+
+User = get_user_model()
 def loginview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
- 
+
     company_id = request.GET.get('company_id') or request.POST.get('company_id')
- 
+
     if request.method == 'POST':
-        employee_id = request.POST.get('username')  
+        employee_id = request.POST.get('username')
         password = request.POST.get('password')
- 
+
         try:
             user_obj = User.objects.get(employee_id=employee_id)
         except User.DoesNotExist:
@@ -111,26 +126,67 @@ def loginview(request):
                 'message': 'User not found',
                 'company_id': company_id
             })
- 
-        # Check if user belongs to this company
+
         if str(user_obj.company_id) != str(company_id):
             return render(request, 'login.html', {
                 'message': 'You are not authorized for this company',
                 'company_id': company_id
             })
- 
+
         user = authenticate(request, employee_id=employee_id, password=password)
- 
+
         if user is not None:
+            existing_login = LoggedInUser.objects.filter(user=user).first()
+
+            if existing_login:
+                if Session.objects.filter(session_key=existing_login.session_key).exists():
+                    return render(request, 'login.html', {
+                        'message': 'You are already logged in on another device or browser.',
+                        'company_id': company_id
+                    })
+                else:
+                    existing_login.delete()
+
             login(request, user)
+
+            if not request.session.session_key:
+                request.session.save()
+
+            # Track current login session
+            LoggedInUser.objects.update_or_create(user=user, defaults={
+                'session_key': request.session.session_key
+            })
+
+            # Log IP and device info
+            ip = get_client_ip(request)
+            device = get_device_info(request)
+            LoginLog.objects.create(
+                user=user,
+                ip_address=ip,
+                device_info=device
+            )
+
             return redirect("dashboard")
+
         else:
             return render(request, 'login.html', {
                 'message': 'Incorrect Password',
                 'company_id': company_id
             })
- 
+
     return render(request, "login.html", {'company_id': company_id})
+
+#clear_sessions
+
+from django.contrib.auth.signals import user_logged_out
+from django.dispatch import receiver
+from .models import LoggedInUser
+
+@receiver(user_logged_out)
+def clear_logged_in_user(sender, request, user, **kwargs):
+    LoggedInUser.objects.filter(user=user).delete()
+
+
  
  
 #------------------------------------------------------------- Search bar #
@@ -3823,3 +3879,43 @@ def delete_training(request, pk):
         return redirect('training')
 
     return render(request, 'delete_training.html', {'training': training})
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from django.utils import timezone
+from .models import LoginLog, Employee, Notification
+
+@login_required(login_url='/')
+@staff_member_required
+def hr_login_logs(request):
+    user = request.user
+    employee_id_filter = request.GET.get('employee_id')
+
+    try:
+        current_employee = Employee.objects.get(employee_id=user.employee_id)
+        company = current_employee.company
+    except Employee.DoesNotExist:
+        company = None
+
+    # Default to empty if no company found
+    login_logs = LoginLog.objects.none()
+
+    if company:
+        login_logs = LoginLog.objects.select_related('user__company') \
+            .filter(user__company=company) \
+            .order_by('-login_time')
+
+        # Optional filter by employee ID (if you want to filter)
+        if employee_id_filter:
+            login_logs = login_logs.filter(user__employee__employee_id=employee_id_filter)
+
+    notifications = Notification.objects.filter(
+        recipient=user, is_read=False
+    ).order_by('-created_at')[:5]
+
+    return render(request, 'login_logs.html', {
+        'login_logs': login_logs,
+        'employee': current_employee if company else None,
+        'today': timezone.now(),
+        'employee_id_filter': employee_id_filter,
+    })

@@ -15,7 +15,6 @@ handler404 = 'project.urls.custom_404_view'
 urlpatterns = [
     path('adminsecure/', admin.site.urls),
     path('', include('app.urls')),
-    path('training/', include('app.urls')), # Include training URLs
     
 ]
 

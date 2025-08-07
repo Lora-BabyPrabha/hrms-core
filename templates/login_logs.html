@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}
+<li class="breadcrumb-item text-center mb-3">
+    <a href="/dashboard" class="text-decoration-none">
+        <small>Employee Login Activity</small>
+    </a>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h4 class="mb-4">Employee Login Activity</h4>
+
+    <!-- Filter/Search Bar -->
+    <form method="get" class="mb-4 row g-2">
+        <div class="col-auto">
+            <input type="text" name="employee_id" value="{{ employee_id_filter }}" class="form-control" placeholder="Search by Employee ID">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{% url 'hr_login_logs' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+
+
+    <!-- Login Log Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover align-middle">
+            <thead class="table-dark sticky-top">
+                <tr>
+                    <th>#</th>
+                    <th>Employee Name</th>
+                    <th>Employee ID</th>
+                    <th>IP Address</th>
+                    <th>Device Info</th>
+                    <th>Login Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in login_logs %}
+                <tr class="{% if log.login_time.date == today.date %}table-success{% endif %}">
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ log.user.name }}</td>
+                    <td>{{ log.user.employee.employee_id }}</td>
+                    <td>{{ log.ip_address }}</td>
+                    <td class="text-break" style="max-width: 300px;">{{ log.device_info }}</td>
+                    <td>{{ log.login_time|date:"Y-m-d H:i:s" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No login logs found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

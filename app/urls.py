@@ -13,6 +13,7 @@ urlpatterns = [
     path('base', views.base, name='base'),
     path('chat_bot', views.chat_bot, name='chat_bot'),
     path('training', views.training, name='training'),
+    path('login_logs', views.hr_login_logs, name='hr_login_logs'),
 
     #  Login/Logout url #
     path('login', views.loginview, name='login'),
