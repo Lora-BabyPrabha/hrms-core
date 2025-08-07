@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap4',
     'rest_framework',
+    'cryptography',
 
     # Local app
     'app',

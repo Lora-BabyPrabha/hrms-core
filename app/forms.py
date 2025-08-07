@@ -256,16 +256,66 @@ class SalaryForm(forms.ModelForm):
 #         fields = '__all__'
 
 
+from django import forms
+from .models import Employee
+import hashlib
+from django.core.exceptions import ValidationError
+
+from django import forms
+from .models import Employee
+import hashlib
+
 class EmployeeProfileForm(forms.ModelForm):
     class Meta:
         model = Employee
-        exclude = ['user', 'company_name']  # ❗ exclude fields set in view or model
+        exclude = ['user', 'company']  # These are set in the view
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
+        }
 
-    date_of_birth = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date'}),
-    )
+    def clean(self):
+        cleaned_data = super().clean()
+        instance = getattr(self, 'instance', None)
+        
+        # List of fields to check for uniqueness
+        unique_fields = [
+            ('aadhar_number', 'aadhar_hash', 'Aadhar number'),
+            ('pan_number', 'pan_hash', 'PAN number'),
+            ('uan_number', 'uan_hash', 'UAN number'),
+            ('bank_account_number', 'bank_account_hash', 'Bank account number')
+        ]
 
+        for field_name, hash_field, display_name in unique_fields:
+            field_value = cleaned_data.get(field_name)
+            if field_value:
+                # Generate hash for the field value
+                field_hash = hashlib.sha256(field_value.encode()).hexdigest()
+                
+                # Check if this hash exists for other employees
+                qs = Employee.objects.filter(**{hash_field: field_hash})
+                if instance:
+                    qs = qs.exclude(pk=instance.pk)
+                if qs.exists():
+                    self.add_error(field_name, f"This {display_name} is already registered by another employee")
 
+        return cleaned_data
+
+    def save(self, commit=True):
+        employee = super().save(commit=False)
+        
+        # Generate hashes only for fields that need uniqueness checks
+        if employee.aadhar_number:
+            employee.aadhar_hash = hashlib.sha256(employee.aadhar_number.encode()).hexdigest()
+        if employee.pan_number:
+            employee.pan_hash = hashlib.sha256(employee.pan_number.encode()).hexdigest()
+        if employee.uan_number:
+            employee.uan_hash = hashlib.sha256(employee.uan_number.encode()).hexdigest()
+        if employee.bank_account_number:
+            employee.bank_account_hash = hashlib.sha256(employee.bank_account_number.encode()).hexdigest()
+        
+        if commit:
+            employee.save()
+        return employee
 
 class Company_checkForm(forms.ModelForm):
     class Meta:

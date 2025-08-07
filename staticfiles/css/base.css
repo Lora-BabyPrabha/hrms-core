@@ -12,6 +12,7 @@ body {
     opacity: 1;
     overflow-y: hidden;
     margin: 0;
+
 }
 
 a {
@@ -307,20 +308,20 @@ a.sidebar-link {
     color: white;
 }
 
-.approve {
+.Approve {
     color: #0191B4
 ;
 }
 
-.approve:hover {
+.Approve:hover {
     color:rgb(0, 0, 0);
 }
 
-.reject {
+.Reject {
     color: #dc3545;
 }
 
-.reject:hover {
+.Reject:hover {
     color:rgb(0, 0, 0);
 }
 
