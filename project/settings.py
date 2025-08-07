@@ -265,3 +265,8 @@ LOGOUT_REDIRECT_URL = '/'
 
 # Default PK
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+from decouple import config
+
+ENCRYPTION_KEY = config('ENCRYPTION_KEY')
+

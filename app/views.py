@@ -30,8 +30,8 @@ from django.utils.timezone import now
 from datetime import timedelta
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import CustomUser, Employee, Performance
-from .serializers import PerformanceSerializer
+from .models import CustomUser, Employee
+#from .serializers import PerformanceSerializer
 from datetime import timedelta
 from django.shortcuts import render
 from django.utils import timezone
@@ -170,7 +170,7 @@ def loginview(request):
 
         else:
             return render(request, 'login.html', {
-                'message': 'Incorrect Password',
+                'message': 'Incorrect password',
                 'company_id': company_id
             })
 
@@ -457,65 +457,71 @@ from .models import Employee, TimeEntry, LeaveRequest, Notification
 
 @login_required(login_url='/')
 def dashboard(request):
-    if request.user.is_authenticated:
-        user = request.user
-        company = getattr(user, 'company', None)
+    user = request.user
+    company = getattr(user, 'company', None)
+    today = datetime.now().date()
 
-        today = datetime.now().date()
-        context = {
-            'today': today,
-            'current_time': timezone.now().strftime("%I:%M %p")
-        }
+    context = {
+        'today': today,
+        'current_time': timezone.now().strftime("%I:%M %p"),
+    }
 
-        # Get employee profile
-        try:
-            employee = Employee.objects.get(employee_id=user.employee_id, company=company)
-            context['employee'] = employee
-        except Employee.DoesNotExist:
-            messages.error(request, "Employee profile not found.")
-            return redirect('logout')
+    try:
+        employee = Employee.objects.get(employee_id=user.employee_id, company=company)
+        context['employee'] = employee
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('logout')
 
-        # Get notifications
-        notifications = Notification.objects.filter(
-            recipient=request.user, 
-            is_read=False
-        ).order_by('-created_at')[:5]
-        context['notifications'] = notifications
+    # Show tips logic
+    if request.session.get('show_tips'):
+        context['show_tips'] = True
+        del request.session['show_tips']
+    elif user.is_first_login:
+        request.session['show_tips'] = True
+        context['show_tips'] = True
+        user.is_first_login = False
+        user.save()
 
-        # Get birthday list
-        employees_with_birthday = Employee.objects.filter(
-            company=company,
-            date_of_birth__month=today.month,
-            date_of_birth__day=today.day
-        )
-        context['employees_with_birthday'] = employees_with_birthday
+    # Notifications
+    context['notifications'] = Notification.objects.filter(
+        recipient=user, 
+        is_read=False
+    ).order_by('-created_at')[:5]
 
-        # Show these stats only to HR, Manager, or Superuser
-        if user.role in ['HR', 'Manager'] or user.is_superuser:
-            total_employees = Employee.objects.filter(company=company).count()
-            todays_clockins = TimeEntry.objects.filter(
+    # Birthdays
+    context['employees_with_birthday'] = Employee.objects.filter(
+        company=company,
+        date_of_birth__month=today.month,
+        date_of_birth__day=today.day
+    )
+
+    # Stats for HR/Manager/Admin
+    if user.role in ['HR', 'Manager'] or user.is_superuser:
+        context.update({
+            'total_employees': Employee.objects.filter(company=company).count(),
+            'todays_clockins': TimeEntry.objects.filter(
                 user__employee__company=company,
                 clock_in_time__date=localdate()
-            ).count()
-            approved_leaves_today = LeaveRequest.objects.filter(
+            ).count(),
+            'approved_leaves_today': LeaveRequest.objects.filter(
                 employee__company=company,
-                status='approved',
+                status='Approved',
                 start_date__lte=localdate(),
                 end_date__gte=localdate()
-            ).count()
+            ).count(),
+        })
 
-            context.update({
-                'total_employees': total_employees,
-                'todays_clockins': todays_clockins,
-                'approved_leaves_today': approved_leaves_today,
-            })
+    return render(request, 'dashboard.html', context)
 
-        return render(request, 'dashboard.html', context)
 
-    return render(request, 'index.html')
-
- 
-   
+# ---------------------- Clear Tips ----------------------
+from django.views.decorators.http import require_POST
+@require_POST
+@login_required
+def clear_tips(request):
+    request.session.pop('show_tips', None)
+    return JsonResponse({'status': 'cleared'})
  
 #------------------------------------------------------------- Employee requests - Notifications  #
 from django.shortcuts import render
@@ -2033,14 +2039,14 @@ def review_loan(request):
 def review_muster_notifications(request, muster_id, action):
     muster_request = get_object_or_404(Muster, id=muster_id)
  
-    if action == 'approve':
-        muster_request.status = 'approved'
+    if action == 'Approve':
+        muster_request.status = 'Approved'
         muster_request.save()
         message = f"Your muster from {muster_request.clock_in_time} to {muster_request.clock_out_time} has been approved."
         Notification.objects.create(recipient=muster_request.user, message=message)
  
-    elif action == 'reject':
-        muster_request.status = 'rejected'
+    elif action == 'Reject':
+        muster_request.status = 'Rejected'
         muster_request.save()
         message = f"Your muster from {muster_request.clock_in_time} to {muster_request.clock_out_time} has been rejected."
         Notification.objects.create(recipient=muster_request.user, message=message)
@@ -2053,8 +2059,8 @@ def review_leaves_notifications(request, leaves_id, action):
     leave_request = get_object_or_404(LeaveRequest, id=leaves_id)
     leave_balance = Leave.objects.get(employee=leave_request.employee)
  
-    if action == 'approve':
-        leave_request.status = 'approved'
+    if action == 'Approve':
+        leave_request.status = 'Approved'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
         Notification.objects.create(recipient=leave_request.employee, message=message)
@@ -2070,8 +2076,8 @@ def review_leaves_notifications(request, leaves_id, action):
             leave_request.days_requested = requested_leave_days
             leave_request.save()
  
-    elif action == 'reject':
-        leave_request.status = 'rejected'
+    elif action == 'Reject':
+        leave_request.status = 'Rejected'
         leave_request.save()
         message = f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been rejected."
         Notification.objects.create(recipient=leave_request.employee, message=message)
@@ -2083,14 +2089,14 @@ def review_leaves_notifications(request, leaves_id, action):
 def review_expense_notifications(request, expense_id, action):
     expense_claim = get_object_or_404(ExpenseClaim, id=expense_id)
  
-    if action == 'approve':
-        expense_claim.status = 'approved'
+    if action == 'Approve':
+        expense_claim.status = 'Approved'
         expense_claim.save()
         message = f"Your Expense claim {expense_claim.amount} , {expense_claim.bill_no} has been approved."
         Notification.objects.create(recipient=expense_claim.employee, message=message)
  
-    elif action == 'reject':
-        expense_claim.status = 'rejected'
+    elif action == 'Reject':
+        expense_claim.status = 'Rejected'
         expense_claim.save()
         message = f"Your Expense claim {expense_claim.amount} , {expense_claim.bill_no} has been rejected."
         Notification.objects.create(recipient=expense_claim.employee, message=message)
@@ -2102,14 +2108,14 @@ def review_expense_notifications(request, expense_id, action):
 def review_loan_notifications(request, loan_id, action):
     loan_request = get_object_or_404(LoanRequest, id=loan_id)
  
-    if action == 'approve':
-        loan_request.status = 'approved'
+    if action == 'Approve':
+        loan_request.status = 'Approved'
         loan_request.save()
         message = f"Your loan request {loan_request.loan_type} to {loan_request.loan_amount} has been approved."
         Notification.objects.create(recipient=loan_request.employee, message=message)
  
-    elif action == 'reject':
-        loan_request.status = 'rejected'
+    elif action == 'Reject':
+        loan_request.status = 'Rejected'
         loan_request.save()
         message = f"Your loan request {loan_request.loan_type} to {loan_request.loan_amount} has been rejected."
         Notification.objects.create(recipient=loan_request.employee, message=message)
@@ -2472,7 +2478,7 @@ def salary_list(request):
  
 #------------------------------------------------------------- Performance #
  
-@login_required(login_url='/')
+'''@login_required(login_url='/')
 @staff_member_required
 def performance_entry(request):
     user = request.user
@@ -2549,158 +2555,118 @@ def performance_page(request):
         'performance_data': performance_data,
         'employee': employee,
         'notifications': notifications,
-    })
+    })'''
  
  
  
 #------------------------------------------------------------- Working days #
- 
-from datetime import timedelta, datetime
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
-from django.http import Http404
-from django.db.models import F
+from datetime import datetime, timedelta, date
 import calendar
- 
-from .models import (
-    CustomUser, Employee, TimeEntry, Muster,
-    Holiday, LeaveRequest, Notification
-)
- 
- 
-@login_required(login_url='/')
-@login_required(login_url='/')
-@staff_member_required
+from .models import CustomUser, Employee, Muster, TimeEntry  # adjust if your models are elsewhere
+from django.db.models.functions import ExtractMonth, ExtractYear
+from django.db.models import Q
+from datetime import datetime, timedelta, date
+from django.db.models import F, ExpressionWrapper, DurationField
+
+  # Mon–Fri only
+@login_required
 def working_days(request):
-    today = timezone.localtime(timezone.now()).date()
- 
-    # Build a list of 12 previous months for filter dropdown
-    months = [today]
-    for i in range(1, 12):
-        previous_month = today.replace(day=1) - timedelta(days=i * 30)
-        months.append(previous_month)
- 
-    months_formatted = [(month.month, month.year, f"{calendar.month_name[month.month]} {month.year}") for month in months]
- 
-    selected_month_year = request.GET.get('month_year', None)
-    employee_id_filter = request.GET.get('employee_id', None)
- 
-    if selected_month_year:
-        try:
-            selected_month, selected_year = map(int, selected_month_year.split('-'))
-            selected_date = timezone.datetime(selected_year, selected_month, 1).date()
-        except ValueError:
-            raise Http404("Invalid date selection.")
+    selected_month = request.GET.get('month')
+    selected_emp_id = request.GET.get('employee_id')
+
+    now = timezone.now()
+    if selected_month:
+        year = int(selected_month.split('-')[0])
+        month = int(selected_month.split('-')[1])
     else:
-        selected_date = today
-        selected_month, selected_year = selected_date.month, selected_date.year
- 
-    # Define payroll period
-    period_start = selected_date.replace(day=23)
-    if selected_date.day < 23:
-        period_start = (selected_date.replace(day=1) - timedelta(days=1)).replace(day=23)
-    period_end = (period_start + timedelta(days=32)).replace(day=22)
- 
-    # Get current user company
-    user = request.user
-    current_employee = Employee.objects.get(employee_id=user.employee_id)  # Changed variable name
-    company = current_employee.company
- 
-    # Filter employees by company
-    if employee_id_filter:
-        employees = CustomUser.objects.filter(employee_id=employee_id_filter, company=company)
-    else:
-        employees = CustomUser.objects.filter(company=company)
- 
+        year = now.year
+        month = now.month
+
+
+    # 🔐 Filter users by logged-in user's company
+    current_company = request.user.company
+    users = CustomUser.objects.filter(company=current_company)
+
+    if selected_emp_id:
+        users = users.filter(employee_id__icontains=selected_emp_id)
+
     employee_data = []
- 
-    for emp in employees:  # Changed variable name to 'emp' to avoid conflict
-        data = {'employee': emp, 'working_days': [], 'leaves_taken': 0}
- 
-        time_entries = TimeEntry.objects.filter(
-            user=emp,
-            clock_in_time__gte=period_start,
-            clock_in_time__lte=period_end,
-            clock_out_time__lte=F('clock_in_time') + timedelta(hours=12)
-        ).values('clock_in_time__date')
- 
-        approved_musters = Muster.objects.filter(
-            user=emp,
-            date__gte=period_start,
-            date__lte=period_end,
-            status='approved'
-        ).values('date')
- 
-        holidays = Holiday.objects.filter(
-            date__gte=period_start,
-            date__lte=period_end
-        ).values('date')
- 
-        approved_leaves = LeaveRequest.objects.filter(
-            employee=emp,
-            start_date__gte=period_start,
-            end_date__lte=period_end,
-            status='approved'
-        ).values('leave_type', 'start_date', 'end_date', 'days_requested')
- 
-        total_leave_days = 18
-        remaining_leave_days = total_leave_days
-        counted_days = set()
-        leaves_taken = set()
- 
-        for leave in approved_leaves:
-            leave_days = leave['days_requested']
-            if remaining_leave_days > 0:
-                if leave_days <= remaining_leave_days:
-                    remaining_leave_days -= leave_days
-                    total_working_days = leave_days
-                    leave_day = leave['start_date']
-                    for i in range(leave_days):
-                        current_leave_day = leave_day + timedelta(days=i)
-                        leaves_taken.add(current_leave_day)
- 
-        combined_dates = set(time_entries.values_list('clock_in_time__date', flat=True)) | \
-                         set(approved_musters.values_list('date', flat=True)) | \
-                         set(holidays.values_list('date', flat=True))
- 
-        standardized_dates = set()
-        for date in combined_dates:
-            if isinstance(date, datetime):
-                standardized_dates.add(date.date())
-            else:
-                standardized_dates.add(date)
- 
-        working_dates = {date for date in standardized_dates if date.weekday() < 5}
- 
-        total_working_days = 0
-        for date in working_dates:
-            if date not in counted_days:
-                total_working_days += 1
-                counted_days.add(date)
- 
-        data['leaves_taken'] = len(leaves_taken)
-        data['working_days'].append({
-            'period_label': f"{period_start.strftime('%b %Y')} - {period_end.strftime('%b %Y')}",
-            'working_days': total_working_days,
+
+    for user in users:
+        name = f"{user.first_name} {user.last_name}"
+        emp_id = user.employee_id
+
+        # Regular days
+        regular_count = TimeEntry.objects.filter(
+            user=user,
+            clock_in_time__month=month,
+            clock_in_time__year=year
+        ).filter(
+            clock_in_time__isnull=False,
+            clock_out_time__isnull=False
+        ).annotate(
+            duration=ExpressionWrapper(
+                F('clock_out_time') - F('clock_in_time'),
+                output_field=DurationField()
+            )
+        ).filter(
+            duration__gte=timedelta(hours=9)
+        ).count()
+
+        # Approved muster
+        approved_muster_count = Muster.objects.filter(
+            user=user,
+            status="approved",
+            date__month=month,
+            date__year=year
+        ).count()
+
+        # Leaves (optional logic)
+        leaves_taken = Muster.objects.filter(
+            user=user,
+            status="approved",
+            date__month=month,
+            date__year=year,
+            reason__in=['On-site', 'Work From Home', 'Forgot Login/out', 'Forgot Logout', 'Network Issue']
+        ).count()
+
+        total_present_days = regular_count + approved_muster_count
+        total_working_days = regular_count+ approved_muster_count-leaves_taken
+
+        employee_data.append({
+            'employee_id': emp_id,
+            'name': name,
+            'working_days': total_present_days,
+            'leaves': leaves_taken,
+            'total_days': total_working_days,
         })
-        data['remaining_leave_days'] = remaining_leave_days
- 
-        employee_data.append(data)
- 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
- 
+
+    # Month filter dropdown
+    month_years = Muster.objects.annotate(
+        year=ExtractYear('date'),
+        month=ExtractMonth('date')
+    ).values_list('year', 'month').distinct().order_by('-year', '-month')
+
+    month_options = [
+        {
+            'value': f"{y}-{str(m).zfill(2)}",
+            'label': f"{calendar.month_name[m]} {y}"
+        }
+        for y, m in month_years
+    ]
+
     return render(request, 'working_days.html', {
         'employee_data': employee_data,
-        'months': months_formatted,
-        'selected_month': selected_month,
-        'selected_year': selected_year,
-        'employee_id_filter': employee_id_filter,
-        'employee_id': current_employee,  # Changed to use the preserved variable
-        'notifications': notifications,
+        'month_options': month_options,
+        'selected_month': f"{year}-{str(month).zfill(2)}",
+        'selected_emp_id': selected_emp_id or '',
     })
- 
+
+
+   
 #------------------------------------------------------------- Company adding by staff #
  
 @login_required(login_url='/')
@@ -2829,7 +2795,7 @@ def task_list(request):
  
 #------------------------------------------------------------- Company adding by staff #
  
-from django.contrib.admin.views.decorators import staff_member_required
+'''from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.decorators import login_required
@@ -2890,7 +2856,7 @@ def performance_list(request):
         'months': months,
         'employee': employee,
         'notifications': notifications
-    })
+    })'''
  
  
  
@@ -2932,49 +2898,60 @@ def employee_list(request):
  
  
  
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from .forms import EmployeeProfileForm, EmployeeMediaForm
+from .models import CustomUser, Employee, Notification
+
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES)
         media_form = EmployeeMediaForm(request.POST, request.FILES)
+
         if form.is_valid() and media_form.is_valid():
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
- 
+
                 if not user.company:
-                    messages.error(request, "This user has no company assigned. Please assign it first.")
+                    messages.error(request, "This user has no company assigned. Please assign a company first.")
                 else:
-                    employee = form.save(commit=False)
-                    media = media_form.save(commit=False)
- 
-                    employee.user = user
-                    employee.company = user.company
-                    employee.save()
- 
-                    media.employee = employee
-                    media.save()  # ✅ Save after setting FK
- 
-                    messages.success(request, 'Employee added successfully!')
-                    return redirect('employee_list')
- 
+                    try:
+                        # Create employee and media instance
+                        employee = form.save(commit=False)
+                        media = media_form.save(commit=False)
+
+                        employee.user = user
+                        employee.company = user.company
+                        employee.save()
+
+                        media.employee = employee
+                        media.save()
+
+                        messages.success(request, 'Employee added successfully!')
+                        return redirect('employee_list')
+                    except Exception as e:
+                        form.add_error(None, str(e))  # Add non-field error
             except CustomUser.DoesNotExist:
-                messages.error(request, 'No user found with the provided employee ID.')
+                form.add_error('employee_id', 'No user found with the provided employee ID.')
     else:
         form = EmployeeProfileForm()
         media_form = EmployeeMediaForm()
- 
-    current_employee = Employee.objects.filter(employee_id=request.user.employee_id).first()
+
+    current_employee = Employee.objects.filter(user=request.user).first()
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
- 
+
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
         'employee': current_employee,
         'notifications': notifications
     })
- 
 @login_required
 def upload_employee_media(request):
     employee = Employee.objects.get(user=request.user)
@@ -3050,25 +3027,27 @@ def employee_edit(request, pk):
     user = request.user
     current_employee = Employee.objects.get(employee_id=user.employee_id)
     employee = get_object_or_404(Employee, pk=pk, company=current_employee.company)
- 
+
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES, instance=employee)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Employee updated successfully!')
-            return redirect('employee_list')
+            try:
+                form.save()
+                messages.success(request, 'Employee updated successfully!')
+                return redirect('employee_list')
+            except Exception as e:
+                form.add_error(None, str(e))
     else:
         form = EmployeeProfileForm(instance=employee)
- 
+
     notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
- 
+
     return render(request, 'employee_create.html', {
         'form': form,
         'employee': current_employee,
-        'notifications': notifications
+        'notifications': notifications,
+        'edit_mode': True  # Add this flag if you need to distinguish between create/edit in template
     })
- 
- 
  
 @login_required(login_url='/')
 @staff_member_required
@@ -3627,19 +3606,14 @@ def career_development(request):
         return render(request, 'hr/partials/career_development.html', context)
     return render(request, 'hr/career_development.html', context)
  
-
- 
-
-from django.contrib import messages
-
-@login_required(login_url='/')
-
+'''@login_required(login_url='/')
 def clear_single_notification(request, notification_id):
     Notification.objects.filter(id=notification_id, recipient=request.user).delete()
     messages.success(request, "Notification cleared successfully.")
-    return redirect('dashboard')
-from django.views.decorators.http import require_POST
+    return redirect('dashboard')'''
 
+from django.contrib import messages
+from django.views.decorators.http import require_POST
 @login_required(login_url='/')
 @require_POST
 def clear_all_notifications(request):
