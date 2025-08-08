@@ -170,6 +170,8 @@ urlpatterns = [
 
     #  HR4U #
     path('HR4U/', views.hr4u_dashboard, name='hr_dashboard'),
+    path('resignation/', views.resignation_request_view, name='resignation_request'),
+    path('review_resignation_request/', views.review_resignation_request, name='review_resignation_request'),
     path('hr_services/', views.hr_services_page, name='hr_services'),
     path('hr_services/edit/<int:pk>/', views.edit_hr_contact, name='edit_hr_contact'),
     path('hr_services/delete/<int:pk>/', views.delete_hr_contact, name='delete_hr_contact'),
