@@ -362,6 +362,30 @@
                                                 {% endfor %}
                                             </li>
                                         {% endif %}
+                                        {% for resignation in pending_resignations %}
+                                        {% if resignation.employee.company == request.user.company %}
+                                            <hr class="col-12">
+                                            <div class="notification" style="margin-left:30px;">
+                                                <small>
+                                                    {{ resignation.employee.employee_id }} has requested for 'Resignation'
+                                                    <br>
+                                                    Resignation Date: {{ resignation.resignation_date|date:"F d Y" }}
+                                                    <br>
+                                                    Last Working Day: {{ resignation.last_working_day|date:"F d Y" }}
+                                                    <br>
+                                                    Reason: {{ resignation.resignation_reason }}
+                                                    {% if resignation.other_reason %}
+                                                        <br>Other Reason: {{ resignation.other_reason }}
+                                                    {% endif %}
+                                                    <br>
+                                                    Notes: {{ resignation.notes }}
+                                                    <br>↳
+                                                </small>
+                                                <a href="{% url 'review_resignation_notifications' resignation.id 'Approve' %}" class="Approve btn btn-sm"><small>Approve</small></a>
+                                                <a href="{% url 'review_resignation_notifications' resignation.id 'Reject' %}" class="Reject btn btn-sm"><small>Reject</small></a>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
 
 
                                 </ul>
