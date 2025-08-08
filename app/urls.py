@@ -14,6 +14,8 @@ urlpatterns = [
     path('chat_bot', views.chat_bot, name='chat_bot'),
     path('training', views.training, name='training'),
     path('login_logs', views.hr_login_logs, name='hr_login_logs'),
+    path("inactivity/", views.inactivity_page, name="inactivity"),
+    path('stay-logged-in/', views.stay_logged_in, name='stay_logged_in'),
 
     #  Login/Logout url #
     path('login', views.loginview, name='login'),
