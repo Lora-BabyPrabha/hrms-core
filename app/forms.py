@@ -279,10 +279,10 @@ class EmployeeProfileForm(forms.ModelForm):
         
         # List of fields to check for uniqueness
         unique_fields = [
-            ('aadhar_number', 'aadhar_hash', 'Aadhar number'),
-            ('pan_number', 'pan_hash', 'PAN number'),
-            ('uan_number', 'uan_hash', 'UAN number'),
-            ('bank_account_number', 'bank_account_hash', 'Bank account number')
+            ('aadhar_number','Aadhar number'),
+            ('pan_number','PAN number'),
+            ('uan_number', 'UAN number'),
+            ('bank_account_number', 'Bank account number')
         ]
 
         for field_name, hash_field, display_name in unique_fields:

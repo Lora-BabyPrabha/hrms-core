@@ -552,22 +552,15 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.timezone import localdate
-from .models import (
-    Muster, LeaveRequest, ExpenseClaim, LoanRequest, TimeEntry,
-    CustomUser, Employee, Notification
-)
- 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.utils.timezone import localdate
 from datetime import datetime
- 
+from django.contrib import messages
+
 from app.models import (
-    Muster, LeaveRequest, ExpenseClaim, LoanRequest,
-    TimeEntry, Employee, Notification, CustomUser
+    Muster, LeaveRequest, ExpenseClaim, LoanRequest, TimeEntry,
+    CustomUser, Employee, Notification, ResignationRequest
 )
- 
+
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_requests(request):
@@ -576,14 +569,17 @@ def employee_requests(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     today = localdate()
     
-    # Base querysets - initialize with all company data
+    # Base querysets - all company data for today by default
     users_qs = CustomUser.objects.filter(company=company)
+    
     muster_requests = Muster.objects.filter(user__company=company, date__date=today)
     leave_requests = LeaveRequest.objects.filter(employee__company=company, start_date=today)
     expense_claims = ExpenseClaim.objects.filter(employee__company=company, date=today)
     loan_requests = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
     time_entries = TimeEntry.objects.filter(user__company=company, clock_in_time__date=today)
-    employees = CustomUser.objects.filter(company=company)
+    resignation_requests = ResignationRequest.objects.filter(employee__company=company)  # No date filter by default
+    
+    employees = users_qs
 
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
@@ -591,83 +587,108 @@ def employee_requests(request):
         month_filter = request.POST.get('month')
         specific_date = request.POST.get('specific_date')
 
-        # Apply employee filter first (if provided)
+        # Filter by employee ID if given
         if employee_id_input:
             try:
-                filtered_user = CustomUser.objects.get(employee_id=employee_id_input, company=company)
-                # Update all querysets to filter by this employee
+                filtered_user = users_qs.get(employee_id=employee_id_input)
+                users_qs = users_qs.filter(id=filtered_user.id)
+
                 muster_requests = muster_requests.filter(user=filtered_user)
                 leave_requests = leave_requests.filter(employee=filtered_user)
                 expense_claims = expense_claims.filter(employee=filtered_user)
                 loan_requests = loan_requests.filter(employee=filtered_user)
                 time_entries = time_entries.filter(user=filtered_user)
+                resignation_requests = resignation_requests.filter(employee=filtered_user)
             except CustomUser.DoesNotExist:
                 messages.error(request, "Employee not found")
-                # Clear all results if invalid employee ID
-                muster_requests = muster_requests.none()
-                leave_requests = leave_requests.none()
-                expense_claims = expense_claims.none()
-                loan_requests = loan_requests.none()
-                time_entries = time_entries.none()
+                # Clear all results if invalid filter
+                muster_requests = Muster.objects.none()
+                leave_requests = LeaveRequest.objects.none()
+                expense_claims = ExpenseClaim.objects.none()
+                loan_requests = LoanRequest.objects.none()
+                time_entries = TimeEntry.objects.none()
+                resignation_requests = ResignationRequest.objects.none()
 
-        # Apply month filter (if provided)
+        # Filter by month if given
         if month_filter:
-            year, month = map(int, month_filter.split('-'))
-            # Start fresh with filtered user (if any was specified)
-            base_qs = CustomUser.objects.filter(company=company)
-            if employee_id_input and 'filtered_user' in locals():
-                base_qs = base_qs.filter(id=filtered_user.id)
-                
-            muster_requests = Muster.objects.filter(user__in=base_qs, date__year=year, date__month=month)
-            leave_requests = LeaveRequest.objects.filter(employee__in=base_qs, start_date__year=year, start_date__month=month)
-            expense_claims = ExpenseClaim.objects.filter(employee__in=base_qs, date__year=year, date__month=month)
-            loan_requests = LoanRequest.objects.filter(employee__in=base_qs, date_requested__year=year, date_requested__month=month)
-            time_entries = TimeEntry.objects.filter(user__in=base_qs, clock_in_time__year=year, clock_in_time__month=month)
-
-        # Apply specific date filter (if provided)
-        elif specific_date:
             try:
-                date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
-                # Start fresh with filtered user (if any was specified)
-                base_qs = CustomUser.objects.filter(company=company)
-                if employee_id_input and 'filtered_user' in locals():
-                    base_qs = base_qs.filter(id=filtered_user.id)
-                    
-                muster_requests = Muster.objects.filter(user__in=base_qs, date__date=date_obj)
-                leave_requests = LeaveRequest.objects.filter(employee__in=base_qs, start_date=date_obj)
-                expense_claims = ExpenseClaim.objects.filter(employee__in=base_qs, date=date_obj)
-                loan_requests = LoanRequest.objects.filter(employee__in=base_qs, date_requested__date=date_obj)
-                time_entries = TimeEntry.objects.filter(user__in=base_qs, clock_in_time__date=date_obj)
+                year, month = map(int, month_filter.split('-'))
+                base_users = users_qs
+
+                muster_requests = Muster.objects.filter(
+                    user__in=base_users, date__year=year, date__month=month)
+                leave_requests = LeaveRequest.objects.filter(
+                    employee__in=base_users, start_date__year=year, start_date__month=month)
+                expense_claims = ExpenseClaim.objects.filter(
+                    employee__in=base_users, date__year=year, date__month=month)
+                loan_requests = LoanRequest.objects.filter(
+                    employee__in=base_users, date_requested__year=year, date_requested__month=month)
+                time_entries = TimeEntry.objects.filter(
+                    user__in=base_users, clock_in_time__year=year, clock_in_time__month=month)
+                resignation_requests = ResignationRequest.objects.filter(
+                    employee__in=base_users, submitted_at__year=year, submitted_at__month=month)
             except ValueError:
                 pass
 
-        # Apply request type filter (if provided)
+        # Filter by specific date if given
+        elif specific_date:
+            try:
+                date_obj = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                base_users = users_qs
+
+                muster_requests = Muster.objects.filter(
+                    user__in=base_users, date__date=date_obj)
+                leave_requests = LeaveRequest.objects.filter(
+                    employee__in=base_users, start_date=date_obj)
+                expense_claims = ExpenseClaim.objects.filter(
+                    employee__in=base_users, date=date_obj)
+                loan_requests = LoanRequest.objects.filter(
+                    employee__in=base_users, date_requested__date=date_obj)
+                time_entries = TimeEntry.objects.filter(
+                    user__in=base_users, clock_in_time__date=date_obj)
+                resignation_requests = ResignationRequest.objects.filter(
+                    employee__in=base_users, submitted_at__date=date_obj)
+            except ValueError:
+                pass
+
+        # Apply request_type filter - empty other querysets except chosen one
         if request_type:
             if request_type == 'muster':
                 leave_requests = []
                 expense_claims = []
                 loan_requests = []
                 time_entries = []
+                resignation_requests = []
             elif request_type == 'leave':
                 muster_requests = []
                 expense_claims = []
                 loan_requests = []
                 time_entries = []
+                resignation_requests = []
             elif request_type == 'expense':
                 muster_requests = []
                 leave_requests = []
                 loan_requests = []
                 time_entries = []
+                resignation_requests = []
             elif request_type == 'loan':
                 muster_requests = []
                 leave_requests = []
                 expense_claims = []
                 time_entries = []
+                resignation_requests = []
             elif request_type == 'time_entry':
                 muster_requests = []
                 leave_requests = []
                 expense_claims = []
                 loan_requests = []
+                resignation_requests = []
+            elif request_type == 'resignation':
+                muster_requests = []
+                leave_requests = []
+                expense_claims = []
+                loan_requests = []
+                time_entries = []
 
     # Notifications
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
@@ -680,34 +701,26 @@ def employee_requests(request):
         'expense_claims': expense_claims,
         'loan_requests': loan_requests,
         'time_entries': time_entries,
+        'resignations': resignation_requests,
         'notifications': notifications,
     })
- 
- 
- 
+
  
 #------------------------------------------------------------- Mark as read -- Notifications  #
- 
 from django.utils.timezone import localdate
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
-from .models import (
-    Muster, LeaveRequest, ExpenseClaim, LoanRequest,
-    CustomUser, Employee, Notification
-)
- 
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from django.utils.timezone import localdate
+from django.contrib import messages
 from datetime import datetime
- 
+
 from app.models import (
     Employee, CustomUser, Muster, LeaveRequest,
-    ExpenseClaim, LoanRequest, Notification
+    ExpenseClaim, LoanRequest, ResignationRequest,
+    Notification
 )
- 
+
+
 @login_required(login_url='/')
 @staff_member_required
 def staff_notifications(request):
@@ -722,6 +735,15 @@ def staff_notifications(request):
     leaves = LeaveRequest.objects.filter(employee__company=company, start_date=today)
     expenses = ExpenseClaim.objects.filter(employee__company=company, date=today)
     pendings_loan = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
+
+    # Resignations: Fetch **all relevant statuses** for HR and Manager role
+    if user.role in ['HR', 'Manager']:
+        resignations = ResignationRequest.objects.filter(
+            employee__company=company,
+            status__in=['submitted', 'approved', 'rejected'],  # include all statuses here
+        )
+    else:
+        resignations = ResignationRequest.objects.none()  # No resignations for other users
 
     if request.method == 'POST':
         employee_id_input = request.POST.get('employee_id')
@@ -738,13 +760,14 @@ def staff_notifications(request):
                 leaves = leaves.filter(employee=filtered_user)
                 expenses = expenses.filter(employee=filtered_user)
                 pendings_loan = pendings_loan.filter(employee=filtered_user)
+                resignations = resignations.filter(employee=filtered_user)
             except CustomUser.DoesNotExist:
                 messages.error(request, "Employee not found")
-                # Optionally clear all results if invalid employee ID
                 musters = musters.none()
                 leaves = leaves.none()
                 expenses = expenses.none()
                 pendings_loan = pendings_loan.none()
+                resignations = resignations.none()
 
         # Apply month filter
         if month_filter:
@@ -753,6 +776,12 @@ def staff_notifications(request):
             leaves = LeaveRequest.objects.filter(employee__in=users_qs, start_date__year=year, start_date__month=month)
             expenses = ExpenseClaim.objects.filter(employee__in=users_qs, date__year=year, date__month=month)
             pendings_loan = LoanRequest.objects.filter(employee__in=users_qs, date_requested__year=year, date_requested__month=month)
+            resignations = ResignationRequest.objects.filter(
+                employee__in=users_qs,
+                submitted_at__year=year,
+                submitted_at__month=month,
+                status__in=['submitted', 'approved', 'rejected'],  # include all statuses here too
+            )
 
         # Apply specific date filter
         elif specific_date:
@@ -762,27 +791,41 @@ def staff_notifications(request):
                 leaves = LeaveRequest.objects.filter(employee__in=users_qs, start_date=date_obj)
                 expenses = ExpenseClaim.objects.filter(employee__in=users_qs, date=date_obj)
                 pendings_loan = LoanRequest.objects.filter(employee__in=users_qs, date_requested__date=date_obj)
+                resignations = ResignationRequest.objects.filter(
+                    employee__in=users_qs,
+                    submitted_at__date=date_obj,
+                    status__in=['submitted', 'approved', 'rejected'],  # and here
+                )
             except ValueError:
                 pass
 
-        # Apply request type filter
+        # Apply request type filter: Clear other categories except the one selected
         if request_type:
             if request_type == 'muster':
                 leaves = []
                 expenses = []
                 pendings_loan = []
+                resignations = []
             elif request_type == 'leave':
                 musters = []
                 expenses = []
                 pendings_loan = []
+                resignations = []
             elif request_type == 'expense':
                 musters = []
                 leaves = []
                 pendings_loan = []
+                resignations = []
             elif request_type == 'loan':
                 musters = []
                 leaves = []
                 expenses = []
+                resignations = []
+            elif request_type == 'resignation':
+                musters = []
+                leaves = []
+                expenses = []
+                pendings_loan = []
 
     # Notifications for header
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
@@ -793,9 +836,11 @@ def staff_notifications(request):
         'leaves': leaves,
         'expenses': expenses,
         'pendings_loan': pendings_loan,
+        'resignations': resignations,
         'notifications': notifications,
+        'user': user,  # Pass user so template can check role
     })
- 
+
  
 #------------------------------------------------------------- clock In #
  
@@ -3917,3 +3962,110 @@ def hr_login_logs(request):
         'today': timezone.now(),
         'employee_id_filter': employee_id_filter,
     })
+
+
+#------------------------------------------------------------- Resignation Request #
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib import messages
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from .models import ResignationRequest, Notification
+
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+
+from .models import ResignationRequest
+
+@login_required
+def resignation_request_view(request):
+    user = request.user
+
+    # Get all resignation requests for user, ordered by submission time descending
+    user_requests = ResignationRequest.objects.filter(employee=user).order_by('-submitted_at')
+
+    if request.method == 'POST':
+        resignation_date = request.POST.get('resignation_date')
+        last_working_day = request.POST.get('last_working_day')
+        resignation_reason = request.POST.get('resignation_reason')
+        other_reason = request.POST.get('other_reason', '')
+        notes = request.POST.get('notes', '')
+        signature_data = request.POST.get('signature_data', '')
+        agreement = request.POST.get('agreement') == 'on'
+        letter_file = request.FILES.get('resignation_letter')
+
+        # Validate agreement acceptance
+        if not agreement:
+            messages.error(request, "You must accept the agreement to submit.")
+            return redirect('resignation_request')
+
+        # Validate required fields (optional but recommended)
+        if not (resignation_date and last_working_day and resignation_reason and signature_data):
+            messages.error(request, "Please fill all required fields before submitting.")
+            return redirect('resignation_request')
+
+        # Create a new resignation request instance
+        resignation = ResignationRequest(employee=user)
+
+        resignation.resignation_date = resignation_date
+        resignation.last_working_day = last_working_day
+        resignation.resignation_reason = resignation_reason
+        resignation.other_reason = other_reason
+        resignation.notes = notes
+        resignation.signature_data = signature_data
+        resignation.agreement = agreement
+        resignation.status = 'submitted'  
+
+        if letter_file:
+            resignation.resignation_letter = letter_file
+
+        resignation.submitted_at = timezone.now()
+        resignation.save()
+
+        messages.success(request, "Resignation letter submitted successfully.")
+        return redirect('resignation_request')
+
+    context = {
+        'requests': user_requests,
+    }
+    return render(request, 'resignation.html', context)
+
+
+@require_POST
+@login_required(login_url='/')
+@staff_member_required
+def review_resignation_request(request):
+    resignation_id = request.POST.get('resignation_id')
+    action = request.POST.get('status')
+
+    if not resignation_id or not action:
+        messages.error(request, "Missing resignation ID or action.")
+        return redirect('staff_notifications')
+
+    resignation = get_object_or_404(ResignationRequest, id=resignation_id)
+
+    action_lower = action.lower()
+
+    if action_lower == 'approved':
+        resignation.status = 'approved'
+        resignation.save()
+        Notification.objects.create(
+            recipient=resignation.employee,
+            message=f"Your resignation submitted on {resignation.resignation_date} has been approved."
+        )
+    elif action_lower == 'rejected':
+        resignation.status = 'rejected'
+        resignation.save()
+        Notification.objects.create(
+            recipient=resignation.employee,
+            message=f"Your resignation submitted on {resignation.resignation_date} has been rejected."
+        )
+    else:
+        messages.error(request, "Invalid action specified.")
+
+    return redirect('staff_notifications')

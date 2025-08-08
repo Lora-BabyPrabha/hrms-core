@@ -530,3 +530,32 @@ class LoginLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.ip_address} - {self.device_info[:30]}"
+
+
+#------------------------------------------------------------- Resignation #
+class ResignationRequest(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='resignations')
+    resignation_date = models.DateField()
+    last_working_day = models.DateField()
+    resignation_reason = models.CharField(max_length=100)
+    other_reason = models.CharField(max_length=255, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    resignation_letter = models.FileField(upload_to='resignation_letters/', blank=True, null=True)
+    signature_data = models.TextField(help_text="Base64 image of signature", blank=True, null=True)
+    agreement = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"Resignation by {self.employee.get_full_name()} on {self.submitted_at.date()}"
