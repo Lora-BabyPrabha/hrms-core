@@ -2914,6 +2914,14 @@ from .forms import EmployeeProfileForm, EmployeeMediaForm
 from .models import CustomUser, Employee, Notification
 
 
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from .forms import EmployeeProfileForm, EmployeeMediaForm
+from .models import CustomUser, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
@@ -2925,41 +2933,33 @@ def employee_create(request):
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
-
                 if not user.company:
-                    messages.error(request, "This user has no company assigned. Please assign a company first.")
+                    messages.error(request, "This user has no company assigned.")
                 else:
-                    try:
-                        # Create employee and media instance
-                        employee = form.save(commit=False)
-                        media = media_form.save(commit=False)
-
-                        employee.user = user
-                        employee.company = user.company
-                        employee.save()
-
-                        media.employee = employee
-                        media.save()
-
-                        messages.success(request, 'Employee added successfully!')
-                        return redirect('employee_list')
-                    except Exception as e:
-                        form.add_error(None, str(e))  # Add non-field error
+                    employee = form.save(commit=False)
+                    employee.user = user
+                    employee.company = user.company
+                    employee.save()
+                    
+                    media = media_form.save(commit=False)
+                    media.employee = employee
+                    media.save()
+                    
+                    messages.success(request, 'Employee created successfully!')
+                    return redirect('employee_list')
             except CustomUser.DoesNotExist:
-                form.add_error('employee_id', 'No user found with the provided employee ID.')
+                form.add_error('employee_id', 'User not found')
     else:
         form = EmployeeProfileForm()
         media_form = EmployeeMediaForm()
 
-    current_employee = Employee.objects.filter(user=request.user).first()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
-        'employee': current_employee,
-        'notifications': notifications
+        'notifications': Notification.objects.filter(recipient=request.user, is_read=False)[:5]
     })
+
+
 @login_required
 def upload_employee_media(request):
     employee = Employee.objects.get(user=request.user)
@@ -3029,6 +3029,13 @@ def edit_cover_picture(request):
     return render(request, 'profile.html', {'form': form})
  
  
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Employee, Notification
+from .forms import EmployeeProfileForm
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
@@ -3038,6 +3045,11 @@ def employee_edit(request, pk):
 
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES, instance=employee)
+
+        # Remove the picture fields
+        form.fields.pop('profile_picture', None)
+        form.fields.pop('cover_picture', None)
+
         if form.is_valid():
             try:
                 form.save()
@@ -3048,15 +3060,21 @@ def employee_edit(request, pk):
     else:
         form = EmployeeProfileForm(instance=employee)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+        # Remove the picture fields
+        form.fields.pop('profile_picture', None)
+        form.fields.pop('cover_picture', None)
+
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'employee_create.html', {
         'form': form,
-        'employee': current_employee,
+        'employee': employee,  # fixed to pass the employee being edited
         'notifications': notifications,
-        'edit_mode': True  # Add this flag if you need to distinguish between create/edit in template
+        'edit_mode': True
     })
- 
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_delete(request, pk):
