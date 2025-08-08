@@ -411,36 +411,50 @@ def company_detail(request, company_id):
  
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
-from .models import Notification, Employee, Muster, LeaveRequest, ExpenseClaim, LoanRequest
- 
+from .models import (
+    Notification, Employee, Muster,
+    LeaveRequest, ExpenseClaim, LoanRequest, ResignationRequest
+)
+
 @login_required(login_url='/')
 def base(request):
-    user = request.user  # Always define this first
- 
-    # Common to all roles
+    user = request.user  # Always first
+    
+    # Basic info common to all roles
     company = user.company
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=user, is_read=False, company=company).order_by('-created_at')[:5]
- 
+    notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False,
+        company=company
+    ).order_by('-created_at')[:5]
+
     context = {
         'employee': employee,
         'notifications': notifications,
     }
- 
+
     if user.role == 'Employee':
+        # For normal employees, render user dashboard
         return render(request, 'dashboard.html', context)
- 
+
     elif user.role in ['HR', 'Manager'] or user.is_superuser:
-        # Only fetch company-specific pending requests
+        # For HR, Manager and superuser, add pending approvals
         context.update({
             'pending_musters': Muster.objects.filter(status='Pending', company=company),
             'pending_leave_request': LeaveRequest.objects.filter(status='pending', company=company),
             'pending_expense': ExpenseClaim.objects.filter(status='pending', company=company),
             'pending_loan': LoanRequest.objects.filter(status='pending', company=company),
+            'pending_resignations': ResignationRequest.objects.filter(
+                status='submitted',
+                employee__company=company
+            ).order_by('-submitted_at'),
         })
         return render(request, 'base.html', context)
- 
-    return render(request, 'base.html')
+
+    # Default fallback
+    return render(request, 'base.html', context)
+
  
  
 #------------------------------------------------------------- Dashboard #
@@ -2959,6 +2973,14 @@ from .forms import EmployeeProfileForm, EmployeeMediaForm
 from .models import CustomUser, Employee, Notification
 
 
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from .forms import EmployeeProfileForm, EmployeeMediaForm
+from .models import CustomUser, Employee, Notification
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_create(request):
@@ -2970,41 +2992,33 @@ def employee_create(request):
             employee_id = form.cleaned_data['employee_id']
             try:
                 user = CustomUser.objects.get(employee_id=employee_id)
-
                 if not user.company:
-                    messages.error(request, "This user has no company assigned. Please assign a company first.")
+                    messages.error(request, "This user has no company assigned.")
                 else:
-                    try:
-                        # Create employee and media instance
-                        employee = form.save(commit=False)
-                        media = media_form.save(commit=False)
-
-                        employee.user = user
-                        employee.company = user.company
-                        employee.save()
-
-                        media.employee = employee
-                        media.save()
-
-                        messages.success(request, 'Employee added successfully!')
-                        return redirect('employee_list')
-                    except Exception as e:
-                        form.add_error(None, str(e))  # Add non-field error
+                    employee = form.save(commit=False)
+                    employee.user = user
+                    employee.company = user.company
+                    employee.save()
+                    
+                    media = media_form.save(commit=False)
+                    media.employee = employee
+                    media.save()
+                    
+                    messages.success(request, 'Employee created successfully!')
+                    return redirect('employee_list')
             except CustomUser.DoesNotExist:
-                form.add_error('employee_id', 'No user found with the provided employee ID.')
+                form.add_error('employee_id', 'User not found')
     else:
         form = EmployeeProfileForm()
         media_form = EmployeeMediaForm()
 
-    current_employee = Employee.objects.filter(user=request.user).first()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
-        'employee': current_employee,
-        'notifications': notifications
+        'notifications': Notification.objects.filter(recipient=request.user, is_read=False)[:5]
     })
+
+
 @login_required
 def upload_employee_media(request):
     employee = Employee.objects.get(user=request.user)
@@ -3074,6 +3088,13 @@ def edit_cover_picture(request):
     return render(request, 'profile.html', {'form': form})
  
  
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Employee, Notification
+from .forms import EmployeeProfileForm
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
@@ -3083,6 +3104,11 @@ def employee_edit(request, pk):
 
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES, instance=employee)
+
+        # Remove the picture fields
+        form.fields.pop('profile_picture', None)
+        form.fields.pop('cover_picture', None)
+
         if form.is_valid():
             try:
                 form.save()
@@ -3093,15 +3119,21 @@ def employee_edit(request, pk):
     else:
         form = EmployeeProfileForm(instance=employee)
 
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+        # Remove the picture fields
+        form.fields.pop('profile_picture', None)
+        form.fields.pop('cover_picture', None)
+
+    notifications = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).order_by('-created_at')[:5]
 
     return render(request, 'employee_create.html', {
         'form': form,
-        'employee': current_employee,
+        'employee': employee,  # fixed to pass the employee being edited
         'notifications': notifications,
-        'edit_mode': True  # Add this flag if you need to distinguish between create/edit in template
+        'edit_mode': True
     })
- 
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_delete(request, pk):
@@ -3952,25 +3984,15 @@ def hr_login_logs(request):
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils import timezone
-from django.views.decorators.http import require_POST
 
 from .models import ResignationRequest, Notification
-
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.utils import timezone
-
-from .models import ResignationRequest
 
 @login_required
 def resignation_request_view(request):
     user = request.user
-
-    # Get all resignation requests for user, ordered by submission time descending
     user_requests = ResignationRequest.objects.filter(employee=user).order_by('-submitted_at')
 
     if request.method == 'POST':
@@ -3983,19 +4005,15 @@ def resignation_request_view(request):
         agreement = request.POST.get('agreement') == 'on'
         letter_file = request.FILES.get('resignation_letter')
 
-        # Validate agreement acceptance
         if not agreement:
             messages.error(request, "You must accept the agreement to submit.")
             return redirect('resignation_request')
 
-        # Validate required fields (optional but recommended)
         if not (resignation_date and last_working_day and resignation_reason and signature_data):
             messages.error(request, "Please fill all required fields before submitting.")
             return redirect('resignation_request')
 
-        # Create a new resignation request instance
         resignation = ResignationRequest(employee=user)
-
         resignation.resignation_date = resignation_date
         resignation.last_working_day = last_working_day
         resignation.resignation_reason = resignation_reason
@@ -4003,21 +4021,40 @@ def resignation_request_view(request):
         resignation.notes = notes
         resignation.signature_data = signature_data
         resignation.agreement = agreement
-        resignation.status = 'submitted'  
+        resignation.status = 'submitted'
+        resignation.submitted_at = timezone.now()
 
         if letter_file:
             resignation.resignation_letter = letter_file
 
-        resignation.submitted_at = timezone.now()
         resignation.save()
+
+        # Create notification for employee (confirmation)
+        Notification.objects.create(
+            recipient=user,
+            message=(
+                f"Your resignation request dated {resignation.resignation_date} "
+                f"with last working day {resignation.last_working_day} has been submitted successfully."
+            )
+        )
+
+        # Optional: Notify HR and Manager as well
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        hr_managers = User.objects.filter(role__in=['HR', 'Manager'], is_active=True, company=user.company)
+        notification_text = (
+            f"{user.get_full_name() or user.username} submitted a resignation request effective {resignation.last_working_day}."
+        )
+        for hrm in hr_managers:
+            Notification.objects.create(
+                recipient=hrm,
+                message=notification_text
+            )
 
         messages.success(request, "Resignation letter submitted successfully.")
         return redirect('resignation_request')
 
-    context = {
-        'requests': user_requests,
-    }
-    return render(request, 'resignation.html', context)
+    return render(request, 'resignation.html', {'requests': user_requests})
 
 
 @require_POST
@@ -4032,23 +4069,32 @@ def review_resignation_request(request):
         return redirect('staff_notifications')
 
     resignation = get_object_or_404(ResignationRequest, id=resignation_id)
-
     action_lower = action.lower()
 
-    if action_lower == 'approved':
+    if action_lower == 'approve' or action_lower == 'approved':
         resignation.status = 'approved'
         resignation.save()
         Notification.objects.create(
             recipient=resignation.employee,
-            message=f"Your resignation submitted on {resignation.resignation_date} has been approved."
+            message=(
+                f"Your resignation submitted on {resignation.resignation_date} "
+                f"has been approved."
+            )
         )
-    elif action_lower == 'rejected':
+        messages.success(request, "Resignation approved successfully.")
+
+    elif action_lower == 'reject' or action_lower == 'rejected':
         resignation.status = 'rejected'
         resignation.save()
         Notification.objects.create(
             recipient=resignation.employee,
-            message=f"Your resignation submitted on {resignation.resignation_date} has been rejected."
+            message=(
+                f"Your resignation submitted on {resignation.resignation_date} "
+                f"has been rejected."
+            )
         )
+        messages.success(request, "Resignation rejected successfully.")
+
     else:
         messages.error(request, "Invalid action specified.")
 

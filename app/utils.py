@@ -320,6 +320,16 @@ from django.conf import settings
 from cryptography.fernet import Fernet, InvalidToken
 import base64
 
+from cryptography.fernet import Fernet
+from django.conf import settings
+from cryptography.fernet import InvalidToken
+from django.db import models
+
+from django.db import models
+from django.conf import settings
+from cryptography.fernet import Fernet, InvalidToken
+import base64
+
 class EncryptedCharField(models.CharField):
     def __init__(self, *args, **kwargs):
         self.fernet = Fernet(settings.ENCRYPTION_KEY.encode())
