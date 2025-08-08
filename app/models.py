@@ -497,9 +497,8 @@ class TrainingTopic(models.Model):
 class LoggedInUser(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     session_key = models.CharField(max_length=40, blank=True, null=True)
-
 import hashlib
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 from django.conf import settings
 from django.db import models
 
@@ -514,10 +513,7 @@ class LoginLog(models.Model):
 
     @property
     def ip_address(self):
-        try:
-            return fernet.decrypt(self._ip_address).decode()
-        except (InvalidToken, TypeError):
-            return "Invalid IP"
+        return fernet.decrypt(self._ip_address).decode()
 
     @ip_address.setter
     def ip_address(self, value):
@@ -526,10 +522,7 @@ class LoginLog(models.Model):
 
     @property
     def device_info(self):
-        try:
-            return fernet.decrypt(self._device_info).decode()
-        except (InvalidToken, TypeError):
-            return "Invalid Device"
+        return fernet.decrypt(self._device_info).decode()
 
     @device_info.setter
     def device_info(self, value):

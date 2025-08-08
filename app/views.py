@@ -95,15 +95,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, get_user_model
 from django.contrib.sessions.models import Session
 from django.utils import timezone
-from django.conf import settings
-from cryptography.fernet import Fernet
 from .models import LoggedInUser, LoginLog
 
 User = get_user_model()
-fernet = Fernet(settings.ENCRYPTION_KEY)
 
 
-# Utility functions
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
@@ -117,7 +113,6 @@ def hash_ip(ip):
     return hashlib.sha256(ip.encode()).hexdigest()
 
 
-# Login view
 def loginview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -159,28 +154,26 @@ def loginview(request):
             if not request.session.session_key:
                 request.session.save()
 
-            # Track current login session
             LoggedInUser.objects.update_or_create(user=user, defaults={
                 'session_key': request.session.session_key
             })
 
-            # Log IP & device info only once per IP per day
+            # IP & Device logging — only if not logged today from same IP
             ip = get_client_ip(request)
-            ip_hash = hash_ip(ip)
-            device = get_device_info(request)
+            ip_hash_val = hash_ip(ip)
             today = timezone.now().date()
 
-            already_logged = LoginLog.objects.filter(
+            already_logged_today = LoginLog.objects.filter(
                 user=user,
-                ip_hash=ip_hash,
+                ip_hash=ip_hash_val,
                 login_time__date=today
             ).exists()
 
-            if not already_logged:
+            if not already_logged_today:
                 log = LoginLog(user=user)
-                log.ip_address = ip  # Encrypted by property setter
-                log.device_info = device
-                log.save()  # Automatically sets ip_hash
+                log.ip_address = ip  # encrypted & sets hash
+                log.device_info = get_device_info(request)
+                log.save()
 
             return redirect("dashboard")
 
