@@ -89,7 +89,8 @@ def company_autocomplete(request):
     term = request.GET.get('term', '')
     companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
     return JsonResponse(list(companies), safe=False)
- 
+
+
 import hashlib
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, get_user_model
