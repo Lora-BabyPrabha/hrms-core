@@ -98,8 +98,8 @@ class Employee(models.Model):
     name = models.CharField(max_length=100)
     designation = models.CharField(max_length=50)
     department = models.CharField(max_length=50)
-    uan_number = EncryptedCharField(max_length=20, unique=True)
-    pan_number = EncryptedCharField(max_length=20, unique=True)
+    uan_number = EncryptedCharField(max_length=20, unique=True, verbose_name="UAN Number")
+    pan_number = EncryptedCharField(max_length=20, unique=True, verbose_name="PAN Number")
     pf_number = models.CharField(max_length=30, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], null=True, blank=True)
@@ -109,12 +109,11 @@ class Employee(models.Model):
     reporting_manager = models.CharField(max_length=100, null=True, blank=True)
     employee_type = models.CharField(max_length=20, choices=[('Full-time', 'Full-time'), ('Part-time', 'Part-time'), ('Contract', 'Contract')], null=True, blank=True)
     work_location = models.CharField(max_length=20, choices=[('On-site', 'On-site'), ('Remote', 'Remote'), ('Hybrid', 'Hybrid')], null=True, blank=True)
-    bank_account_number = EncryptedCharField(max_length=20, null=True, blank=True)
+    bank_account_number = EncryptedCharField(max_length=20, null=True, blank=True, verbose_name="Bank Account Number")
     bank_name = models.CharField(max_length=100, null=True, blank=True)
     ifsc_code = models.CharField(max_length=11, null=True, blank=True)
-    aadhar_number = EncryptedCharField(max_length=12, unique=True, null=True, blank=True)
+    aadhar_number = EncryptedCharField(max_length=12, unique=True, null=True, blank=True, verbose_name="Aadhar Number")
     
-
     def save(self, *args, **kwargs):
         if not self.employee_id and self.user:
             self.employee_id = self.user.employee_id
