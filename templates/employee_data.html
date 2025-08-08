@@ -389,6 +389,66 @@
         </table>
     </div>
 </div>
+
 {% endif %}
+<!-- Resignation Requests Section -->
+{% if request.method != 'POST' or request.POST.request_type == '' or request.POST.request_type == 'resignation' %}
+<div class="table-container">
+    <h5 class="section-header">Resignation Requests</h5>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Employee Name</th>
+                    <th>Employee ID</th>
+                    <th>Resignation Date</th>
+                    <th>Last Working Day</th>
+                    <th>Reason</th>
+                    <th>Other Reason</th>
+                    <th>Signature</th>
+                    <th>Resignation Letter</th>
+                    <th>Submitted At</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in resignations %}
+                <tr>
+                    <td>{{ item.employee.first_name }} {{ item.employee.last_name }}</td>
+                    <td>{{ item.employee.employee_id }}</td>
+                    <td>{{ item.resignation_date }}</td>
+                    <td>{{ item.last_working_day }}</td>
+                    <td>{{ item.resignation_reason }}</td>
+                    <td>{{ item.other_reason|default:"N/A" }}</td>
+                    <td>
+                        {% if item.signature_data %}
+                            <a href="{{ item.signature_data }}" target="_blank">
+                                <img src="{{ item.signature_data }}" alt="Signature" style="height: 40px;">
+                            </a>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.resignation_letter %}
+                            <a href="{{ item.resignation_letter.url }}" target="_blank">View</a>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.submitted_at|date:"Y-m-d H:i" }}</td>
+                    <td><span class="status-cell">{{ item.status|capfirst }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center">No resignation requests available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 </div>
 {% endblock %}

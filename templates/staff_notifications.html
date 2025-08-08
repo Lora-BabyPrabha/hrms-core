@@ -34,6 +34,16 @@
 </li>
 
 <li class="sidebar-item">
+    <a href="/login_logs" class="sidebar-link mt-2 w3-bar-item w3-button tablink" style='color: black;'>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-person-add mx-3" viewBox="0 0 16 16">
+            <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m.5-5v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1h-1a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0m-2-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/>
+            <path d="M8.256 14a4.5 4.5 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10q.39 0 .74.025c.226-.341.496-.65.804-.918Q8.844 9.002 8 9c-5 0-6 3-6 4s1 1 1 1z"/>
+        </svg>
+        employee Login Activity  
+    </a>
+</li>
+
+<li class="sidebar-item">
     <a href="/holidays_list" class="sidebar-link mt-2 w3-bar-item w3-button tablink" style='color: black;'>
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-tree mx-3" viewBox="0 0 16 16">
             <path d="M8.416.223a.5.5 0 0 0-.832 0l-3 4.5A.5.5 0 0 0 5 5.5h.098L3.076 8.735A.5.5 0 0 0 3.5 9.5h.191l-1.638 3.276a.5.5 0 0 0 .447.724H7V16h2v-2.5h4.5a.5.5 0 0 0 .447-.724L12.31 9.5h.191a.5.5 0 0 0 .424-.765L10.902 5.5H11a.5.5 0 0 0 .416-.777zM6.437 4.758A.5.5 0 0 0 6 4.5h-.066L8 1.401 10.066 4.5H10a.5.5 0 0 0-.424.765L11.598 8.5H11.5a.5.5 0 0 0-.447.724L12.69 12.5H3.309l1.638-3.276A.5.5 0 0 0 4.5 8.5h-.098l2.022-3.235a.5.5 0 0 0 .013-.507"/>
@@ -317,8 +327,8 @@
 <!-- Loan Table -->
 {% if request.method != 'POST' or request.POST.request_type == '' or request.POST.request_type == 'loan' %} <!--Added-->
 
-<h5>Loan Request Review</h5>
 <div class="table-container">
+<h5>Loan Request Review</h5>
 <div class="table-responsive">
 <table class="table">
     <thead style="background-color: #f1f1f1;">
@@ -372,4 +382,95 @@
 </div>
 
 {% endif %}
+{% if user.role == "HR" or user.role == "Manager" %}
+
+  {% if resignations %}
+    <div class="table-container mt-4">
+      <h5>Resignation Requests</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead class="thead-light">
+            <tr>
+              <th>Employee Name</th>
+              <th>Employee ID</th>
+              <th>Resignation Date</th>
+              <th>Last Working Day</th>
+              <th>Reason</th>
+              <th>Other Reason</th>
+              <th>Signature</th>
+              <th>Resignation Letter</th>
+              <th>Submitted At</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in resignations %}
+              <tr>
+                <td>{{ item.employee.first_name }} {{ item.employee.last_name }}</td>
+                <td>{{ item.employee.employee_id }}</td>
+                <td>{{ item.resignation_date }}</td>
+                <td>{{ item.last_working_day }}</td>
+                <td>{{ item.resignation_reason }}</td>
+                <td>{{ item.other_reason|default:"N/A" }}</td>
+                <td>
+                {% if item.signature_data %}
+                    <a href="{{ item.signature_data }}" target="_blank">
+                    <img src="{{ item.signature_data }}" alt="Signature" style="height: 40px;">
+                    </a>
+                {% else %}
+                    N/A
+                {% endif %}
+                </td>
+                <td>
+                {% if item.resignation_letter %}
+                    <a href="{{ item.resignation_letter.url }}" target="_blank">View</a>
+                {% else %}
+                    N/A
+                {% endif %}
+                </td>
+                <td>{{ item.submitted_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                <span class="status-badge">{{ item.status|capfirst }}</span>
+                </td>
+                <td>
+                <form method="POST" action="{% url 'review_resignation_request' %}" class="action-buttons">
+                    {% csrf_token %}
+                    <input type="hidden" name="resignation_id" value="{{ item.id }}">
+                    
+                    {% if item.status == 'submitted' %}
+                    <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
+                    <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
+                    
+                    {% elif item.status == 'approved' %}
+                    <!-- Only show Reject button when already approved -->
+                    <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
+                    
+                    {% elif item.status == 'rejected' %}
+                    <!-- Only show Approve button when already rejected -->
+                    <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
+                    
+                    {% else %}
+                    <!-- Optionally show the status if other -->
+                    <span class="status-badge">{{ item.status|capfirst }}</span>
+                    {% endif %}
+                </form>
+                </td>
+
+
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="11" class="text-center">No resignation requests available.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+{% endif %}
+
+
+
 {% endblock %}
