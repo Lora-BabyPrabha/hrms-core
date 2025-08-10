@@ -31,8 +31,10 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser
 
+from django.contrib.auth.admin import UserAdmin
+
 class CustomUserAdmin(UserAdmin):
-    add_form = UserCreationForm  # ✅ Your custom form
+    add_form = UserCreationForm # create if not existing, else use default
 
     list_display = (
         'employee_id', 'email', 'first_name', 'last_name',
@@ -55,13 +57,13 @@ class CustomUserAdmin(UserAdmin):
             'classes': ('wide',),
             'fields': (
                 'employee_id', 'email', 'first_name', 'last_name',
-                'role', 'company', 'password',  # ✅ Just 'password', not password1/password2
-                'is_superuser', 'is_staff', 'is_active', 'groups', 'user_permissions'
+                'role', 'company', 'password',  # recommended password confirmation fields
             )
         }),
     )
 
     filter_horizontal = ('groups', 'user_permissions')
+
 
 
 admin.site.register(CustomUser, CustomUserAdmin)

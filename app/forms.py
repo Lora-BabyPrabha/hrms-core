@@ -106,7 +106,7 @@ class UserCreationForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = '__all__'
+        fields = ['employee_id', 'name', 'email', 'role', 'company', 'is_active', 'is_staff', 'is_first_login', 'password']
         
     def clean_password(self):
         password = self.cleaned_data.get("password")
@@ -148,35 +148,57 @@ class UserCreationForm(forms.ModelForm):
             user.save()
         return user
 
+class UserEditForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput,
+        required=False,  # Optional so it won't force change password
+        help_text="Leave blank to keep current password"
+    )
 
+    class Meta:
+        model = CustomUser
+        fields = [
+            'employee_id',
+            'name',
+            'email',
+            'role',
+            'is_active',
+            'is_staff',
+            'is_superuser',
+            'is_first_login',
+            'password'
+        ]
 
-# forms.py (frontend form)
-from django.contrib.auth.hashers import make_password
 
 class FrontendUserForm(forms.ModelForm):
     password = forms.CharField(
         widget=forms.PasswordInput,
         help_text="Enter a strong password"
     )
-    
+
     class Meta:
         model = CustomUser
-        fields = '__all__'
-        exclude = ['company']
+        fields = [
+            'employee_id',
+            'name',
+            'email',
+            'role',
+            'is_active',
+            'is_staff',
+            'is_superuser',
+            'is_first_login',
+            'password'
+        ]  # ✅ This order will now be reflected in the form
     
-    def save(self, commit=True):
-        # Get the user instance without saving yet
+    def save(self, commit=True, company=None):
         user = super().save(commit=False)
-        
-        # Hash the password before saving
-        if 'password' in self.cleaned_data:
-            user.set_password(self.cleaned_data['password'])
-        
+        if company is not None:
+            user.company = company
+        user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
         return user
-
-
+    
 class MusterForm(forms.ModelForm):
     class Meta:
         model = Muster
