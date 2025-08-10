@@ -244,13 +244,14 @@
             <th>Signature</th>
             <th>Resignation Letter</th>
             <th>Submitted At</th>
+            <th>Status</th>
 
         </tr>
     </thead>
     <tbody>
         {% for item in requests %}
         <tr>
-            <td>{{ item.employee.first_name }} {{ item.employee.last_name }}</td>
+            <td>{{ item.employee.first_name}} {{ item.employee.last_name }}</td>
             <td>{{ item.employee.employee_id }}</td>
             <td>{{ item.resignation_date }}</td>
             <td>{{ item.last_working_day }}</td>
@@ -278,6 +279,9 @@
             </td>
 
             <td>{{ item.submitted_at|date:"Y-m-d H:i" }}</td>
+            <td>
+                <span class="status-badge">{{ item.status|capfirst }}</span>
+            </td>
             
         </tr>
         {% endfor %}

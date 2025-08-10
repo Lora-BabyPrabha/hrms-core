@@ -362,6 +362,30 @@
                                                 {% endfor %}
                                             </li>
                                         {% endif %}
+                                        {% for resignation in pending_resignations %}
+                                        {% if resignation.employee.company == request.user.company %}
+                                            <hr class="col-12">
+                                            <div class="notification" style="margin-left:30px;">
+                                                <small>
+                                                    {{ resignation.employee.employee_id }} has requested for 'Resignation'
+                                                    <br>
+                                                    Resignation Date: {{ resignation.resignation_date|date:"F d Y" }}
+                                                    <br>
+                                                    Last Working Day: {{ resignation.last_working_day|date:"F d Y" }}
+                                                    <br>
+                                                    Reason: {{ resignation.resignation_reason }}
+                                                    {% if resignation.other_reason %}
+                                                        <br>Other Reason: {{ resignation.other_reason }}
+                                                    {% endif %}
+                                                    <br>
+                                                    Notes: {{ resignation.notes }}
+                                                    <br>↳
+                                                </small>
+                                                <a href="{% url 'review_resignation_notifications' resignation.id 'Approve' %}" class="Approve btn btn-sm"><small>Approve</small></a>
+                                                <a href="{% url 'review_resignation_notifications' resignation.id 'Reject' %}" class="Reject btn btn-sm"><small>Reject</small></a>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
 
 
                                 </ul>
@@ -1232,29 +1256,34 @@
             });
         </script>     
         
-        
-            <script>
-        let inactivityTime = function () {
-            let timer;
-            const landerUrl = "{% url 'index' %}"; // Replace with your actual logout URL
+       <script>
+let inactivityTime = function () {
+    let timer;
+    const logoutUrl = "{% url 'index' %}"; // Or real logout view
 
-            function resetTimer() {
-                clearTimeout(timer);
-                timer = setTimeout(() => {
-                    alert("You've been logged out due to inactivity.");
-                    window.location.href = landerUrl;
-                }, 2 * 60 * 1000); // 2 minutes
-            }
+    function resetTimer() {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            alert("You've been logged out due to inactivity.");
+            window.location.href = logoutUrl;
+        }, 2 * 60 * 1000); // 2 minutes
+    }
 
-            window.onload = resetTimer;
-            document.onmousemove = resetTimer;
-            document.onkeydown = resetTimer;
-            document.onclick = resetTimer;
-            document.onscroll = resetTimer;
-        };
+    function setupEvents() {
+        window.addEventListener("load", resetTimer);
+        document.addEventListener("mousemove", resetTimer);
+        document.addEventListener("keydown", resetTimer);
+        document.addEventListener("click", resetTimer);
+        document.addEventListener("scroll", resetTimer);
+        document.addEventListener("touchstart", resetTimer); // mobile tap
+    }
 
-        inactivityTime();
-    </script>
+    setupEvents();
+};
+
+inactivityTime();
+</script>
+
 
 
     </body>

@@ -438,22 +438,22 @@
                     {% csrf_token %}
                     <input type="hidden" name="resignation_id" value="{{ item.id }}">
                     
-                    {% if item.status == 'submitted' %}
-                    <button type="submit" name="status" value="Approved" class="btn btn-success btn-sm">Approve</button>
-                    <button type="submit" name="status" value="Rejected" class="btn btn-danger btn-sm">Reject</button>
-                    
-                    {% elif item.status == 'Approved' %}
+                    {% if item.status == 'pending' %}
+                    <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
+                    <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
+
+                {% elif item.status == 'approved' %}
                     <!-- Only show Reject button when already approved -->
-                    <button type="submit" name="status" value="Rejected" class="btn btn-danger btn-sm">Reject</button>
-                    
-                    {% elif item.status == 'Rejected' %}
+                    <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
+
+                {% elif item.status == 'rejected' %}
                     <!-- Only show Approve button when already rejected -->
-                    <button type="submit" name="status" value="Approved" class="btn btn-success btn-sm">Approve</button>
-                    
-                    {% else %}
-                    <!-- Optionally show the status if other -->
+                    <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
+
+                {% else %}
                     <span class="status-badge">{{ item.status|capfirst }}</span>
-                    {% endif %}
+                {% endif %}
+
                 </form>
                 </td>
 
