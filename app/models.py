@@ -534,8 +534,7 @@ class LoginLog(models.Model):
 #------------------------------------------------------------- Resignation #
 class ResignationRequest(models.Model):
     STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('submitted', 'Submitted'),
+        ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
     ]

@@ -446,10 +446,9 @@ def base(request):
             'pending_leave_request': LeaveRequest.objects.filter(status='pending', company=company),
             'pending_expense': ExpenseClaim.objects.filter(status='pending', company=company),
             'pending_loan': LoanRequest.objects.filter(status='pending', company=company),
-            'pending_resignations': ResignationRequest.objects.filter(
-                status='submitted',
-                employee__company=company
-            ).order_by('-submitted_at'),
+            'pending_resignations': ResignationRequest.objects.filter(status='pending', employee__company=company).order_by('-submitted_at'),
+
+
         })
         return render(request, 'base.html', context)
 
@@ -739,7 +738,7 @@ def staff_notifications(request):
     if user.role in ['HR', 'Manager']:
         resignations = ResignationRequest.objects.filter(
             employee__company=company,
-            status__in=['submitted', 'approved', 'rejected'],  # include all statuses here
+            status__in=['pending', 'approved', 'rejected']  # include all statuses here
         )
     else:
         resignations = ResignationRequest.objects.none()  # No resignations for other users
@@ -779,7 +778,7 @@ def staff_notifications(request):
                 employee__in=users_qs,
                 submitted_at__year=year,
                 submitted_at__month=month,
-                status__in=['submitted', 'approved', 'rejected'],  # include all statuses here too
+                status__in=['pending', 'approved', 'rejected']  # include all statuses here too
             )
 
         # Apply specific date filter
@@ -793,7 +792,7 @@ def staff_notifications(request):
                 resignations = ResignationRequest.objects.filter(
                     employee__in=users_qs,
                     submitted_at__date=date_obj,
-                    status__in=['submitted', 'approved', 'rejected'],  # and here
+                    status__in=['pending', 'approved', 'rejected']  # and here
                 )
             except ValueError:
                 pass
@@ -4022,7 +4021,7 @@ def resignation_request_view(request):
         resignation.notes = notes
         resignation.signature_data = signature_data
         resignation.agreement = agreement
-        resignation.status = 'submitted'
+        resignation.status = 'pending'
         resignation.submitted_at = timezone.now()
 
         if letter_file:
@@ -4078,7 +4077,7 @@ def review_resignation_request(request):
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
-                f"Your resignation submitted on {resignation.resignation_date} "
+                f"Your resignation submitted on {resignation.submitted_at.strftime('%Y-%m-%d')} "
                 f"has been approved."
             )
         )
@@ -4090,7 +4089,7 @@ def review_resignation_request(request):
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
-                f"Your resignation submitted on {resignation.resignation_date} "
+                f"Your resignation submitted on {resignation.submitted_at.strftime('%Y-%m-%d')} "
                 f"has been rejected."
             )
         )
@@ -4100,3 +4099,5 @@ def review_resignation_request(request):
         messages.error(request, "Invalid action specified.")
 
     return redirect('staff_notifications')
+
+

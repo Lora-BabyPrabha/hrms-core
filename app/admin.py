@@ -97,3 +97,34 @@ class TrainingTopicAdmin(admin.ModelAdmin):
             obj.created_by = request.user
             obj.company = request.user.company
         super().save_model(request, obj, form, change)
+
+
+from django.contrib import admin
+from .models import ResignationRequest
+
+class ResignationRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'employee',
+        'resignation_date',
+        'last_working_day',
+        'status',
+        'submitted_at',
+    )
+    list_filter = ('status', 'resignation_date', 'last_working_day')
+    search_fields = (
+        'employee__username',
+        'employee__employee_id',
+        'employee__first_name',
+        'employee__last_name',
+        'resignation_reason',
+        'other_reason',
+        'notes',
+    )
+    date_hierarchy = 'resignation_date'
+    readonly_fields = (
+        'submitted_at',
+        'signature_data',
+    )
+
+admin.site.register(ResignationRequest, ResignationRequestAdmin)

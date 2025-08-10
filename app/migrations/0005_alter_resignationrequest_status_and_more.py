@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='resignationrequest',
             name='submitted_at',
-            field=models.DateTimeField(auto_now_add=True, default='1'),
+            field=models.DateTimeField(auto_now_add=True, default='2025-08-08 05:35:00'),
             preserve_default=False,
         ),
     ]
