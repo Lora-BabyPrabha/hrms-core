@@ -247,5 +247,31 @@
         </tbody>
     </table>
     {% endif %}
+
+    <!-- Manager Escalated Tickets -->
+    {% if manager_escalated_tickets %}
+    <h4 class="mt-5">Escalated Tickets (Manager)</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Issue Type</th>
+                <th>Employee</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in manager_escalated_tickets %}
+            <tr>
+                <td>{{ ticket.get_category_display }}</td>
+                <td>{{ ticket.issue_type }}</td>
+                <td>{{ ticket.employee.employee.name }}</td>
+                <td>{{ ticket.description|truncatewords:10 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
 </div>
 {% endblock %}
+
