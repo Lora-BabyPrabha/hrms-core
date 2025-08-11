@@ -438,22 +438,22 @@
                     {% csrf_token %}
                     <input type="hidden" name="resignation_id" value="{{ item.id }}">
                     
-                    {% if item.status == 'submitted' %}
+                    {% if item.status == 'pending' %}
                     <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
                     <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
-                    
-                    {% elif item.status == 'approved' %}
+
+                {% elif item.status == 'approved' %}
                     <!-- Only show Reject button when already approved -->
                     <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
-                    
-                    {% elif item.status == 'rejected' %}
+
+                {% elif item.status == 'rejected' %}
                     <!-- Only show Approve button when already rejected -->
                     <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
-                    
-                    {% else %}
-                    <!-- Optionally show the status if other -->
+
+                {% else %}
                     <span class="status-badge">{{ item.status|capfirst }}</span>
-                    {% endif %}
+                {% endif %}
+
                 </form>
                 </td>
 

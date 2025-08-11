@@ -31,8 +31,10 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser
 
+from django.contrib.auth.admin import UserAdmin
+
 class CustomUserAdmin(UserAdmin):
-    add_form = UserCreationForm  # ✅ Your custom form
+    add_form = UserCreationForm # create if not existing, else use default
 
     list_display = (
         'employee_id', 'email', 'first_name', 'last_name',
@@ -55,13 +57,13 @@ class CustomUserAdmin(UserAdmin):
             'classes': ('wide',),
             'fields': (
                 'employee_id', 'email', 'first_name', 'last_name',
-                'role', 'company', 'password',  # ✅ Just 'password', not password1/password2
-                'is_superuser', 'is_staff', 'is_active', 'groups', 'user_permissions'
+                'role', 'company', 'password',  # recommended password confirmation fields
             )
         }),
     )
 
     filter_horizontal = ('groups', 'user_permissions')
+
 
 
 admin.site.register(CustomUser, CustomUserAdmin)
@@ -97,3 +99,47 @@ class TrainingTopicAdmin(admin.ModelAdmin):
             obj.created_by = request.user
             obj.company = request.user.company
         super().save_model(request, obj, form, change)
+
+
+from django.contrib import admin
+from .models import ResignationRequest
+
+class ResignationRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'employee',
+        'resignation_date',
+        'last_working_day',
+        'status',
+        'submitted_at',
+    )
+    list_filter = ('status', 'resignation_date', 'last_working_day')
+    search_fields = (
+        'employee__username',
+        'employee__employee_id',
+        'employee__first_name',
+        'employee__last_name',
+        'resignation_reason',
+        'other_reason',
+        'notes',
+    )
+    date_hierarchy = 'resignation_date'
+    readonly_fields = (
+        'submitted_at',
+        'signature_data',
+    )
+
+admin.site.register(ResignationRequest, ResignationRequestAdmin)
+ 
+@admin.register(SkillCategory)
+class SkillCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name']
+    search_fields = ['name']
+ 
+ 
+@admin.register(CareerResource)
+class CareerResourceAdmin(admin.ModelAdmin):
+    list_display = ['title', 'category', 'company']
+    search_fields = ['title', 'description']
+    list_filter = ['category', 'company']
+    prepopulated_fields = {'slug': ('title',)}
