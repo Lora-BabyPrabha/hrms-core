@@ -258,15 +258,18 @@
             <td>{{ item.resignation_reason }}</td>
             <td>{{ item.other_reason }}</td>
 
-            <!-- Signature Preview -->
+           <!-- Signature Preview -->
             <td>
                 {% if item.signature_data %}
-                    <img src="{{ MEDIA_URL }}{{ item.signature_data }}" alt="Signature" style="height: 40px;">
-                    <a href="{{ MEDIA_URL }}{{ item.signature_data }}" target="_blank">View Full</a>
+                    <a href="{{ item.signature_data }}" target="_blank">
+                        <img src="{{ item.signature_data }}" alt="Signature" style="height: 40px;">
+                    </a>
                 {% else %}
                     N/A
                 {% endif %}
             </td>
+
+
 
             <!-- Resignation Letter Download -->
             <td>

@@ -382,9 +382,8 @@
 </div>
 
 {% endif %}
-{% if user.role == "HR" or user.role == "Manager" %}
+{% if request.method != 'POST' or request.POST.request_type == '' or request.POST.request_type == 'resignation' %}
 
-  {% if resignations %}
     <div class="table-container mt-4">
       <h5>Resignation Requests</h5>
       <div class="table-responsive">
@@ -468,7 +467,7 @@
         </table>
       </div>
     </div>
-  {% endif %}
+
 {% endif %}
 
 

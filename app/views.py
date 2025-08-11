@@ -446,7 +446,7 @@ def base(request):
             'pending_leave_request': LeaveRequest.objects.filter(status='pending', company=company),
             'pending_expense': ExpenseClaim.objects.filter(status='pending', company=company),
             'pending_loan': LoanRequest.objects.filter(status='pending', company=company),
-            'pending_resignations': ResignationRequest.objects.filter(status='pending', employee__company=company).order_by('-submitted_at'),
+            'pending_resignations': ResignationRequest.objects.filter(status__iexact='pending', employee__company=company)
 
 
         })
@@ -737,7 +737,7 @@ def staff_notifications(request):
     # Resignations: Fetch **all relevant statuses** for HR and Manager role
     if user.role in ['HR', 'Manager']:
         resignations = ResignationRequest.objects.filter(
-            employee__company=company,
+            employee__company=company,submitted_at__date=today,
             status__in=['pending', 'approved', 'rejected']  # include all statuses here
         )
     else:
@@ -3696,20 +3696,7 @@ def benefits_compensation(request):
         return render(request, 'hr/partials/benefits_compensation.html', context)
     return render(request, 'hr/benefits_compensation.html', context)
  
-@login_required
-def career_development(request):
-    employee = get_object_or_404(EmployeeProfile, user=request.user)
-    trainings = Training.objects.filter(employee=employee).order_by('-date_completed')
-   
-    context = {
-        'trainings': trainings,
-        'skills': employee.skills.all()
-    }
-   
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'hr/partials/career_development.html', context)
-    return render(request, 'hr/career_development.html', context)
- 
+
 '''@login_required(login_url='/')
 def clear_single_notification(request, notification_id):
     Notification.objects.filter(id=notification_id, recipient=request.user).delete()
@@ -3869,9 +3856,6 @@ def team_detail(request, team_id):
     })
 
 
-@login_required
-def career_development(request):
-    return render(request, 'career_development.html')
 
 
 #------------------------------------------------------------- Training#
