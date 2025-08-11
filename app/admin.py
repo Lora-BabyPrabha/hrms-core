@@ -130,3 +130,16 @@ class ResignationRequestAdmin(admin.ModelAdmin):
     )
 
 admin.site.register(ResignationRequest, ResignationRequestAdmin)
+ 
+@admin.register(SkillCategory)
+class SkillCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name']
+    search_fields = ['name']
+ 
+ 
+@admin.register(CareerResource)
+class CareerResourceAdmin(admin.ModelAdmin):
+    list_display = ['title', 'category', 'company']
+    search_fields = ['title', 'description']
+    list_filter = ['category', 'company']
+    prepopulated_fields = {'slug': ('title',)}

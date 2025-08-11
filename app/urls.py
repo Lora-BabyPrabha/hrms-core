@@ -42,6 +42,7 @@ urlpatterns = [
     path('clock_in', views.clock_in, name='clock_in'),
     path('clock_out', views.clock_out, name='clock_out'),
     path('holidays',views.holidays,name='holidays'),
+    
 
 
     #  Leaves #
@@ -179,7 +180,12 @@ urlpatterns = [
     path('employee_self_service/', views.employee_self_service, name='employee_self_service'),
     path('benefits_compensation', views.benefits_compensation, name='benefits_compensation'),
     path('career_development', views.career_development, name='career_development'),
+    path('resource_detail/<int:pk>', views.resource_detail, name='resource_detail'),
     path('help_desk', views.help_desk_page, name='help_desk'),
+    path('career_development', views.career_development, name='career_development'),
+    path('delete_resource/<slug:slug>/', views.delete_resource, name='delete_resource'),
+    path('delete_category/<int:id>/', views.delete_category, name='delete_category'),
+    path('resource/<slug:slug>/', views.resource_detail, name='resource_detail'),
     # clear notifications
     path('clear-all-notifications/', views.clear_all_notifications, name='clear_all_notifications'),
     # path('clear_single_notification/<int:notification_id>', views.clear_single_notification, name='clear_single_notification'),

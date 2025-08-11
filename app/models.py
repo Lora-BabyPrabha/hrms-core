@@ -557,3 +557,34 @@ class ResignationRequest(models.Model):
 
     def __str__(self):
         return f"Resignation by {self.employee.get_full_name()} on {self.submitted_at.date()}"
+
+
+
+#--------------------------------------------------------------Career development#
+ 
+from django.db import models
+from django.utils.text import slugify
+ 
+class SkillCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+ 
+    def __str__(self):
+        return self.name
+ 
+class CareerResource(models.Model):
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, blank=True)
+    description = models.TextField()
+    detail_content = models.TextField()
+    category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE)
+    company = models.ForeignKey('app.Company_check', on_delete=models.CASCADE, null=True, blank=True)
+    uploaded_file = models.FileField(upload_to='career_resources/files/', null=True, blank=True)
+    video_link = models.URLField(max_length=500, null=True, blank=True)
+ 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+ 
+    def __str__(self):
+        return self.title

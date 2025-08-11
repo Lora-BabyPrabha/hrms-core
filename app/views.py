@@ -1028,10 +1028,29 @@ def muster_status(request):
 def leave_balance(request):
     user = request.user
     leave_request = LeaveRequest.objects.filter(employee=user)
-    leave = Leave.objects.get(employee=request.user)
+
+    try:
+        leave = Leave.objects.get(employee=user)
+    except Leave.DoesNotExist:
+        leave = None  # No leave record found
+
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'leave_balance.html', {'leave': leave , 'leave_request': leave_request , "employee": employee , 'notifications': notifications})
+    notifications = Notification.objects.filter(
+        recipient=request.user, 
+        is_read=False
+    ).order_by('-created_at')[:5]
+
+    return render(
+        request,
+        'leave_balance.html',
+        {
+            'leave': leave,
+            'leave_request': leave_request,
+            'employee': employee,
+            'notifications': notifications,
+            'no_leave_message': "You currently have no leave balance. Please contact your Manager or HR to have it added."
+        }
+    )
  
  
 @login_required(login_url='/')
@@ -4006,12 +4025,16 @@ def hr_login_logs(request):
 #------------------------------------------------------------- Resignation Request #
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils import timezone
+from django.views.decorators.http import require_POST
+from django.contrib.admin.views.decorators import staff_member_required
 
-from .models import ResignationRequest, Notification
+from .models import ResignationRequest, Notification, HRContact
+from app.models import Employee
+import base64
+from django.core.files.base import ContentFile
+
 
 @login_required
 def resignation_request_view(request):
@@ -4036,23 +4059,33 @@ def resignation_request_view(request):
             messages.error(request, "Please fill all required fields before submitting.")
             return redirect('resignation_request')
 
-        resignation = ResignationRequest(employee=user)
-        resignation.resignation_date = resignation_date
-        resignation.last_working_day = last_working_day
-        resignation.resignation_reason = resignation_reason
-        resignation.other_reason = other_reason
-        resignation.notes = notes
-        resignation.signature_data = signature_data
-        resignation.agreement = agreement
-        resignation.status = 'pending'
-        resignation.submitted_at = timezone.now()
+        resignation = ResignationRequest(
+            employee=user,
+            resignation_date=resignation_date,
+            last_working_day=last_working_day,
+            resignation_reason=resignation_reason,
+            other_reason=other_reason,
+            notes=notes,
+            agreement=agreement,
+            status='pending',
+            submitted_at=timezone.now()
+        )
+
+        # Handle signature
+        if signature_data.startswith("data:image"):
+            format, imgstr = signature_data.split(';base64,')
+            ext = format.split('/')[-1]
+            file_name = f"signature_{user.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+            resignation.signature_data.save(file_name, ContentFile(base64.b64decode(imgstr)), save=False)
+        else:
+            resignation.signature_data = signature_data  # If already a URL or file path
 
         if letter_file:
             resignation.resignation_letter = letter_file
 
         resignation.save()
 
-        # Create notification for employee (confirmation)
+        # Notify the employee
         Notification.objects.create(
             recipient=user,
             message=(
@@ -4061,27 +4094,31 @@ def resignation_request_view(request):
             )
         )
 
-        # Optional: Notify HR and Manager as well
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        hr_managers = User.objects.filter(role__in=['HR', 'Manager'], is_active=True, company=user.company)
-        notification_text = (
-            f"{user.get_full_name() or user.username} submitted a resignation request effective {resignation.last_working_day}."
+        # Notify HR & Managers in same company
+        hr_manager_contacts = HRContact.objects.filter(
+            role__in=['HR', 'MG'],
+            employee__company=user.company
         )
-        for hrm in hr_managers:
-            Notification.objects.create(
-                recipient=hrm,
-                message=notification_text
-            )
+        notification_text = (
+            f"{user.get_full_name() or user.username} submitted a resignation request "
+            f"effective {resignation.last_working_day}."
+        )
+        for contact in hr_manager_contacts:
+            if contact.employee and contact.employee.user:
+                Notification.objects.create(
+                    recipient=contact.employee.user,
+                    message=notification_text
+                )
 
         messages.success(request, "Resignation letter submitted successfully.")
-        return redirect('resignation_request')
+        # Cache-busting redirect to ensure signature displays immediately
+        return redirect(f"{reverse('resignation_request')}?v={timezone.now().timestamp()}")
 
     return render(request, 'resignation.html', {'requests': user_requests})
 
 
 @require_POST
-@login_required(login_url='/')
+@login_required
 @staff_member_required
 def review_resignation_request(request):
     resignation_id = request.POST.get('resignation_id')
@@ -4094,9 +4131,11 @@ def review_resignation_request(request):
     resignation = get_object_or_404(ResignationRequest, id=resignation_id)
     action_lower = action.lower()
 
-    if action_lower == 'approve' or action_lower == 'approved':
+    if action_lower in ['approve', 'approved']:
         resignation.status = 'approved'
         resignation.save()
+
+        # Notify employee
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
@@ -4104,11 +4143,26 @@ def review_resignation_request(request):
                 f"has been approved."
             )
         )
+
+        # Notify HR/Managers
+        hr_manager_contacts = HRContact.objects.filter(
+            role__in=['HR', 'MG'],
+            employee__company=resignation.employee.company
+        )
+        for contact in hr_manager_contacts:
+            if contact.employee and contact.employee.user:
+                Notification.objects.create(
+                    recipient=contact.employee.user,
+                    message=f"Resignation request of {resignation.employee.get_full_name() or resignation.employee.username} has been approved."
+                )
+
         messages.success(request, "Resignation approved successfully.")
 
-    elif action_lower == 'reject' or action_lower == 'rejected':
+    elif action_lower in ['reject', 'rejected']:
         resignation.status = 'rejected'
         resignation.save()
+
+        # Notify employee
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
@@ -4116,6 +4170,19 @@ def review_resignation_request(request):
                 f"has been rejected."
             )
         )
+
+        # Notify HR/Managers
+        hr_manager_contacts = HRContact.objects.filter(
+            role__in=['HR', 'MG'],
+            employee__company=resignation.employee.company
+        )
+        for contact in hr_manager_contacts:
+            if contact.employee and contact.employee.user:
+                Notification.objects.create(
+                    recipient=contact.employee.user,
+                    message=f"Resignation request of {resignation.employee.get_full_name() or resignation.employee.username} has been rejected."
+                )
+
         messages.success(request, "Resignation rejected successfully.")
 
     else:
@@ -4123,4 +4190,71 @@ def review_resignation_request(request):
 
     return redirect('staff_notifications')
 
-
+#------------------------------------------------------------- Career development #
+ 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import CareerResource, SkillCategory
+from .forms import CareerResourceForm, SkillCategoryForm
+ 
+@login_required(login_url='/')
+def career_development(request):
+    categories = SkillCategory.objects.all()
+    resources = CareerResource.objects.filter(company=request.user.company)
+    can_edit = request.user.role in ['HR', 'Manager']
+ 
+    resource_form = CareerResourceForm()
+    category_form = SkillCategoryForm()
+ 
+    if request.method == 'POST' and can_edit:
+        if 'add_resource' in request.POST:
+            resource_form = CareerResourceForm(request.POST)
+            if resource_form.is_valid():
+                resource = resource_form.save(commit=False)
+                resource.company = request.user.company
+                resource.save()
+                return redirect('career_development')
+ 
+        elif 'add_category' in request.POST:
+            category_form = SkillCategoryForm(request.POST)
+            if category_form.is_valid():
+                category_form.save()
+                return redirect('career_development')
+ 
+    return render(request, 'career_development.html', {
+        'categories': categories,
+        'resources': resources,
+        'form': resource_form,
+        'category_form': category_form,
+        'can_edit': can_edit,
+    })
+ 
+ 
+ 
+@login_required
+def delete_category(request, id):
+    if request.user.role not in ['HR', 'Manager']:
+        return redirect('career_development')
+   
+    category = get_object_or_404(SkillCategory, id=id)
+    if not category.careerresource_set.exists():  
+        category.delete()
+    return redirect('career_development')
+ 
+ 
+@login_required
+def delete_resource(request, slug):
+    if request.user.role not in ['HR', 'Manager']:
+        return redirect('career_development')
+ 
+    resource = get_object_or_404(CareerResource, slug=slug)
+    resource.delete()
+    return redirect('career_development')
+ 
+ 
+ 
+def resource_detail(request, slug):
+    resource = get_object_or_404(CareerResource, slug=slug)
+    return render(request, 'resource_detail.html', {'resource': resource})
+ 
+ 

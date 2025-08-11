@@ -115,7 +115,8 @@
 
 {% block content %}
 <h5 class="float-start">List of all Tasks</h5>
-
+<br>
+<br>
 <div class="filter-container">
     <form method="GET" action="{% url 'task_list' %}" id="filter-form">
         <div id="employee-group">
@@ -163,7 +164,7 @@
                 <td>{{ task.name }}</td>
                 <td>
                     {% for user in task.assigned_to.all %}
-                         {{ user.first_name }} {{ user.last_name }}{% if not forloop.last %}, {% endif %}
+                         {{ user.first_name }} {{ user.last_name }}-{{ user.employee_id}}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </td>
                 <td>{{ task.due_date }}</td>

@@ -239,9 +239,6 @@ class MusterForm(forms.ModelForm):
 #             raise forms.ValidationError("Employee with this ID does not exist.")
 #         return 
 
-from django import forms
-from .models import Employee, Salary
-
 class SalaryForm(forms.ModelForm):
     employee_id = forms.CharField(max_length=50, required=True, label='Employee ID')
 
@@ -253,7 +250,12 @@ class SalaryForm(forms.ModelForm):
 
     class Meta:
         model = Salary
-        exclude = ['employee']  # We're setting it manually based on employee_id
+        exclude = ['employee']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:  # Editing existing salary
+            self.fields.pop('employee_id')  # Remove employee_id field
 
     def clean_employee_id(self):
         employee_id = self.cleaned_data['employee_id']
@@ -261,12 +263,13 @@ class SalaryForm(forms.ModelForm):
             employee = Employee.objects.get(employee_id=employee_id)
         except Employee.DoesNotExist:
             raise forms.ValidationError("Employee with this ID does not exist.")
-        self.cleaned_data['employee'] = employee  # Add it for use later
+        self.cleaned_data['employee'] = employee
         return employee_id
 
     def save(self, commit=True):
         salary = super().save(commit=False)
-        salary.employee = self.cleaned_data['employee']  # Assign actual Employee instance
+        if 'employee' in self.cleaned_data:
+            salary.employee = self.cleaned_data['employee']
         if commit:
             salary.save()
         return salary
@@ -371,22 +374,48 @@ class LeaveForm(forms.ModelForm):
 #         ]
 
 
+from django import forms
+from django.core.validators import RegexValidator
+from .models import Employee  # adjust import path as needed
+
 class PersonalInfoForm(forms.ModelForm):
     date_of_birth = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date'}),
+        widget=forms.DateInput(
+            attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }
+        ),
         required=True
     )
-   
+
     gender = forms.ChoiceField(
-        choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')],
+        choices=[
+            ('Male', 'Male'),
+            ('Female', 'Female'),
+            ('Other', 'Other')
+        ],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-   
+
     phone_number = forms.CharField(
-        validators=[RegexValidator(regex=r'^\+?\d{10,15}$')],
-        widget=forms.TextInput(attrs={'readonly': 'readonly'})
+        validators=[
+            RegexValidator(
+                regex=r'^\+?\d{10,15}$',
+                message="Enter a valid phone number (10-15 digits, optional leading +)"
+            )
+        ],
+        widget=forms.TextInput(
+            attrs={
+                'type': 'tel',           # mobile devices show number pad
+                'pattern': '[0-9+]*',    # HTML pattern restriction
+                'inputmode': 'numeric',  # forces numeric keypad on most devices
+                'class': 'form-control', # Bootstrap styling
+                'maxlength': '15'        # limit input length
+            }
+        )
     )
- 
+
     class Meta:
         model = Employee
         fields = ['name', 'date_of_birth', 'gender', 'nationality', 'phone_number', 'address']
@@ -395,6 +424,7 @@ class PersonalInfoForm(forms.ModelForm):
             'nationality': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
  
 
 
@@ -547,17 +577,29 @@ class TeamForm(forms.ModelForm):
 
 
 class PersonalInfoForm(forms.ModelForm):
-        class Meta:
-            model = Employee
-            fields = [
-             'name',
-             'date_of_birth',
-             'gender',
-             'nationality',
-             'phone_number',
-             'address',
-         ]
-            
+    class Meta:
+        model = Employee
+        fields = [
+            'name',
+            'date_of_birth',
+            'gender',
+            'nationality',
+            'phone_number',
+            'address',
+        ]
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'readonly': 'readonly',
+                'pattern': '[0-9]*',    
+                'inputmode': 'numeric'  
+            }),
+        }
+ 
 #------------------------------------------------------------- Training #
 from django import forms
 from .models import TrainingTopic
@@ -566,3 +608,55 @@ class TrainingTopicForm(forms.ModelForm):
     class Meta:
         model = TrainingTopic
         fields = ['title', 'topic_link']
+
+
+
+#------------------------------------------------------------- Career development #
+ 
+from django import forms
+from .models import CareerResource, SkillCategory
+ 
+class CareerResourceForm(forms.ModelForm):
+    class Meta:
+        model = CareerResource
+        fields = ['title', 'description', 'detail_content', 'category', 'uploaded_file', 'video_link']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter resource title'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Short description of the resource'
+            }),
+            'detail_content': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Detailed explanation, guidelines, or content'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'video_link': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://example.com/video'
+            }),
+        }
+ 
+    uploaded_file = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+        }),
+        help_text="Upload PDF or document (optional)"
+    )
+ 
+class SkillCategoryForm(forms.ModelForm):
+    class Meta:
+        model = SkillCategory
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Technical Skills'}),
+        }
+ 
