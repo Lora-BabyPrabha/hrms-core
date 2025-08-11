@@ -228,11 +228,11 @@ def search_results(request):
         'cover': 'profile',
  
         # Employee
-        'employee': 'view_employee',
-        'employee list': 'view_employee',
-        'employee detail': 'view_employee',
-        'employee create': 'view_employee',
-        'employee edit': 'view_employee',
+        'employee': 'employee_list',
+        'employee list': 'employee_list',
+        'employee detail': 'employee_detail',
+        'employee create': 'employee_create',
+        'employee edit': 'employee_edit',
  
         # Leave & Holidays
         'leave balance': 'leave_balance',
@@ -575,7 +575,11 @@ def employee_requests(request):
     expense_claims = ExpenseClaim.objects.filter(employee__company=company, date=today)
     loan_requests = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
     time_entries = TimeEntry.objects.filter(user__company=company, clock_in_time__date=today)
-    resignation_requests = ResignationRequest.objects.filter(employee__company=company)  # No date filter by default
+    resignation_requests = ResignationRequest.objects.filter(
+    employee__company=company,
+    submitted_at__date=today
+)
+  # No date filter by default
     
     employees = users_qs
 
@@ -3127,6 +3131,14 @@ from django.contrib import messages
 from .models import Employee, Notification
 from .forms import EmployeeProfileForm
 
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
+from .models import Employee, EmployeeMedia, Notification
+from .forms import EmployeeProfileForm, EmployeeMediaForm
+
 @login_required(login_url='/')
 @staff_member_required
 def employee_edit(request, pk):
@@ -3134,37 +3146,34 @@ def employee_edit(request, pk):
     current_employee = Employee.objects.get(employee_id=user.employee_id)
     employee = get_object_or_404(Employee, pk=pk, company=current_employee.company)
 
+    # Get or create related media
+    employee_media, _ = EmployeeMedia.objects.get_or_create(employee=employee)
+
     if request.method == 'POST':
         form = EmployeeProfileForm(request.POST, request.FILES, instance=employee)
+        media_form = EmployeeMediaForm(request.POST, request.FILES, instance=employee_media)
 
-        # Remove the picture fields
-        form.fields.pop('profile_picture', None)
-        form.fields.pop('cover_picture', None)
-
-        if form.is_valid():
-            try:
-                form.save()
-                messages.success(request, 'Employee updated successfully!')
-                return redirect('employee_list')
-            except Exception as e:
-                form.add_error(None, str(e))
+        if form.is_valid() and media_form.is_valid():
+            form.save()
+            media_form.save()
+            messages.success(request, 'Employee updated successfully!')
+            return redirect('employee_list')
+        else:
+            messages.error(request, 'Please fix the errors below.')
     else:
         form = EmployeeProfileForm(instance=employee)
-
-        # Remove the picture fields
-        form.fields.pop('profile_picture', None)
-        form.fields.pop('cover_picture', None)
-
-    notifications = Notification.objects.filter(
-        recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+        media_form = EmployeeMediaForm(instance=employee_media)
 
     return render(request, 'employee_create.html', {
         'form': form,
-        'employee': employee,  # fixed to pass the employee being edited
-        'notifications': notifications,
+        'media_form': media_form,
+        'employee': employee,
+        'notifications': Notification.objects.filter(
+            recipient=request.user, is_read=False
+        ).order_by('-created_at')[:5],
         'edit_mode': True
     })
+
 
 @login_required(login_url='/')
 @staff_member_required
@@ -3252,7 +3261,7 @@ def holiday_edit(request, pk):
         form = HolidaysForm(request.POST, instance=holiday)
         if form.is_valid():
             form.save()
-            return redirect('holiday_view', pk=holiday.pk)
+            return redirect('holidays_list')
     else:
         form = HolidaysForm(instance=holiday)
    
@@ -4028,7 +4037,11 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils import timezone
 
-from .models import ResignationRequest, Notification
+from .models import ResignationRequest, Notification, HRContact
+from app.models import Employee
+import base64
+from django.core.files.base import ContentFile
+
 
 @login_required
 def resignation_request_view(request):

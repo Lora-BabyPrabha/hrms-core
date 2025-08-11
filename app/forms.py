@@ -239,9 +239,6 @@ class MusterForm(forms.ModelForm):
 #             raise forms.ValidationError("Employee with this ID does not exist.")
 #         return 
 
-from django import forms
-from .models import Employee, Salary
-
 class SalaryForm(forms.ModelForm):
     employee_id = forms.CharField(max_length=50, required=True, label='Employee ID')
 
@@ -253,7 +250,12 @@ class SalaryForm(forms.ModelForm):
 
     class Meta:
         model = Salary
-        exclude = ['employee']  # We're setting it manually based on employee_id
+        exclude = ['employee']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:  # Editing existing salary
+            self.fields.pop('employee_id')  # Remove employee_id field
 
     def clean_employee_id(self):
         employee_id = self.cleaned_data['employee_id']
@@ -261,12 +263,13 @@ class SalaryForm(forms.ModelForm):
             employee = Employee.objects.get(employee_id=employee_id)
         except Employee.DoesNotExist:
             raise forms.ValidationError("Employee with this ID does not exist.")
-        self.cleaned_data['employee'] = employee  # Add it for use later
+        self.cleaned_data['employee'] = employee
         return employee_id
 
     def save(self, commit=True):
         salary = super().save(commit=False)
-        salary.employee = self.cleaned_data['employee']  # Assign actual Employee instance
+        if 'employee' in self.cleaned_data:
+            salary.employee = self.cleaned_data['employee']
         if commit:
             salary.save()
         return salary
