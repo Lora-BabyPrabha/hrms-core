@@ -547,17 +547,29 @@ class TeamForm(forms.ModelForm):
 
 
 class PersonalInfoForm(forms.ModelForm):
-        class Meta:
-            model = Employee
-            fields = [
-             'name',
-             'date_of_birth',
-             'gender',
-             'nationality',
-             'phone_number',
-             'address',
-         ]
-            
+    class Meta:
+        model = Employee
+        fields = [
+            'name',
+            'date_of_birth',
+            'gender',
+            'nationality',
+            'phone_number',
+            'address',
+        ]
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'readonly': 'readonly',
+                'pattern': '[0-9]*',    
+                'inputmode': 'numeric'  
+            }),
+        }
+ 
 #------------------------------------------------------------- Training #
 from django import forms
 from .models import TrainingTopic

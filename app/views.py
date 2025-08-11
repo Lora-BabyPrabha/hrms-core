@@ -4005,7 +4005,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from .models import ResignationRequest, Notification, HRContact
 from app.models import Employee
 
-
 @login_required
 def resignation_request_view(request):
     user = request.user
@@ -4036,11 +4035,19 @@ def resignation_request_view(request):
             resignation_reason=resignation_reason,
             other_reason=other_reason,
             notes=notes,
-            signature_data=signature_data,
             agreement=agreement,
             status='pending',
             submitted_at=timezone.now()
         )
+
+        # Handle signature
+        if signature_data.startswith("data:image"):
+            format, imgstr = signature_data.split(';base64,')
+            ext = format.split('/')[-1]
+            file_name = f"signature_{user.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+            resignation.signature_data.save(file_name, ContentFile(base64.b64decode(imgstr)), save=False)
+        else:
+            resignation.signature_data = signature_data  # If already a URL or file path
 
         if letter_file:
             resignation.resignation_letter = letter_file
@@ -4056,17 +4063,15 @@ def resignation_request_view(request):
             )
         )
 
-        # Notify HR and Managers in same company
+        # Notify HR & Managers in same company
         hr_manager_contacts = HRContact.objects.filter(
             role__in=['HR', 'MG'],
             employee__company=user.company
         )
-
         notification_text = (
             f"{user.get_full_name() or user.username} submitted a resignation request "
             f"effective {resignation.last_working_day}."
         )
-
         for contact in hr_manager_contacts:
             if contact.employee and contact.employee.user:
                 Notification.objects.create(
@@ -4075,13 +4080,14 @@ def resignation_request_view(request):
                 )
 
         messages.success(request, "Resignation letter submitted successfully.")
-        return redirect('resignation_request')
+        # Cache-busting redirect to ensure signature displays immediately
+        return redirect(f"{reverse('resignation_request')}?v={timezone.now().timestamp()}")
 
     return render(request, 'resignation.html', {'requests': user_requests})
 
 
 @require_POST
-@login_required(login_url='/')
+@login_required
 @staff_member_required
 def review_resignation_request(request):
     resignation_id = request.POST.get('resignation_id')
@@ -4107,7 +4113,7 @@ def review_resignation_request(request):
             )
         )
 
-        # Notify HR/Managers of decision
+        # Notify HR/Managers
         hr_manager_contacts = HRContact.objects.filter(
             role__in=['HR', 'MG'],
             employee__company=resignation.employee.company
@@ -4134,7 +4140,7 @@ def review_resignation_request(request):
             )
         )
 
-        # Notify HR/Managers of decision
+        # Notify HR/Managers
         hr_manager_contacts = HRContact.objects.filter(
             role__in=['HR', 'MG'],
             employee__company=resignation.employee.company
@@ -4152,7 +4158,6 @@ def review_resignation_request(request):
         messages.error(request, "Invalid action specified.")
 
     return redirect('staff_notifications')
-
 
 #------------------------------------------------------------- Career development #
  
