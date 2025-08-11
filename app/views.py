@@ -2247,13 +2247,15 @@ def user_create(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
+ 
     if request.method == 'POST':
         form = FrontendUserForm(request.POST)
         if form.is_valid():
-            form.save(company=company)
+            new_user = form.save(commit=False)
+            new_user.company = company  # Assign company
+            new_user.save()
             messages.success(request, "User created successfully!")
             return redirect('user_list')
-
     else:
         form = FrontendUserForm()
  
@@ -2279,18 +2281,13 @@ def user_edit(request, pk):
     user_to_edit = get_object_or_404(CustomUser, pk=pk, company=company)
  
     if request.method == 'POST':
-        form = UserEditForm(request.POST, instance=user_to_edit)
+        form = UserCreationForm(request.POST, instance=user_to_edit)
         if form.is_valid():
-            # Handle password separately only if provided
-            password = form.cleaned_data.get('password')
-            if password:
-                user_to_edit.set_password(password)
             form.save()
             messages.success(request, "User updated successfully!")
             return redirect('user_list')
     else:
-        form = UserEditForm(instance=user_to_edit)
-
+        form = UserCreationForm(instance=user_to_edit)
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
@@ -2649,16 +2646,18 @@ def performance_page(request):
  
  
 #------------------------------------------------------------- Working days #
-
-# views.py
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import F, DurationField, ExpressionWrapper
-from django.db.models.functions import TruncDate, ExtractMonth, ExtractYear
-from datetime import timedelta
 from django.utils import timezone
+from datetime import datetime, timedelta, date
 import calendar
+from .models import CustomUser, Employee, Muster, TimeEntry  # adjust if your models are elsewhere
+from django.db.models.functions import ExtractMonth, ExtractYear
+from django.db.models import Q
+from datetime import datetime, timedelta, date
+from django.db.models import F, ExpressionWrapper, DurationField
 
+  # Mon–Fri only
 @login_required
 def working_days(request):
     selected_month = request.GET.get('month')
@@ -2672,7 +2671,8 @@ def working_days(request):
         year = now.year
         month = now.month
 
-    # Filter users only from logged-in user's company
+
+    # 🔐 Filter users by logged-in user's company
     current_company = request.user.company
     users = CustomUser.objects.filter(company=current_company)
 
@@ -2682,68 +2682,55 @@ def working_days(request):
     employee_data = []
 
     for user in users:
-        name = user.name
+        name = f"{user.first_name} {user.last_name}"
         emp_id = user.employee_id
 
-        # 1️⃣ Regular attendance days (>= 9 hours)
-        regular_days = set(
-            TimeEntry.objects.filter(
-                user=user,
-                clock_in_time__year=year,
-                clock_in_time__month=month,
-                clock_in_time__isnull=False,
-                clock_out_time__isnull=False
-            ).annotate(
-                duration=ExpressionWrapper(
-                    F('clock_out_time') - F('clock_in_time'),
-                    output_field=DurationField()
-                )
-            ).filter(
-                duration__gte=timedelta(hours=9)
-            ).annotate(date_only=TruncDate('clock_in_time'))
-            .values_list('date_only', flat=True)
-        )
+        # Regular days
+        regular_count = TimeEntry.objects.filter(
+            user=user,
+            clock_in_time__month=month,
+            clock_in_time__year=year
+        ).filter(
+            clock_in_time__isnull=False,
+            clock_out_time__isnull=False
+        ).annotate(
+            duration=ExpressionWrapper(
+                F('clock_out_time') - F('clock_in_time'),
+                output_field=DurationField()
+            )
+        ).filter(
+            duration__gte=timedelta(hours=9)
+        ).count()
 
-        # 2️⃣ Approved muster (attendance corrections, non-leave)
-        approved_working_musters = set(
-            Muster.objects.filter(
-                user=user,
-                status="Approved",
-                date__year=year,
-                date__month=month
-            ).values_list('date', flat=True)
-        )
+        # Approved muster
+        approved_muster_count = Muster.objects.filter(
+            user=user,
+            status="approved",
+            date__month=month,
+            date__year=year
+        ).count()
 
-        # 3️⃣ Leaves from LeaveRequest model
-        leave_days = set()
-        approved_leaves = LeaveRequest.objects.filter(
-            employee=user,
-            status__iexact="approved",
-            start_date__year=year,
-            start_date__month=month
-        )
-        for leave in approved_leaves:
-            day = leave.start_date
-            while day <= leave.end_date:
-                if day.weekday() < 5:  # Monday=0 ... Friday=4
-                    leave_days.add(day)
-                day += timedelta(days=1)
+        # Leaves (optional logic)
+        leaves_taken = Muster.objects.filter(
+            user=user,
+            status="approved",
+            date__month=month,
+            date__year=year,
+            reason__in=['On-site', 'Work From Home', 'Forgot Login/out', 'Forgot Logout', 'Network Issue']
+        ).count()
 
-        # 4️⃣ Present days = union of regular + muster non-leave
-        present_days = regular_days.union(approved_working_musters)
-
-        # 5️⃣ Total working days = present_days - leave_days
-        total_days = len(present_days) - len(leave_days)
+        total_present_days = regular_count + approved_muster_count
+        total_working_days = regular_count+ approved_muster_count-leaves_taken
 
         employee_data.append({
             'employee_id': emp_id,
             'name': name,
-            'working_days': len(present_days),
-            'leaves': len(leave_days),
-            'total_days': total_days,
+            'working_days': total_present_days,
+            'leaves': leaves_taken,
+            'total_days': total_working_days,
         })
 
-    # Month dropdown values
+    # Month filter dropdown
     month_years = Muster.objects.annotate(
         year=ExtractYear('date'),
         month=ExtractMonth('date')
@@ -3675,7 +3662,6 @@ def employee_self_service(request):
         elif 'professional_submit' in request.POST:
             professional_form = ProfessionalInfoForm(request.POST, instance=employee)
             personal_form = PersonalInfoForm(instance=employee)
-    
  
             if professional_form.is_valid():
                 if professional_form.has_changed():
@@ -4016,13 +4002,12 @@ def hr_login_logs(request):
 #------------------------------------------------------------- Resignation Request #
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils import timezone
-from django.views.decorators.http import require_POST
-from django.contrib.admin.views.decorators import staff_member_required
 
-from .models import ResignationRequest, Notification, HRContact
-from app.models import Employee
+from .models import ResignationRequest, Notification
 
 @login_required
 def resignation_request_view(request):
@@ -4047,33 +4032,23 @@ def resignation_request_view(request):
             messages.error(request, "Please fill all required fields before submitting.")
             return redirect('resignation_request')
 
-        resignation = ResignationRequest(
-            employee=user,
-            resignation_date=resignation_date,
-            last_working_day=last_working_day,
-            resignation_reason=resignation_reason,
-            other_reason=other_reason,
-            notes=notes,
-            agreement=agreement,
-            status='pending',
-            submitted_at=timezone.now()
-        )
-
-        # Handle signature
-        if signature_data.startswith("data:image"):
-            format, imgstr = signature_data.split(';base64,')
-            ext = format.split('/')[-1]
-            file_name = f"signature_{user.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}"
-            resignation.signature_data.save(file_name, ContentFile(base64.b64decode(imgstr)), save=False)
-        else:
-            resignation.signature_data = signature_data  # If already a URL or file path
+        resignation = ResignationRequest(employee=user)
+        resignation.resignation_date = resignation_date
+        resignation.last_working_day = last_working_day
+        resignation.resignation_reason = resignation_reason
+        resignation.other_reason = other_reason
+        resignation.notes = notes
+        resignation.signature_data = signature_data
+        resignation.agreement = agreement
+        resignation.status = 'pending'
+        resignation.submitted_at = timezone.now()
 
         if letter_file:
             resignation.resignation_letter = letter_file
 
         resignation.save()
 
-        # Notify the employee
+        # Create notification for employee (confirmation)
         Notification.objects.create(
             recipient=user,
             message=(
@@ -4082,31 +4057,27 @@ def resignation_request_view(request):
             )
         )
 
-        # Notify HR & Managers in same company
-        hr_manager_contacts = HRContact.objects.filter(
-            role__in=['HR', 'MG'],
-            employee__company=user.company
-        )
+        # Optional: Notify HR and Manager as well
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        hr_managers = User.objects.filter(role__in=['HR', 'Manager'], is_active=True, company=user.company)
         notification_text = (
-            f"{user.get_full_name() or user.username} submitted a resignation request "
-            f"effective {resignation.last_working_day}."
+            f"{user.get_full_name() or user.username} submitted a resignation request effective {resignation.last_working_day}."
         )
-        for contact in hr_manager_contacts:
-            if contact.employee and contact.employee.user:
-                Notification.objects.create(
-                    recipient=contact.employee.user,
-                    message=notification_text
-                )
+        for hrm in hr_managers:
+            Notification.objects.create(
+                recipient=hrm,
+                message=notification_text
+            )
 
         messages.success(request, "Resignation letter submitted successfully.")
-        # Cache-busting redirect to ensure signature displays immediately
-        return redirect(f"{reverse('resignation_request')}?v={timezone.now().timestamp()}")
+        return redirect('resignation_request')
 
     return render(request, 'resignation.html', {'requests': user_requests})
 
 
 @require_POST
-@login_required
+@login_required(login_url='/')
 @staff_member_required
 def review_resignation_request(request):
     resignation_id = request.POST.get('resignation_id')
@@ -4119,11 +4090,9 @@ def review_resignation_request(request):
     resignation = get_object_or_404(ResignationRequest, id=resignation_id)
     action_lower = action.lower()
 
-    if action_lower in ['approve', 'approved']:
+    if action_lower == 'approve' or action_lower == 'approved':
         resignation.status = 'approved'
         resignation.save()
-
-        # Notify employee
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
@@ -4131,26 +4100,11 @@ def review_resignation_request(request):
                 f"has been approved."
             )
         )
-
-        # Notify HR/Managers
-        hr_manager_contacts = HRContact.objects.filter(
-            role__in=['HR', 'MG'],
-            employee__company=resignation.employee.company
-        )
-        for contact in hr_manager_contacts:
-            if contact.employee and contact.employee.user:
-                Notification.objects.create(
-                    recipient=contact.employee.user,
-                    message=f"Resignation request of {resignation.employee.get_full_name() or resignation.employee.username} has been approved."
-                )
-
         messages.success(request, "Resignation approved successfully.")
 
-    elif action_lower in ['reject', 'rejected']:
+    elif action_lower == 'reject' or action_lower == 'rejected':
         resignation.status = 'rejected'
         resignation.save()
-
-        # Notify employee
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
@@ -4158,25 +4112,13 @@ def review_resignation_request(request):
                 f"has been rejected."
             )
         )
-
-        # Notify HR/Managers
-        hr_manager_contacts = HRContact.objects.filter(
-            role__in=['HR', 'MG'],
-            employee__company=resignation.employee.company
-        )
-        for contact in hr_manager_contacts:
-            if contact.employee and contact.employee.user:
-                Notification.objects.create(
-                    recipient=contact.employee.user,
-                    message=f"Resignation request of {resignation.employee.get_full_name() or resignation.employee.username} has been rejected."
-                )
-
         messages.success(request, "Resignation rejected successfully.")
 
     else:
         messages.error(request, "Invalid action specified.")
 
     return redirect('staff_notifications')
+
 
 #------------------------------------------------------------- Career development #
  
@@ -4244,5 +4186,5 @@ def delete_resource(request, slug):
 def resource_detail(request, slug):
     resource = get_object_or_404(CareerResource, slug=slug)
     return render(request, 'resource_detail.html', {'resource': resource})
- 
- 
+
+
