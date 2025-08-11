@@ -106,7 +106,7 @@ class UserCreationForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = '__all__'
+        fields = ['employee_id', 'name', 'email', 'role', 'company', 'is_active', 'is_staff', 'is_first_login', 'password']
         
     def clean_password(self):
         password = self.cleaned_data.get("password")
@@ -148,35 +148,57 @@ class UserCreationForm(forms.ModelForm):
             user.save()
         return user
 
+class UserEditForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput,
+        required=False,  # Optional so it won't force change password
+        help_text="Leave blank to keep current password"
+    )
 
+    class Meta:
+        model = CustomUser
+        fields = [
+            'employee_id',
+            'name',
+            'email',
+            'role',
+            'is_active',
+            'is_staff',
+            'is_superuser',
+            'is_first_login',
+            'password'
+        ]
 
-# forms.py (frontend form)
-from django.contrib.auth.hashers import make_password
 
 class FrontendUserForm(forms.ModelForm):
     password = forms.CharField(
         widget=forms.PasswordInput,
         help_text="Enter a strong password"
     )
-    
+
     class Meta:
         model = CustomUser
-        fields = '__all__'
-        exclude = ['company']
+        fields = [
+            'employee_id',
+            'name',
+            'email',
+            'role',
+            'is_active',
+            'is_staff',
+            'is_superuser',
+            'is_first_login',
+            'password'
+        ]  # ✅ This order will now be reflected in the form
     
-    def save(self, commit=True):
-        # Get the user instance without saving yet
+    def save(self, commit=True, company=None):
         user = super().save(commit=False)
-        
-        # Hash the password before saving
-        if 'password' in self.cleaned_data:
-            user.set_password(self.cleaned_data['password'])
-        
+        if company is not None:
+            user.company = company
+        user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
         return user
-
-
+    
 class MusterForm(forms.ModelForm):
     class Meta:
         model = Muster
@@ -552,17 +574,29 @@ class TeamForm(forms.ModelForm):
 
 
 class PersonalInfoForm(forms.ModelForm):
-        class Meta:
-            model = Employee
-            fields = [
-             'name',
-             'date_of_birth',
-             'gender',
-             'nationality',
-             'phone_number',
-             'address',
-         ]
-            
+    class Meta:
+        model = Employee
+        fields = [
+            'name',
+            'date_of_birth',
+            'gender',
+            'nationality',
+            'phone_number',
+            'address',
+        ]
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'readonly': 'readonly',
+                'pattern': '[0-9]*',    
+                'inputmode': 'numeric'  
+            }),
+        }
+ 
 #------------------------------------------------------------- Training #
 from django import forms
 from .models import TrainingTopic
@@ -571,3 +605,55 @@ class TrainingTopicForm(forms.ModelForm):
     class Meta:
         model = TrainingTopic
         fields = ['title', 'topic_link']
+
+
+
+#------------------------------------------------------------- Career development #
+ 
+from django import forms
+from .models import CareerResource, SkillCategory
+ 
+class CareerResourceForm(forms.ModelForm):
+    class Meta:
+        model = CareerResource
+        fields = ['title', 'description', 'detail_content', 'category', 'uploaded_file', 'video_link']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter resource title'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Short description of the resource'
+            }),
+            'detail_content': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Detailed explanation, guidelines, or content'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'video_link': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://example.com/video'
+            }),
+        }
+ 
+    uploaded_file = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+        }),
+        help_text="Upload PDF or document (optional)"
+    )
+ 
+class SkillCategoryForm(forms.ModelForm):
+    class Meta:
+        model = SkillCategory
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Technical Skills'}),
+        }
+ 

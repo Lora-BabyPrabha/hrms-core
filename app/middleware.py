@@ -16,7 +16,7 @@ class AutoLogoutMiddleware:
 
         if last_activity:
             elapsed = now - datetime.fromisoformat(last_activity)
-            if elapsed > timedelta(seconds=120):  # 2 minutes
+            if elapsed > timedelta(seconds=300):  # 5 minutes
                 from django.contrib.auth import logout
                 logout(request)
                 return redirect('index')  # Replace with your login URL name

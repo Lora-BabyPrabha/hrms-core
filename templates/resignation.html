@@ -261,9 +261,8 @@
             <!-- Signature Preview -->
             <td>
                 {% if item.signature_data %}
-                    <a href="{{ item.signature_data }}" target="_blank">
-                        <img src="{{ item.signature_data }}" alt="Signature" style="height: 40px;">
-                    </a>
+                    <img src="{{ MEDIA_URL }}{{ item.signature_data }}" alt="Signature" style="height: 40px;">
+                    <a href="{{ MEDIA_URL }}{{ item.signature_data }}" target="_blank">View Full</a>
                 {% else %}
                     N/A
                 {% endif %}
