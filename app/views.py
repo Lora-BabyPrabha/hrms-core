@@ -1024,10 +1024,29 @@ def muster_status(request):
 def leave_balance(request):
     user = request.user
     leave_request = LeaveRequest.objects.filter(employee=user)
-    leave = Leave.objects.get(employee=request.user)
+
+    try:
+        leave = Leave.objects.get(employee=user)
+    except Leave.DoesNotExist:
+        leave = None  # No leave record found
+
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
-    return render(request, 'leave_balance.html', {'leave': leave , 'leave_request': leave_request , "employee": employee , 'notifications': notifications})
+    notifications = Notification.objects.filter(
+        recipient=request.user, 
+        is_read=False
+    ).order_by('-created_at')[:5]
+
+    return render(
+        request,
+        'leave_balance.html',
+        {
+            'leave': leave,
+            'leave_request': leave_request,
+            'employee': employee,
+            'notifications': notifications,
+            'no_leave_message': "You currently have no leave balance. Please contact your Manager or HR to have it added."
+        }
+    )
  
  
 @login_required(login_url='/')

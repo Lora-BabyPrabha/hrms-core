@@ -349,22 +349,48 @@ class LeaveForm(forms.ModelForm):
 #         ]
 
 
+from django import forms
+from django.core.validators import RegexValidator
+from .models import Employee  # adjust import path as needed
+
 class PersonalInfoForm(forms.ModelForm):
     date_of_birth = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date'}),
+        widget=forms.DateInput(
+            attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }
+        ),
         required=True
     )
-   
+
     gender = forms.ChoiceField(
-        choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')],
+        choices=[
+            ('Male', 'Male'),
+            ('Female', 'Female'),
+            ('Other', 'Other')
+        ],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-   
+
     phone_number = forms.CharField(
-        validators=[RegexValidator(regex=r'^\+?\d{10,15}$')],
-        widget=forms.TextInput(attrs={'readonly': 'readonly'})
+        validators=[
+            RegexValidator(
+                regex=r'^\+?\d{10,15}$',
+                message="Enter a valid phone number (10-15 digits, optional leading +)"
+            )
+        ],
+        widget=forms.TextInput(
+            attrs={
+                'type': 'tel',           # mobile devices show number pad
+                'pattern': '[0-9+]*',    # HTML pattern restriction
+                'inputmode': 'numeric',  # forces numeric keypad on most devices
+                'class': 'form-control', # Bootstrap styling
+                'maxlength': '15'        # limit input length
+            }
+        )
     )
- 
+
     class Meta:
         model = Employee
         fields = ['name', 'date_of_birth', 'gender', 'nationality', 'phone_number', 'address']
@@ -373,6 +399,7 @@ class PersonalInfoForm(forms.ModelForm):
             'nationality': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
  
 
 
