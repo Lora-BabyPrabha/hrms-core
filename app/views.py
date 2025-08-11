@@ -3719,20 +3719,7 @@ def benefits_compensation(request):
         return render(request, 'hr/partials/benefits_compensation.html', context)
     return render(request, 'hr/benefits_compensation.html', context)
  
-@login_required
-def career_development(request):
-    employee = get_object_or_404(EmployeeProfile, user=request.user)
-    trainings = Training.objects.filter(employee=employee).order_by('-date_completed')
-   
-    context = {
-        'trainings': trainings,
-        'skills': employee.skills.all()
-    }
-   
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'hr/partials/career_development.html', context)
-    return render(request, 'hr/career_development.html', context)
- 
+
 '''@login_required(login_url='/')
 def clear_single_notification(request, notification_id):
     Notification.objects.filter(id=notification_id, recipient=request.user).delete()
@@ -3892,9 +3879,6 @@ def team_detail(request, team_id):
     })
 
 
-@login_required
-def career_development(request):
-    return render(request, 'career_development.html')
 
 
 #------------------------------------------------------------- Training#
@@ -4025,10 +4009,10 @@ def hr_login_logs(request):
 #------------------------------------------------------------- Resignation Request #
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils import timezone
-from django.views.decorators.http import require_POST
-from django.contrib.admin.views.decorators import staff_member_required
 
 from .models import ResignationRequest, Notification, HRContact
 from app.models import Employee
@@ -4059,33 +4043,23 @@ def resignation_request_view(request):
             messages.error(request, "Please fill all required fields before submitting.")
             return redirect('resignation_request')
 
-        resignation = ResignationRequest(
-            employee=user,
-            resignation_date=resignation_date,
-            last_working_day=last_working_day,
-            resignation_reason=resignation_reason,
-            other_reason=other_reason,
-            notes=notes,
-            agreement=agreement,
-            status='pending',
-            submitted_at=timezone.now()
-        )
-
-        # Handle signature
-        if signature_data.startswith("data:image"):
-            format, imgstr = signature_data.split(';base64,')
-            ext = format.split('/')[-1]
-            file_name = f"signature_{user.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.{ext}"
-            resignation.signature_data.save(file_name, ContentFile(base64.b64decode(imgstr)), save=False)
-        else:
-            resignation.signature_data = signature_data  # If already a URL or file path
+        resignation = ResignationRequest(employee=user)
+        resignation.resignation_date = resignation_date
+        resignation.last_working_day = last_working_day
+        resignation.resignation_reason = resignation_reason
+        resignation.other_reason = other_reason
+        resignation.notes = notes
+        resignation.signature_data = signature_data
+        resignation.agreement = agreement
+        resignation.status = 'pending'
+        resignation.submitted_at = timezone.now()
 
         if letter_file:
             resignation.resignation_letter = letter_file
 
         resignation.save()
 
-        # Notify the employee
+        # Create notification for employee (confirmation)
         Notification.objects.create(
             recipient=user,
             message=(
@@ -4094,31 +4068,27 @@ def resignation_request_view(request):
             )
         )
 
-        # Notify HR & Managers in same company
-        hr_manager_contacts = HRContact.objects.filter(
-            role__in=['HR', 'MG'],
-            employee__company=user.company
-        )
+        # Optional: Notify HR and Manager as well
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        hr_managers = User.objects.filter(role__in=['HR', 'Manager'], is_active=True, company=user.company)
         notification_text = (
-            f"{user.get_full_name() or user.username} submitted a resignation request "
-            f"effective {resignation.last_working_day}."
+            f"{user.get_full_name() or user.username} submitted a resignation request effective {resignation.last_working_day}."
         )
-        for contact in hr_manager_contacts:
-            if contact.employee and contact.employee.user:
-                Notification.objects.create(
-                    recipient=contact.employee.user,
-                    message=notification_text
-                )
+        for hrm in hr_managers:
+            Notification.objects.create(
+                recipient=hrm,
+                message=notification_text
+            )
 
         messages.success(request, "Resignation letter submitted successfully.")
-        # Cache-busting redirect to ensure signature displays immediately
-        return redirect(f"{reverse('resignation_request')}?v={timezone.now().timestamp()}")
+        return redirect('resignation_request')
 
     return render(request, 'resignation.html', {'requests': user_requests})
 
 
 @require_POST
-@login_required
+@login_required(login_url='/')
 @staff_member_required
 def review_resignation_request(request):
     resignation_id = request.POST.get('resignation_id')
@@ -4131,11 +4101,9 @@ def review_resignation_request(request):
     resignation = get_object_or_404(ResignationRequest, id=resignation_id)
     action_lower = action.lower()
 
-    if action_lower in ['approve', 'approved']:
+    if action_lower == 'approve' or action_lower == 'approved':
         resignation.status = 'approved'
         resignation.save()
-
-        # Notify employee
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
@@ -4143,26 +4111,11 @@ def review_resignation_request(request):
                 f"has been approved."
             )
         )
-
-        # Notify HR/Managers
-        hr_manager_contacts = HRContact.objects.filter(
-            role__in=['HR', 'MG'],
-            employee__company=resignation.employee.company
-        )
-        for contact in hr_manager_contacts:
-            if contact.employee and contact.employee.user:
-                Notification.objects.create(
-                    recipient=contact.employee.user,
-                    message=f"Resignation request of {resignation.employee.get_full_name() or resignation.employee.username} has been approved."
-                )
-
         messages.success(request, "Resignation approved successfully.")
 
-    elif action_lower in ['reject', 'rejected']:
+    elif action_lower == 'reject' or action_lower == 'rejected':
         resignation.status = 'rejected'
         resignation.save()
-
-        # Notify employee
         Notification.objects.create(
             recipient=resignation.employee,
             message=(
@@ -4170,25 +4123,13 @@ def review_resignation_request(request):
                 f"has been rejected."
             )
         )
-
-        # Notify HR/Managers
-        hr_manager_contacts = HRContact.objects.filter(
-            role__in=['HR', 'MG'],
-            employee__company=resignation.employee.company
-        )
-        for contact in hr_manager_contacts:
-            if contact.employee and contact.employee.user:
-                Notification.objects.create(
-                    recipient=contact.employee.user,
-                    message=f"Resignation request of {resignation.employee.get_full_name() or resignation.employee.username} has been rejected."
-                )
-
         messages.success(request, "Resignation rejected successfully.")
 
     else:
         messages.error(request, "Invalid action specified.")
 
     return redirect('staff_notifications')
+
 
 #------------------------------------------------------------- Career development #
  
