@@ -796,8 +796,7 @@ def staff_notifications(request):
     if user.role in ['HR', 'Manager']:
         resignations = ResignationRequest.objects.filter(
             employee__company=company,
-            submitted_at__date=today,
-            status__in=['pending', 'approved', 'rejected']  # include all statuses here
+            submitted_at__date=today,  # include all statuses here
         )
     else:
         resignations = ResignationRequest.objects.none()  # No resignations for other users
@@ -836,8 +835,7 @@ def staff_notifications(request):
             resignations = ResignationRequest.objects.filter(
                 employee__in=users_qs,
                 submitted_at__year=year,
-                submitted_at__month=month,
-                status__in=['pending', 'approved', 'rejected']  # include all statuses here too
+                submitted_at__month=month,  # include all statuses here too
             )
 
         # Apply specific date filter
@@ -851,7 +849,7 @@ def staff_notifications(request):
                 resignations = ResignationRequest.objects.filter(
                     employee__in=users_qs,
                     submitted_at__date=date_obj,
-                    status__in=['pending', 'approved', 'rejected']  # and here
+                    # and here
                 )
             except ValueError:
                 pass
@@ -4227,7 +4225,7 @@ def review_resignation_request(request, resignation_id, action):
     else:
         messages.error(request, "Invalid action specified.")
 
-    return redirect('staff_notifications')
+    return redirect('dashboard')  # Redirect to a suitable page after action
 
 
 #------------------------------------------------------------- Career development #
