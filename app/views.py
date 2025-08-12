@@ -3547,12 +3547,7 @@ def help_desk_page(request):
     company = user_employee.company
     current_time = now()
 
-<<<<<<< HEAD
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
-=======
-    # Notifications for logged in user (last 5 unread)
-    notifications = user.notification_set.filter(is_read=False).order_by('-created_at')[:5]
->>>>>>> 69514e6c9428c69774e8ff9270c17624dea2af7d
 
     # Get HRContact entries for this company
     tl_contacts = HRContact.objects.filter(role='TL', employee__company=company)
