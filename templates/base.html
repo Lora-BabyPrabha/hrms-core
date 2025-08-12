@@ -360,11 +360,11 @@
                                                         </div>
                                                         {% endif %}
                                                         {% endfor %}
-                                            
-            
-                                                {% for resignation in pending_resignations %}
-                                                    {% if resignation.employee.company == request.user.company %}
-                                                        <hr class="col-12">
+                                                  
+                                                
+                                                    {% for resignation in pending_resignations %}
+                                                        {% if resignation.employee.company == request.user.company %}
+                                                            <hr class="col-12">
                                                             <div class="notification" style="margin-left:30px;">
                                                                 <small>
                                                                     {{ resignation.employee.employee_id }} has requested for 'Resignation'
@@ -386,9 +386,10 @@
                                                             </div>
                                                     {% endif %}
                                                 {% endfor %}
+                                                {% endif %}
                                             </ul>
                                         </li>
-                                    {% endif %}
+                                        
                                 <!-- Profile section -->
                                 <!-- Profile section -->
                                 <li id="profileDropdownItem" class="nav-item dropdown">

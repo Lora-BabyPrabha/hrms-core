@@ -744,6 +744,7 @@ def staff_notifications(request):
     if user.role in ['HR', 'Manager']:
         resignations = ResignationRequest.objects.filter(
             employee__company=company,
+            submitted_at__date=today,
             status__in=['pending', 'approved', 'rejected']  # include all statuses here
         )
     else:
@@ -4133,22 +4134,22 @@ def resignation_request_view(request):
     return render(request, 'resignation.html', {'requests': user_requests})
 
 
-@require_POST
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.http import require_POST
+from .models import ResignationRequest, Notification
+
 @login_required(login_url='/')
 @staff_member_required
-def review_resignation_request(request):
-    resignation_id = request.POST.get('resignation_id')
-    action = request.POST.get('status')
-
-    if not resignation_id or not action:
-        messages.error(request, "Missing resignation ID or action.")
-        return redirect('staff_notifications')
-
+def review_resignation_request(request, resignation_id, action):
     resignation = get_object_or_404(ResignationRequest, id=resignation_id)
+
     action_lower = action.lower()
 
-    if action_lower == 'approve' or action_lower == 'approved':
-        resignation.status = 'approved'
+    if action_lower == 'approve':
+        resignation.status = 'Approved'
         resignation.save()
         Notification.objects.create(
             recipient=resignation.employee,
@@ -4159,8 +4160,8 @@ def review_resignation_request(request):
         )
         messages.success(request, "Resignation approved successfully.")
 
-    elif action_lower == 'reject' or action_lower == 'rejected':
-        resignation.status = 'rejected'
+    elif action_lower == 'reject':
+        resignation.status = 'Rejected'
         resignation.save()
         Notification.objects.create(
             recipient=resignation.employee,

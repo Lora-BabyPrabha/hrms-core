@@ -24,7 +24,7 @@ def common_data(request):
     pending_leave_request = LeaveRequest.objects.filter(status='pending')
     pending_expense = ExpenseClaim.objects.filter(status='pending')
     pending_loan = LoanRequest.objects.filter(status='pending')
-    pending_resignations = ResignationRequest.objects.filter(status='submitted')  # Assuming you might want to add this later
+    pending_resignations = ResignationRequest.objects.filter(status='pending')  # Assuming you might want to add this later
 
     return {
         'pending_musters': pending_musters,
