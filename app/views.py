@@ -325,6 +325,56 @@ def search_results(request):
  
  
 #------------------------------------------------------------- FAQ #
+# ✅ Utility function to check if user is HR or Manager
+def is_hr_or_manager(user):
+    return getattr(user, "role", "").lower() in ["hr", "manager"]
+
+@login_required
+def faq(request):
+    faqs = FAQ.objects.all().order_by('-created_at')
+    can_edit = is_hr_or_manager(request.user)  # Only HR & Manager can modify FAQs
+
+    # Handle Add FAQ
+    if request.method == "POST" and 'add_faq' in request.POST:
+        if can_edit:
+            form = FAQForm(request.POST)
+            if form.is_valid():
+                faq_instance = form.save(commit=False)
+                faq_instance.created_by = request.user  # ✅ Assign creator
+                faq_instance.save()
+                return redirect("faq")
+        else:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+    # Handle Edit FAQ
+    if request.method == "POST" and 'edit_faq' in request.POST:
+        if can_edit:
+            faq_id = request.POST.get("faq_id")
+            faq_instance = get_object_or_404(FAQ, id=faq_id)
+            form = FAQForm(request.POST, instance=faq_instance)
+            if form.is_valid():
+                form.save()  # ✅ Keep created_by unchanged
+                return redirect("faq")
+        else:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+    # Handle Delete FAQ
+    if request.method == "POST" and 'delete_faq' in request.POST:
+        if can_edit:
+            faq_id = request.POST.get("faq_id")
+            faq_instance = get_object_or_404(FAQ, id=faq_id)
+            faq_instance.delete()
+            return redirect("faq")
+        else:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+    return render(request, "faq.html", {
+        "faqs": faqs,
+        "can_edit": can_edit,
+        "form": FAQForm()
+    })
+
+
  
 @login_required(login_url='/')
 def chat_bot(request):
@@ -334,21 +384,7 @@ def chat_bot(request):
  
  
 #------------------------------------------------------------- Chat Bot #
- 
-@login_required(login_url='/')
-def faq(request):
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
 
- 
-    return render(request,'faq.html' , {
-        'employee': employee,
-        'notifications': notifications,
-        }
-    )
- 
- 
 #------------------------------------------------------------- Chat Bot #
  
 @login_required(login_url='/')
@@ -366,41 +402,35 @@ def training(request):
  
 #------------------------------------------------------------- Contact us #
  
+# views.py
 from django.shortcuts import render, redirect
 from django.core.mail import send_mail
 from django.contrib import messages
 from .forms import ContactHRForm
 
-@login_required(login_url='/')
 def contact_us(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
-    company = request.user.company_name  # adjust if field name is different
-
     if request.method == "POST":
-        form = ContactHRForm(request.POST, company=company)
+        form = ContactHRForm(request.POST, user=request.user)
         if form.is_valid():
-            hr = form.cleaned_data['hr']
+            hr_user = form.cleaned_data['hr']
             subject = form.cleaned_data['subject']
             message = form.cleaned_data['message']
 
             send_mail(
                 subject,
-                message,
+                f"Message from {request.user.name} (ID: {request.user.employee_id}, Email: {request.user.email}):\n\n{message}",
                 request.user.email,
-                [hr.email],
+                [hr_user.email],
                 fail_silently=False,
             )
 
-            messages.success(request, f"Your message has been sent to {hr.name}.")
+            messages.success(request, f"Message sent to {hr_user.name} ({hr_user.email})")
             return redirect('contact_us')
     else:
-        form = ContactHRForm(company=company)
+        form = ContactHRForm(user=request.user)
 
-    return render(request, 'contact_us.html', {'form': form})
+    return render(request, "contact_us.html", {"form": form})
 
- 
 #------------------------------------------------------------- Company records #
  
 from django.contrib.auth.decorators import login_required

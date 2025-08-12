@@ -555,8 +555,6 @@ class TaskForm(forms.Form):
     task_name = forms.CharField(max_length=255)
     employee_emails = forms.CharField(max_length=1024)  # For comma-separated emails
     due_date = forms.DateField(widget=forms.SelectDateWidget())  # Date widget for picking a due date
-from django import forms
-from .models import Team
 
 class TeamForm(forms.ModelForm):
     class Meta:
@@ -601,8 +599,6 @@ class PersonalInfoForm(forms.ModelForm):
         }
  
 #------------------------------------------------------------- Training #
-from django import forms
-from .models import TrainingTopic
 
 class TrainingTopicForm(forms.ModelForm):
     class Meta:
@@ -611,10 +607,7 @@ class TrainingTopicForm(forms.ModelForm):
 
 
 
-#------------------------------------------------------------- Career development #
- 
-from django import forms
-from .models import CareerResource, SkillCategory
+#------------------------------------------------------------- Career development 
  
 class CareerResourceForm(forms.ModelForm):
     class Meta:
@@ -659,18 +652,22 @@ class SkillCategoryForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Technical Skills'}),
         }
- 
 
-from django import forms
-from .models import Employee
+class FAQForm(forms.ModelForm):
+    class Meta:
+        model = FAQ
+        fields = ['question', 'answer']
 
 class ContactHRForm(forms.Form):
-    hr = forms.ModelChoiceField(queryset=Employee.objects.none(), label="Select HR")
-    subject = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    hr = forms.ModelChoiceField(queryset=CustomUser.objects.none(), label="Select HR")
+    subject = forms.CharField(max_length=255, widget=forms.TextInput(attrs={'class': 'form-control'}))
     message = forms.CharField(widget=forms.Textarea(attrs={'class': 'form-control'}))
 
     def __init__(self, *args, **kwargs):
-        company = kwargs.pop('company', None)
+        user = kwargs.pop('user')  # Get logged-in user from view
         super().__init__(*args, **kwargs)
-        if company:
-            self.fields['hr'].queryset = Employee.objects.filter(company=company, role="HR")
+        self.fields['hr'].queryset = CustomUser.objects.filter(
+            role='HR',
+            company=user.company
+        )
+        self.fields['hr'].widget.attrs.update({'class': 'form-select'})
