@@ -434,7 +434,7 @@
                 <span class="status-badge">{{ item.status|capfirst }}</span>
                 </td>
                 <td>
-                <form method="POST" action="{% url 'review_resignation_request' %}" class="action-buttons">
+                <form method="POST" action="{% url 'resignation_request' %}" class="action-buttons">
                     {% csrf_token %}
                     <input type="hidden" name="resignation_id" value="{{ item.id }}">
                     
