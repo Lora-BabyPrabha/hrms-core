@@ -9,9 +9,7 @@
 </li>
 {% endblock %}
 
-
 {% block sidebar %}
-
 <link rel="stylesheet" href="{% static 'css/faq.css' %}">
 
 <li class="sidebar-item">
@@ -25,10 +23,142 @@
 {% endblock %}
 
 {% block content %}
+<style>
+    /* Scrollable FAQ section */
+    .faq-scroll {
+        max-height: 500px; /* adjust as needed */
+        overflow-y: auto;
+        padding-right: 10px;
+    }
 
-<div class="container-fluid dashboard-wrapper">
-    <h1 class="text-center mx-auto">Under maintaince</h1>
+    /* Custom scrollbar */
+    .faq-scroll::-webkit-scrollbar {
+        width: 8px;
+    }
+    .faq-scroll::-webkit-scrollbar-thumb {
+        background: #007bff;
+        border-radius: 5px;
+    }
+    .faq-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+</style>
+
+<div class="container my-5">
+    <h2 class="mb-4 text-center">Frequently Asked Questions</h2>
+
+    <div class="accordion faq-scroll" id="faqAccordion">
+        <!-- Question 1 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq1">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#answer1" aria-expanded="true">
+                    How can I reset my password?
+                </button>
+            </h2>
+            <div id="answer1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Go to the <strong>Forgot Password</strong> page, enter your email, and follow the OTP verification steps to reset your password.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq2">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer2">
+                    How do I contact support?
+                </button>
+            </h2>
+            <div id="answer2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    You can raise a ticket via the <strong>Help Desk</strong> section or email support@yourcompany.com.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq3">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer3">
+                    Can I change my registered email?
+                </button>
+            </h2>
+            <div id="answer3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Email changes are handled by your HR or Manager. Please contact them for assistance.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq4">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer4">
+                    How do I apply for leave?
+                </button>
+            </h2>
+            <div id="answer4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Go to the <strong>Leave Management</strong> section in your employee portal, select leave type and dates, and submit your request for approval.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq5">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer5">
+                    Where can I download my salary slip?
+                </button>
+            </h2>
+            <div id="answer5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Salary slips are available in the <strong>Payroll</strong> section of the employee portal. You can download them as PDFs for each month.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 6 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq6">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer6">
+                    What are the office working hours?
+                </button>
+            </h2>
+            <div id="answer6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Standard office hours are <strong>9:00 AM to 6:00 PM</strong>, Monday to Friday. Check with your department for any specific variations.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 7 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq7">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer7">
+                    How do I update my personal details?
+                </button>
+            </h2>
+            <div id="answer7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Log in to your profile on the employee portal and click <strong>Employee Self Service</strong> in HR4U. Update your details and save changes.
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 8 -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq8">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#answer8">
+                    How do I raise a complaint or suggestion?
+                </button>
+            </h2>
+            <div id="answer8" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    Use the <strong>Feedback & Complaints</strong> section in the portal to raise your concern or suggestion. Your feedback will be reviewed by the relevant department.
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-  
-
 {% endblock %}

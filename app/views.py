@@ -366,18 +366,40 @@ def training(request):
  
 #------------------------------------------------------------- Contact us #
  
+from django.shortcuts import render, redirect
+from django.core.mail import send_mail
+from django.contrib import messages
+from .forms import ContactHRForm
+
 @login_required(login_url='/')
 def contact_us(request):
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
- 
-    return render(request,'contact_us.html' , {
-        'employee': employee,
-        'notifications': notifications,
-        }
-    )
- 
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    company = request.user.company_name  # adjust if field name is different
+
+    if request.method == "POST":
+        form = ContactHRForm(request.POST, company=company)
+        if form.is_valid():
+            hr = form.cleaned_data['hr']
+            subject = form.cleaned_data['subject']
+            message = form.cleaned_data['message']
+
+            send_mail(
+                subject,
+                message,
+                request.user.email,
+                [hr.email],
+                fail_silently=False,
+            )
+
+            messages.success(request, f"Your message has been sent to {hr.name}.")
+            return redirect('contact_us')
+    else:
+        form = ContactHRForm(company=company)
+
+    return render(request, 'contact_us.html', {'form': form})
+
  
 #------------------------------------------------------------- Company records #
  

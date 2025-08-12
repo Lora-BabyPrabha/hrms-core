@@ -660,3 +660,17 @@ class SkillCategoryForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Technical Skills'}),
         }
  
+
+from django import forms
+from .models import Employee
+
+class ContactHRForm(forms.Form):
+    hr = forms.ModelChoiceField(queryset=Employee.objects.none(), label="Select HR")
+    subject = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    message = forms.CharField(widget=forms.Textarea(attrs={'class': 'form-control'}))
+
+    def __init__(self, *args, **kwargs):
+        company = kwargs.pop('company', None)
+        super().__init__(*args, **kwargs)
+        if company:
+            self.fields['hr'].queryset = Employee.objects.filter(company=company, role="HR")
