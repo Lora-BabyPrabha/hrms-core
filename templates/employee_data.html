@@ -136,6 +136,7 @@
                         <option value="expense" {% if request.POST.request_type == 'expense' %}selected{% endif %}>Expense Claim Request</option>
                         <option value="loan" {% if request.POST.request_type == 'loan' %}selected{% endif %}>Loan Request</option>
                         <option value="time_entry" {% if request.POST.request_type == 'time_entry' %}selected{% endif %}>Regular Muster Status</option>
+                        <option value="resignation" {% if request.POST.request_type == 'resignation' %}selected{% endif %}>Resignation</option>
                     </select>
                 </div>
                 <div class="col-md-3">

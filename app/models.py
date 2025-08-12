@@ -571,20 +571,35 @@ class SkillCategory(models.Model):
     def __str__(self):
         return self.name
  
+from django.db import models
+from django.utils.text import slugify
+
 class CareerResource(models.Model):
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
     description = models.TextField()
     detail_content = models.TextField()
-    category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE)
+    category = models.ForeignKey('SkillCategory', on_delete=models.CASCADE)
     company = models.ForeignKey('app.Company_check', on_delete=models.CASCADE, null=True, blank=True)
     uploaded_file = models.FileField(upload_to='career_resources/files/', null=True, blank=True)
     video_link = models.URLField(max_length=500, null=True, blank=True)
- 
+
+    def _generate_unique_slug(self):
+        """
+        Generate a unique slug from title, appending a number if needed.
+        """
+        base_slug = slugify(self.title)
+        slug = base_slug
+        num = 1
+        while CareerResource.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{num}"
+            num += 1
+        return slug
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)
+            self.slug = self._generate_unique_slug()
         super().save(*args, **kwargs)
- 
+
     def __str__(self):
         return self.title

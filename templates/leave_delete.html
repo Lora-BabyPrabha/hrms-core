@@ -44,8 +44,11 @@
                 <form method="POST">
                     {% csrf_token %}
                     <div class="button-group">
-                        <a href="javascript:history.back()"><button  class="btn btn-cancel ">Cancel</button>
-                        <button class="btn btn-delete delete-button">Yes, Delete</button>
+                       <a href="{% url 'leave_list' %}" class="btn btn-cancel">Cancel</a>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <button class="btn btn-delete delete-button">Yes, Delete</button>
+                        </form>
                     </div>
                 </form>
                 

@@ -132,6 +132,7 @@
                         <option value="leave" {% if request.POST.request_type == 'leave' %}selected{% endif %}>Leave Request</option>
                         <option value="expense" {% if request.POST.request_type == 'expense' %}selected{% endif %}>Expense Claim Request</option>
                         <option value="loan" {% if request.POST.request_type == 'loan' %}selected{% endif %}>Loan Request</option>
+                         <option value="resignation" {% if request.POST.request_type == 'resignation' %}selected{% endif %}>Resignation Request</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -382,7 +383,7 @@
 </div>
 
 {% endif %}
-{% if request.method != 'POST' or request.POST.request_type == '' or request.POST.request_type == 'resignation' %}
+{% if request.method != 'POST' or request.POST.request_type == '' or request.POST.request_type == 'resignation' %} <!--Added-->
 
     <div class="table-container mt-4">
       <h5>Resignation Requests</h5>
@@ -460,16 +461,17 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="11" class="text-center">No resignation requests available.</td>
+                <td colspan="7" class="text-center">No resignation requests available.</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
+  {% endif %}
 
-{% endif %}
 
 
 
 {% endblock %}
+

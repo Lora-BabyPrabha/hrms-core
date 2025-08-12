@@ -83,6 +83,7 @@ DEBUG = True
     "https://www.aihr4u.com",
 ]'''
 
+
 # Installed Applications
 INSTALLED_APPS = [
     'django.contrib.admin',
