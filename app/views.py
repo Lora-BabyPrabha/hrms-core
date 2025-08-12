@@ -339,7 +339,8 @@ def chat_bot(request):
 def faq(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+
  
     return render(request,'faq.html' , {
         'employee': employee,
@@ -354,7 +355,7 @@ def faq(request):
 def training(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request,'training.html' , {
         'employee': employee,
@@ -369,7 +370,7 @@ def training(request):
 def contact_us(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request,'contact_us.html' , {
         'employee': employee,
@@ -428,7 +429,8 @@ def base(request):
         recipient=user,
         is_read=False,
         company=company
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
+
 
     context = {
         'employee': employee,
@@ -509,7 +511,7 @@ def dashboard(request):
     context['notifications'] = Notification.objects.filter(
         recipient=user, 
         is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     # Birthdays
     context['employees_with_birthday'] = Employee.objects.filter(
@@ -693,7 +695,7 @@ def employee_requests(request):
                 time_entries = []
 
     # Notifications
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
 
     return render(request, 'employee_data.html', {
         'employee': employee,
@@ -830,7 +832,7 @@ def staff_notifications(request):
                 pendings_loan = []
 
     # Notifications for header
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
 
     return render(request, 'staff_notifications.html', {
         'employee': employee,
@@ -971,7 +973,7 @@ def muster(request):
     user = request.user
     muster_entry = Muster.objects.filter(employee_id=user.employee_id)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request,'muster.html', {
         'employee': employee,
@@ -1012,7 +1014,7 @@ def muster_status(request):
  
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, "muster_status.html", {
         "entries": entries,
@@ -1038,7 +1040,7 @@ def leave_balance(request):
     notifications = Notification.objects.filter(
         recipient=request.user, 
         is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     return render(
         request,
@@ -1088,7 +1090,7 @@ def leave_request(request):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'leave_request.html', {"employee": employee , 'notifications': notifications})
  
  
@@ -1103,7 +1105,8 @@ def holidays(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     holidays = Holiday.objects.filter(company=employee.company)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+
  
     return render(request, 'holidays.html', {
         'h': holidays,
@@ -1213,7 +1216,7 @@ def tax_deduction(request):
     user = request.user
     td = LoanRequest.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'tax_deduction.html', {
         'user': user,
@@ -1436,7 +1439,7 @@ def edit_professional_info(request, employee_id):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'edit_professional_info.html', {
         'form': form,
@@ -1462,7 +1465,7 @@ def edit_banking_info(request, employee_id):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'edit_banking_info.html', {
         'form': form,
@@ -1914,6 +1917,13 @@ def get_task_status(task, current_date):
 
 #------------------------------------------------------------- Expense claim #
  
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.contrib import messages
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from .models import ExpenseClaim, Notification
+
 @login_required(login_url='/')
 def submit_expense_claim(request):
     if request.method == 'POST':
@@ -1923,7 +1933,8 @@ def submit_expense_claim(request):
         amount = request.POST.get('amount')
         bill_no = request.POST.get('bill_no')
         receipt = request.FILES.get('receipt')
- 
+
+        # Create the expense claim
         expense_claiming = ExpenseClaim.objects.create(
             employee=request.user,
             category=category,
@@ -1934,17 +1945,29 @@ def submit_expense_claim(request):
             receipt=receipt,
             status='pending'
         )
+
+        # Create notification
+        notification_message = (
+            f"Your Expense Claim for '{category}' dated {date}, "
+            f"amount ₹{amount}, Bill No: {bill_no} has been submitted successfully."
+        )
+        Notification.objects.create(
+            recipient=request.user,
+            message=notification_message
+        )
+
+        messages.success(request, "Expense claim submitted successfully!")
         return redirect('expense_claims')
-   
+
     return JsonResponse({'success': False, 'error': "Invalid request."})
- 
+
  
 @login_required(login_url='/')
 def expense_claims(request):
     user = request.user
     claims = ExpenseClaim.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'expense_claims.html', {
         'claims': claims,
@@ -1961,7 +1984,7 @@ def loan_requests(request):
     user = request.user
     loans = LoanRequest.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'loan_requests.html', {
         'loans': loans,
@@ -2029,7 +2052,7 @@ def review_muster(request):
         return redirect('staff_notifications')
  
     musters = Muster.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'musters': musters,
@@ -2057,7 +2080,7 @@ def review_leave(request):
         return redirect('staff_notifications')
    
     leaves = LeaveRequest.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'leaves': leaves,
@@ -2085,7 +2108,7 @@ def review_expense(request):
         return redirect('staff_notifications')
  
     expenses = ExpenseClaim.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'expenses': expenses,
@@ -2113,7 +2136,7 @@ def review_loan(request):
         return redirect('staff_notifications')
  
     loans = LoanRequest.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'loans': loans,
@@ -2235,7 +2258,7 @@ def user_list(request):
  
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_list.html', {
         'users': user_query,
@@ -2263,7 +2286,7 @@ def user_create(request):
  
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_form.html', {
         'form': form,
@@ -2298,7 +2321,7 @@ def user_edit(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_form.html', {
         'form': form,
@@ -2323,7 +2346,7 @@ def user_confirm_delete(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_confirm_delete.html', {
         'emp': user_to_delete,
@@ -2339,7 +2362,7 @@ def user_confirm_delete(request, pk):
 def policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'policy.html' , {
         'employee': employee,
@@ -2351,7 +2374,7 @@ def policy(request):
 def data_retention_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'data_retention_policy.html' , {
         'employee': employee,
@@ -2363,7 +2386,7 @@ def data_retention_policy(request):
 def acceptable_use_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'acceptable_use_policy.html' , {
         'employee': employee,
@@ -2375,7 +2398,7 @@ def acceptable_use_policy(request):
 def cookie_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'cookie_policy.html' , {
         'employee': employee,
@@ -2387,7 +2410,7 @@ def cookie_policy(request):
 def refund_cancellation_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'refund_cancellation_policy.html' , {
         'employee': employee,
@@ -2399,7 +2422,7 @@ def refund_cancellation_policy(request):
 def terms_of_service(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'terms_of_service.html' , {
         'employee': employee,
@@ -2450,7 +2473,7 @@ def create_salary(request):
     else:
         form = SalaryForm()
  
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
  
     return render(request, 'create_salary.html', {
         'form': form,
@@ -2467,7 +2490,7 @@ def view_salary(request, salary_id):
     salary = get_object_or_404(Salary, id=salary_id)
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'view_salary.html', {
         'salary': salary,
@@ -2492,7 +2515,7 @@ def edit_salary(request, salary_id):
  
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'edit_salary.html', {
         'form': form,
@@ -2558,7 +2581,7 @@ def salary_list(request):
     notifications = Notification.objects.filter(
         recipient=user,
         is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'salary_list.html', {
         'salaries': salary_query,
@@ -2576,7 +2599,7 @@ def salary_list(request):
 def performance_entry(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'performance_entry.html', {
         'employee': employee,
@@ -2778,7 +2801,7 @@ def company_list(request):
     companies = Company_check.objects.all()
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_list.html', {'companies': companies,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -2794,7 +2817,7 @@ def company_create(request):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_form.html', {'form': form,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -2811,7 +2834,7 @@ def company_edit(request, pk):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_form.html', {'form': form,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -2823,7 +2846,7 @@ def company_delete(request, pk):
         return redirect('company_list')
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_delete.html', {'company': company,'employee': employee,'notifications': notifications})
  
  
@@ -2886,7 +2909,7 @@ def task_list(request):
         for i in range(1, 13)
     ]
  
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
  
     return render(request, 'task_list.html', {
         'tasks': unique_tasks,
@@ -2989,7 +3012,7 @@ def employee_list(request):
  
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'employee_list.html', {
         'employee_query': employee_query,
@@ -3051,7 +3074,7 @@ def employee_create(request):
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
-        'notifications': Notification.objects.filter(recipient=request.user, is_read=False)[:5]
+        'notifications': Notification.objects.filter(recipient=request.user, is_read=False)
     })
 
 
@@ -3170,7 +3193,7 @@ def employee_edit(request, pk):
         'employee': employee,
         'notifications': Notification.objects.filter(
             recipient=request.user, is_read=False
-        ).order_by('-created_at')[:5],
+        ).order_by('-created_at'),
         'edit_mode': True
     })
 
@@ -3189,7 +3212,7 @@ def employee_delete(request, pk):
         messages.success(request, 'Employee deleted successfully!')
         return redirect('employee_list')
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'employee_delete.html', {
         'employee': employee,
@@ -3208,7 +3231,7 @@ def holidays_list(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     holidays = Holiday.objects.filter(company=employee.company).order_by('date')  # ✅ Filter here
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holidays_list.html', {
         'holidays': holidays,
         'employee': employee,
@@ -3232,7 +3255,7 @@ def holiday_create(request):
     else:
         form = HolidaysForm()
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_form.html', {
         'form': form,
         'employee': employee,
@@ -3249,7 +3272,7 @@ def holiday_view(request, pk):
     # Secure: Only access holidays from the same company
     holiday = get_object_or_404(Holiday, pk=pk, company=employee.company)
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_view.html', {'holiday': holiday, 'employee': employee, 'notifications': notifications})
  
  
@@ -3267,7 +3290,7 @@ def holiday_edit(request, pk):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_form.html', {'form': form,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -3280,7 +3303,7 @@ def holiday_delete(request, pk):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_delete.html', {'holiday': holiday,'employee': employee,'notifications': notifications})
  
  
@@ -3302,7 +3325,7 @@ def leave_list(request):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_list.html', {
         'leaves': leave_query,
@@ -3333,7 +3356,7 @@ def leave_create(request):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_create.html', {
         'form': form,
@@ -3353,7 +3376,8 @@ def leave_detail(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
+
  
     return render(request, 'leave_detail.html', {
         'leave': leave,
@@ -3379,7 +3403,7 @@ def leave_edit(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_edit.html', {
         'form': form,
@@ -3401,7 +3425,7 @@ def leave_delete(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_delete.html', {
         'leave': leave,
@@ -3522,7 +3546,7 @@ def help_desk_page(request):
     company = employee.company
     current_time = now()
 
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
 
     # TL and HR QuerySets
     tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
@@ -3996,7 +4020,7 @@ def hr_login_logs(request):
 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     return render(request, 'login_logs.html', {
         'login_logs': login_logs,

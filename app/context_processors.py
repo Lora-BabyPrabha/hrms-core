@@ -17,19 +17,21 @@
 #     }
 
 # context_processors.py
-from .models import Muster, LeaveRequest, ExpenseClaim, LoanRequest
+from .models import Muster, LeaveRequest, ExpenseClaim, LoanRequest, ResignationRequest
 
 def common_data(request):
     pending_musters = Muster.objects.filter(status='Pending')
     pending_leave_request = LeaveRequest.objects.filter(status='pending')
     pending_expense = ExpenseClaim.objects.filter(status='pending')
     pending_loan = LoanRequest.objects.filter(status='pending')
+    pending_resignations = ResignationRequest.objects.filter(status='submitted')  # Assuming you might want to add this later
 
     return {
         'pending_musters': pending_musters,
         'pending_leave_request': pending_leave_request,
         'pending_expense': pending_expense,
-        'pending_loan': pending_loan
+        'pending_loan': pending_loan,
+        'pending_resignations': pending_resignations
     }
 from .models import Notification
 
