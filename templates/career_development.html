@@ -71,17 +71,17 @@
 
 {% block content %}
 <div class="container py-4">
-    <h2 class="text-center fw-bold mb-2" style="color:#0a3d62;">
+    <h2 class="text-center fw-bold mb-2" style="color:#0e0f0f;">
         <i class="bi bi-mortarboard-fill me-2"></i> Career Development Hub
     </h2>
     <p class="text-center text-muted mb-5">Explore resources to enhance your career growth</p>
 
     {% if can_edit %}
     <div class="d-flex justify-content-center gap-3 mb-4">
-        <button class="btn btn-primary btn-sm px-4" style="background-color:#0a3d62; border-color:#0a3d62;" onclick="toggleForm('categoryForm')">
+        <button class="btn btn-outline-primary btn-sm px-4" style="color:#007bff; border-color:#007bff;" onclick="toggleForm('categoryForm')">
             <i class="bi bi-tags-fill"></i> Add Skill Category
         </button>
-        <button class="btn btn-outline-primary btn-sm px-4" style="color:#0a3d62; border-color:#0a3d62;" onclick="toggleForm('resourceForm')">
+        <button class="btn btn-outline-primary btn-sm px-4" style="color:#007bff; border-color:#007bff;" onclick="toggleForm('resourceForm')">
             <i class="bi bi-plus-circle-fill"></i> Add Career Resource
         </button>
     </div>
@@ -112,7 +112,7 @@
     {% for category in categories %}
     <section class="my-5">
         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-            <h4 class="fw-bold" style="color:#0a3d62;"><i class="bi bi-bookmark-star-fill me-2"></i> {{ category.name }}</h4>
+            <h4 class="fw-bold" style="color:#007bff;"><i class="bi bi-bookmark-star-fill me-2"></i> {{ category.name }}</h4>
             <span class="badge" style="background-color:#3c6382;">{{ category.careerresource_set.count }} Resources</span>
         </div>
 

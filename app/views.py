@@ -325,6 +325,56 @@ def search_results(request):
  
  
 #------------------------------------------------------------- FAQ #
+# ✅ Utility function to check if user is HR or Manager
+def is_hr_or_manager(user):
+    return getattr(user, "role", "").lower() in ["hr", "manager"]
+
+@login_required
+def faq(request):
+    faqs = FAQ.objects.all().order_by('-created_at')
+    can_edit = is_hr_or_manager(request.user)  # Only HR & Manager can modify FAQs
+
+    # Handle Add FAQ
+    if request.method == "POST" and 'add_faq' in request.POST:
+        if can_edit:
+            form = FAQForm(request.POST)
+            if form.is_valid():
+                faq_instance = form.save(commit=False)
+                faq_instance.created_by = request.user  # ✅ Assign creator
+                faq_instance.save()
+                return redirect("faq")
+        else:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+    # Handle Edit FAQ
+    if request.method == "POST" and 'edit_faq' in request.POST:
+        if can_edit:
+            faq_id = request.POST.get("faq_id")
+            faq_instance = get_object_or_404(FAQ, id=faq_id)
+            form = FAQForm(request.POST, instance=faq_instance)
+            if form.is_valid():
+                form.save()  # ✅ Keep created_by unchanged
+                return redirect("faq")
+        else:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+    # Handle Delete FAQ
+    if request.method == "POST" and 'delete_faq' in request.POST:
+        if can_edit:
+            faq_id = request.POST.get("faq_id")
+            faq_instance = get_object_or_404(FAQ, id=faq_id)
+            faq_instance.delete()
+            return redirect("faq")
+        else:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+    return render(request, "faq.html", {
+        "faqs": faqs,
+        "can_edit": can_edit,
+        "form": FAQForm()
+    })
+
+
  
 @login_required(login_url='/')
 def chat_bot(request):
@@ -334,27 +384,14 @@ def chat_bot(request):
  
  
 #------------------------------------------------------------- Chat Bot #
- 
-@login_required(login_url='/')
-def faq(request):
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
- 
-    return render(request,'faq.html' , {
-        'employee': employee,
-        'notifications': notifications,
-        }
-    )
- 
- 
+
 #------------------------------------------------------------- Chat Bot #
  
 @login_required(login_url='/')
 def training(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request,'training.html' , {
         'employee': employee,
@@ -365,19 +402,35 @@ def training(request):
  
 #------------------------------------------------------------- Contact us #
  
-@login_required(login_url='/')
+# views.py
+from django.shortcuts import render, redirect
+from django.core.mail import send_mail
+from django.contrib import messages
+from .forms import ContactHRForm
+
 def contact_us(request):
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
- 
-    return render(request,'contact_us.html' , {
-        'employee': employee,
-        'notifications': notifications,
-        }
-    )
- 
- 
+    if request.method == "POST":
+        form = ContactHRForm(request.POST, user=request.user)
+        if form.is_valid():
+            hr_user = form.cleaned_data['hr']
+            subject = form.cleaned_data['subject']
+            message = form.cleaned_data['message']
+
+            send_mail(
+                subject,
+                f"Message from {request.user.name} (ID: {request.user.employee_id}, Email: {request.user.email}):\n\n{message}",
+                request.user.email,
+                [hr_user.email],
+                fail_silently=False,
+            )
+
+            messages.success(request, f"Message sent to {hr_user.name} ({hr_user.email})")
+            return redirect('contact_us')
+    else:
+        form = ContactHRForm(user=request.user)
+
+    return render(request, "contact_us.html", {"form": form})
+
 #------------------------------------------------------------- Company records #
  
 from django.contrib.auth.decorators import login_required
@@ -428,7 +481,8 @@ def base(request):
         recipient=user,
         is_read=False,
         company=company
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
+
 
     context = {
         'employee': employee,
@@ -509,7 +563,7 @@ def dashboard(request):
     context['notifications'] = Notification.objects.filter(
         recipient=user, 
         is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     # Birthdays
     context['employees_with_birthday'] = Employee.objects.filter(
@@ -693,7 +747,7 @@ def employee_requests(request):
                 time_entries = []
 
     # Notifications
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
 
     return render(request, 'employee_data.html', {
         'employee': employee,
@@ -741,8 +795,8 @@ def staff_notifications(request):
     # Resignations: Fetch **all relevant statuses** for HR and Manager role
     if user.role in ['HR', 'Manager']:
         resignations = ResignationRequest.objects.filter(
-            employee__company=company,submitted_at__date=today,
-            status__in=['pending', 'approved', 'rejected']  # include all statuses here
+            employee__company=company,
+            submitted_at__date=today,  # include all statuses here
         )
     else:
         resignations = ResignationRequest.objects.none()  # No resignations for other users
@@ -781,8 +835,7 @@ def staff_notifications(request):
             resignations = ResignationRequest.objects.filter(
                 employee__in=users_qs,
                 submitted_at__year=year,
-                submitted_at__month=month,
-                status__in=['pending', 'approved', 'rejected']  # include all statuses here too
+                submitted_at__month=month,  # include all statuses here too
             )
 
         # Apply specific date filter
@@ -796,7 +849,7 @@ def staff_notifications(request):
                 resignations = ResignationRequest.objects.filter(
                     employee__in=users_qs,
                     submitted_at__date=date_obj,
-                    status__in=['pending', 'approved', 'rejected']  # and here
+                    # and here
                 )
             except ValueError:
                 pass
@@ -830,7 +883,7 @@ def staff_notifications(request):
                 pendings_loan = []
 
     # Notifications for header
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
 
     return render(request, 'staff_notifications.html', {
         'employee': employee,
@@ -971,7 +1024,7 @@ def muster(request):
     user = request.user
     muster_entry = Muster.objects.filter(employee_id=user.employee_id)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request,'muster.html', {
         'employee': employee,
@@ -1012,7 +1065,7 @@ def muster_status(request):
  
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, "muster_status.html", {
         "entries": entries,
@@ -1038,7 +1091,7 @@ def leave_balance(request):
     notifications = Notification.objects.filter(
         recipient=request.user, 
         is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     return render(
         request,
@@ -1088,7 +1141,7 @@ def leave_request(request):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'leave_request.html', {"employee": employee , 'notifications': notifications})
  
  
@@ -1103,7 +1156,8 @@ def holidays(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     holidays = Holiday.objects.filter(company=employee.company)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+
  
     return render(request, 'holidays.html', {
         'h': holidays,
@@ -1213,7 +1267,7 @@ def tax_deduction(request):
     user = request.user
     td = LoanRequest.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'tax_deduction.html', {
         'user': user,
@@ -1436,7 +1490,7 @@ def edit_professional_info(request, employee_id):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'edit_professional_info.html', {
         'form': form,
@@ -1462,7 +1516,7 @@ def edit_banking_info(request, employee_id):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'edit_banking_info.html', {
         'form': form,
@@ -1914,6 +1968,13 @@ def get_task_status(task, current_date):
 
 #------------------------------------------------------------- Expense claim #
  
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.contrib import messages
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from .models import ExpenseClaim, Notification
+
 @login_required(login_url='/')
 def submit_expense_claim(request):
     if request.method == 'POST':
@@ -1923,7 +1984,8 @@ def submit_expense_claim(request):
         amount = request.POST.get('amount')
         bill_no = request.POST.get('bill_no')
         receipt = request.FILES.get('receipt')
- 
+
+        # Create the expense claim
         expense_claiming = ExpenseClaim.objects.create(
             employee=request.user,
             category=category,
@@ -1934,17 +1996,29 @@ def submit_expense_claim(request):
             receipt=receipt,
             status='pending'
         )
+
+        # Create notification
+        notification_message = (
+            f"Your Expense Claim for '{category}' dated {date}, "
+            f"amount ₹{amount}, Bill No: {bill_no} has been submitted successfully."
+        )
+        Notification.objects.create(
+            recipient=request.user,
+            message=notification_message
+        )
+
+        messages.success(request, "Expense claim submitted successfully!")
         return redirect('expense_claims')
-   
+
     return JsonResponse({'success': False, 'error': "Invalid request."})
- 
+
  
 @login_required(login_url='/')
 def expense_claims(request):
     user = request.user
     claims = ExpenseClaim.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'expense_claims.html', {
         'claims': claims,
@@ -1961,7 +2035,7 @@ def loan_requests(request):
     user = request.user
     loans = LoanRequest.objects.filter(employee=user)
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'loan_requests.html', {
         'loans': loans,
@@ -2029,7 +2103,7 @@ def review_muster(request):
         return redirect('staff_notifications')
  
     musters = Muster.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'musters': musters,
@@ -2057,7 +2131,7 @@ def review_leave(request):
         return redirect('staff_notifications')
    
     leaves = LeaveRequest.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'leaves': leaves,
@@ -2085,7 +2159,7 @@ def review_expense(request):
         return redirect('staff_notifications')
  
     expenses = ExpenseClaim.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'expenses': expenses,
@@ -2113,7 +2187,7 @@ def review_loan(request):
         return redirect('staff_notifications')
  
     loans = LoanRequest.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'staff_notifications.html', {
         'loans': loans,
@@ -2235,7 +2309,7 @@ def user_list(request):
  
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_list.html', {
         'users': user_query,
@@ -2265,7 +2339,7 @@ def user_create(request):
  
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_form.html', {
         'form': form,
@@ -2295,7 +2369,7 @@ def user_edit(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_form.html', {
         'form': form,
@@ -2320,7 +2394,7 @@ def user_confirm_delete(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'user_confirm_delete.html', {
         'emp': user_to_delete,
@@ -2336,7 +2410,7 @@ def user_confirm_delete(request, pk):
 def policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'policy.html' , {
         'employee': employee,
@@ -2348,7 +2422,7 @@ def policy(request):
 def data_retention_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'data_retention_policy.html' , {
         'employee': employee,
@@ -2360,7 +2434,7 @@ def data_retention_policy(request):
 def acceptable_use_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'acceptable_use_policy.html' , {
         'employee': employee,
@@ -2372,7 +2446,7 @@ def acceptable_use_policy(request):
 def cookie_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'cookie_policy.html' , {
         'employee': employee,
@@ -2384,7 +2458,7 @@ def cookie_policy(request):
 def refund_cancellation_policy(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'refund_cancellation_policy.html' , {
         'employee': employee,
@@ -2396,7 +2470,7 @@ def refund_cancellation_policy(request):
 def terms_of_service(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'terms_of_service.html' , {
         'employee': employee,
@@ -2447,7 +2521,7 @@ def create_salary(request):
     else:
         form = SalaryForm()
  
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
  
     return render(request, 'create_salary.html', {
         'form': form,
@@ -2464,7 +2538,7 @@ def view_salary(request, salary_id):
     salary = get_object_or_404(Salary, id=salary_id)
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'view_salary.html', {
         'salary': salary,
@@ -2489,7 +2563,7 @@ def edit_salary(request, salary_id):
  
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'edit_salary.html', {
         'form': form,
@@ -2555,7 +2629,7 @@ def salary_list(request):
     notifications = Notification.objects.filter(
         recipient=user,
         is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'salary_list.html', {
         'salaries': salary_query,
@@ -2573,7 +2647,7 @@ def salary_list(request):
 def performance_entry(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'performance_entry.html', {
         'employee': employee,
@@ -2765,7 +2839,7 @@ def company_list(request):
     companies = Company_check.objects.all()
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_list.html', {'companies': companies,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -2781,7 +2855,7 @@ def company_create(request):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_form.html', {'form': form,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -2798,7 +2872,7 @@ def company_edit(request, pk):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_form.html', {'form': form,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -2810,7 +2884,7 @@ def company_delete(request, pk):
         return redirect('company_list')
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'company_delete.html', {'company': company,'employee': employee,'notifications': notifications})
  
  
@@ -2873,7 +2947,7 @@ def task_list(request):
         for i in range(1, 13)
     ]
  
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
  
     return render(request, 'task_list.html', {
         'tasks': unique_tasks,
@@ -2976,7 +3050,7 @@ def employee_list(request):
  
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'employee_list.html', {
         'employee_query': employee_query,
@@ -3038,7 +3112,7 @@ def employee_create(request):
     return render(request, 'employee_create.html', {
         'form': form,
         'media_form': media_form,
-        'notifications': Notification.objects.filter(recipient=request.user, is_read=False)[:5]
+        'notifications': Notification.objects.filter(recipient=request.user, is_read=False)
     })
 
 
@@ -3157,7 +3231,7 @@ def employee_edit(request, pk):
         'employee': employee,
         'notifications': Notification.objects.filter(
             recipient=request.user, is_read=False
-        ).order_by('-created_at')[:5],
+        ).order_by('-created_at'),
         'edit_mode': True
     })
 
@@ -3176,7 +3250,7 @@ def employee_delete(request, pk):
         messages.success(request, 'Employee deleted successfully!')
         return redirect('employee_list')
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
  
     return render(request, 'employee_delete.html', {
         'employee': employee,
@@ -3195,7 +3269,7 @@ def holidays_list(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     holidays = Holiday.objects.filter(company=employee.company).order_by('date')  # ✅ Filter here
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holidays_list.html', {
         'holidays': holidays,
         'employee': employee,
@@ -3219,7 +3293,7 @@ def holiday_create(request):
     else:
         form = HolidaysForm()
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_form.html', {
         'form': form,
         'employee': employee,
@@ -3236,7 +3310,7 @@ def holiday_view(request, pk):
     # Secure: Only access holidays from the same company
     holiday = get_object_or_404(Holiday, pk=pk, company=employee.company)
  
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_view.html', {'holiday': holiday, 'employee': employee, 'notifications': notifications})
  
  
@@ -3254,7 +3328,7 @@ def holiday_edit(request, pk):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_form.html', {'form': form,'employee': employee,'notifications': notifications})
  
 @login_required(login_url='/')
@@ -3267,7 +3341,7 @@ def holiday_delete(request, pk):
    
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
     return render(request, 'holiday_delete.html', {'holiday': holiday,'employee': employee,'notifications': notifications})
  
  
@@ -3289,7 +3363,7 @@ def leave_list(request):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_list.html', {
         'leaves': leave_query,
@@ -3320,7 +3394,7 @@ def leave_create(request):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_create.html', {
         'form': form,
@@ -3340,7 +3414,8 @@ def leave_detail(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
+
  
     return render(request, 'leave_detail.html', {
         'leave': leave,
@@ -3366,7 +3441,7 @@ def leave_edit(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_edit.html', {
         'form': form,
@@ -3388,7 +3463,7 @@ def leave_delete(request, pk):
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
  
     return render(request, 'leave_delete.html', {
         'leave': leave,
@@ -3490,36 +3565,39 @@ def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
  
-#---------------------------------from django.shortcuts import render, redirect
+from datetime import timedelta
 from django.shortcuts import render, redirect
+from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
-from .models import HelpDeskTicket, HRContact, Employee, Notification
-from .forms import HelpDeskTicketForm
-from django.contrib.auth import get_user_model
-from django.utils.timezone import now
-from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 User = get_user_model()
+
+from app.models import HelpDeskTicket, Employee, HRContact
+from app.forms import HelpDeskTicketForm  # Assuming you have this form
+
 
 @login_required
 def help_desk_page(request):
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = employee.company
+    user_employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user_employee.company
     current_time = now()
 
-    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')[:5]
+    notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
 
-    # TL and HR QuerySets
-    tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
-    hr_ids = HRContact.objects.filter(role='HR', employee__company=company).values_list('employee__user_id', flat=True)
-    manager_ids = HRContact.objects.filter(role='MG', employee__company=company).values_list('employee__user_id', flat=True)
+    # Get HRContact entries for this company
+    tl_contacts = HRContact.objects.filter(role='TL', employee__company=company)
+    hr_contacts = HRContact.objects.filter(role='HR', employee__company=company)
+    mg_contacts = HRContact.objects.filter(role='MG', employee__company=company)
 
-    team_leader_qs = User.objects.filter(id__in=tl_ids)
-    hr_qs = User.objects.filter(id__in=hr_ids)
-    manager_qs = User.objects.filter(id__in=manager_ids)
-    # Forms
+    # Get User QuerySets from contacts for form choices
+    team_leader_qs = User.objects.filter(id__in=tl_contacts.values_list('employee__user_id', flat=True))
+    hr_qs = User.objects.filter(id__in=hr_contacts.values_list('employee__user_id', flat=True))
+    manager_qs = User.objects.filter(id__in=mg_contacts.values_list('employee__user_id', flat=True))
+
+    # Prepare forms
     hr_form = HelpDeskTicketForm(prefix='hr', category='HR', company=company)
     it_form = HelpDeskTicketForm(prefix='it', category='IT', company=company)
     asset_form = HelpDeskTicketForm(prefix='as', category='AS', company=company)
@@ -3528,6 +3606,7 @@ def help_desk_page(request):
         form.fields['team_leader'].queryset = team_leader_qs
         form.fields['hr'].queryset = hr_qs
         form.fields['manager'].queryset = manager_qs
+
     def send_ticket_email(ticket, to_user, subject_prefix):
         if to_user and to_user.email:
             send_mail(
@@ -3543,8 +3622,9 @@ def help_desk_page(request):
                 recipient_list=[to_user.email],
                 fail_silently=False
             )
+
+    # Handle POST actions: close, mark seen by TL or HR, or submit ticket forms
     if request.method == 'POST':
-        # Handle ticket close request
         if 'close_ticket_id' in request.POST:
             ticket_id = request.POST.get('close_ticket_id')
             try:
@@ -3555,8 +3635,6 @@ def help_desk_page(request):
                 pass
             return redirect('help_desk')
 
-
-    if request.method == 'POST':
         if 'mark_seen_tl' in request.POST:
             ticket_id = request.POST.get('ticket_id')
             HelpDeskTicket.objects.filter(id=ticket_id, assigned_to=user).update(viewed_by_tl=True)
@@ -3567,6 +3645,7 @@ def help_desk_page(request):
             HelpDeskTicket.objects.filter(id=ticket_id, escalate_to_hr=user).update(viewed_by_hr=True)
             return redirect('help_desk')
 
+        # Ticket submission forms
         submitted_category = None
         if 'hr-submit' in request.POST:
             hr_form = HelpDeskTicketForm(request.POST, prefix='hr', category='HR', company=company)
@@ -3590,15 +3669,17 @@ def help_desk_page(request):
             ticket.category = submitted_category
             ticket.assigned_to = selected_form.cleaned_data['team_leader']
             ticket.escalate_to_hr = selected_form.cleaned_data['hr']
+            ticket.manager = selected_form.cleaned_data['manager']
             ticket.save()
             send_ticket_email(ticket, ticket.assigned_to, f"{submitted_category} Support")
             return redirect('help_desk')
 
-    # Filters (optional - for date/status/category)
+    # Filters from GET (optional)
     category_filter = request.GET.get('category')
     status_filter = request.GET.get('status')
-    date_filter = request.GET.get('date')  # Expecting YYYY-MM-DD format
+    date_filter = request.GET.get('date')  # YYYY-MM-DD format
 
+    # Tickets raised by user
     tickets = HelpDeskTicket.objects.filter(employee=user).order_by('-created_at')
     if category_filter:
         tickets = tickets.filter(category=category_filter)
@@ -3607,32 +3688,48 @@ def help_desk_page(request):
     if date_filter:
         tickets = tickets.filter(created_at__date=date_filter)
 
-    # TL & HR escalated tickets
-    tl_pending_tickets = HelpDeskTicket.objects.filter(
-        assigned_to=user, viewed_by_tl=False
-    ).order_by('-created_at')
+    # Determine roles of current user
+    user_role_qs = HRContact.objects.filter(employee=user_employee)
+    user_roles = set(user_role_qs.values_list('role', flat=True))
 
-    hr_escalated_tickets = HelpDeskTicket.objects.filter(
-        escalate_to_hr=user,
-        viewed_by_tl=False,
-        viewed_by_hr=False,
-        created_at__lte=current_time - timedelta(hours=2)
-    ).order_by('-created_at')
-    manager_escalated_tickets = HelpDeskTicket.objects.filter(
-    manager=user,
-    viewed_by_hr=False,
-    viewed_by_tl=False,
-    created_at__lte=current_time - timedelta(hours=4)
-    ).order_by('-created_at')
+    # Tickets assigned to this user as TL and not yet seen by TL
+    tl_pending_tickets = HelpDeskTicket.objects.none()
+    if 'TL' in user_roles:
+        tl_pending_tickets = HelpDeskTicket.objects.filter(
+            assigned_to=user,
+            viewed_by_tl=False,
+            status='open'
+        ).order_by('-created_at')
 
+    # Tickets escalated to HR if TL not seen in 2+ hours
+    hr_escalated_tickets = HelpDeskTicket.objects.none()
+    if 'HR' in user_roles:
+        hr_escalated_tickets = HelpDeskTicket.objects.filter(
+            escalate_to_hr=user,
+            viewed_by_tl=False,
+            viewed_by_hr=False,
+            status='open',
+            created_at__lte=current_time - timedelta(hours=2)
+        ).order_by('-created_at')
+
+    # Tickets escalated to Manager if HR not seen in 4+ hours
+    manager_escalated_tickets = HelpDeskTicket.objects.none()
+    if 'MG' in user_roles:
+        manager_escalated_tickets = HelpDeskTicket.objects.filter(
+            manager=user,
+            viewed_by_hr=False,
+            viewed_by_tl=False,
+            status='open',
+            created_at__lte=current_time - timedelta(hours=4)
+        ).order_by('-created_at')
 
     return render(request, 'help_desk.html', {
         'hr_form': hr_form,
         'it_form': it_form,
         'asset_form': asset_form,
         'tickets': tickets,
-        'employee': employee,
         'notifications': notifications,
+        'employee': user_employee,
         'tl_pending_tickets': tl_pending_tickets,
         'hr_escalated_tickets': hr_escalated_tickets,
         'manager_escalated_tickets': manager_escalated_tickets,
@@ -3982,7 +4079,7 @@ def hr_login_logs(request):
 
     notifications = Notification.objects.filter(
         recipient=user, is_read=False
-    ).order_by('-created_at')[:5]
+    ).order_by('-created_at')
 
     return render(request, 'login_logs.html', {
         'login_logs': login_logs,
@@ -4073,22 +4170,22 @@ def resignation_request_view(request):
     return render(request, 'resignation.html', {'requests': user_requests})
 
 
-@require_POST
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.http import require_POST
+from .models import ResignationRequest, Notification
+
 @login_required(login_url='/')
 @staff_member_required
-def review_resignation_request(request):
-    resignation_id = request.POST.get('resignation_id')
-    action = request.POST.get('status')
-
-    if not resignation_id or not action:
-        messages.error(request, "Missing resignation ID or action.")
-        return redirect('staff_notifications')
-
+def review_resignation_request(request, resignation_id, action):
     resignation = get_object_or_404(ResignationRequest, id=resignation_id)
+
     action_lower = action.lower()
 
-    if action_lower == 'approve' or action_lower == 'approved':
-        resignation.status = 'approved'
+    if action_lower == 'approve':
+        resignation.status = 'Approved'
         resignation.save()
         Notification.objects.create(
             recipient=resignation.employee,
@@ -4099,8 +4196,8 @@ def review_resignation_request(request):
         )
         messages.success(request, "Resignation approved successfully.")
 
-    elif action_lower == 'reject' or action_lower == 'rejected':
-        resignation.status = 'rejected'
+    elif action_lower == 'reject':
+        resignation.status = 'Rejected'
         resignation.save()
         Notification.objects.create(
             recipient=resignation.employee,
@@ -4114,7 +4211,7 @@ def review_resignation_request(request):
     else:
         messages.error(request, "Invalid action specified.")
 
-    return redirect('staff_notifications')
+    return redirect('dashboard')  # Redirect to a suitable page after action
 
 
 #------------------------------------------------------------- Career development #

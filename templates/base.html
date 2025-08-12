@@ -277,7 +277,7 @@
                                         {% endif %}   
 
                                         {% if request.user.is_authenticated and request.user.role == 'HR' or request.user.role == 'Manager' or request.user.is_superuser %}
-                                            <li id="notif" style="width: 330px; list-style: none;">
+                                        <li id="notif" style="width: 330px; list-style: none;">
                                                 <div class='text-center'>Pending Approvals - {{ request.user.company.name }}</div>
                                                 {% for muster in pending_musters %}
                                                     {% if muster.user.company == request.user.company %}
@@ -358,38 +358,38 @@
                                                             <a href="{% url 'review_loan_notifications' loan.id 'Approve' %}" class="Approve btn btn-sm">Approve</a>
                                                             <a href="{% url 'review_loan_notifications' loan.id 'Reject' %}" class="Reject btn btn-sm">Reject</a>
                                                         </div>
+                                                        {% endif %}
+                                                        {% endfor %}
+                                                  
+                                                
+                                                    {% for resignation in pending_resignations %}
+                                                        {% if resignation.employee.company == request.user.company %}
+                                                            <hr class="col-12">
+                                                            <div class="notification" style="margin-left:30px;">
+                                                                <small>
+                                                                    {{ resignation.employee.employee_id }} has requested for 'Resignation'
+                                                                    <br>
+                                                                    Resignation Date: {{ resignation.resignation_date|date:"F d Y" }}
+                                                                    <br>
+                                                                    Last Working Day: {{ resignation.last_working_day|date:"F d Y" }}
+                                                                    <br>
+                                                                    Reason: {{ resignation.resignation_reason }}
+                                                                    {% if resignation.other_reason %}
+                                                                    <br>Other Reason: {{ resignation.other_reason }}
+                                                                    {% endif %}
+                                                                    <br>
+                                                                    Notes: {{ resignation.notes }}
+                                                                    <br>↳
+                                                                </small>
+                                                                <a href="{% url 'review_resignation_request' resignation.id 'Approve' %}" class="Approve btn btn-sm"><small>Approve</small></a>
+                                                                <a href="{% url 'review_resignation_request' resignation.id 'Reject' %}" class="Reject btn btn-sm"><small>Reject</small></a>
+                                                            </div>
                                                     {% endif %}
                                                 {% endfor %}
-                                            </li>
-                                        {% endif %}
-                                        {% for resignation in pending_resignations %}
-                                        {% if resignation.employee.company == request.user.company %}
-                                            <hr class="col-12">
-                                            <div class="notification" style="margin-left:30px;">
-                                                <small>
-                                                    {{ resignation.employee.employee_id }} has requested for 'Resignation'
-                                                    <br>
-                                                    Resignation Date: {{ resignation.resignation_date|date:"F d Y" }}
-                                                    <br>
-                                                    Last Working Day: {{ resignation.last_working_day|date:"F d Y" }}
-                                                    <br>
-                                                    Reason: {{ resignation.resignation_reason }}
-                                                    {% if resignation.other_reason %}
-                                                        <br>Other Reason: {{ resignation.other_reason }}
-                                                    {% endif %}
-                                                    <br>
-                                                    Notes: {{ resignation.notes }}
-                                                    <br>↳
-                                                </small>
-                                                <a href="{% url 'review_resignation_notifications' resignation.id 'Approve' %}" class="Approve btn btn-sm"><small>Approve</small></a>
-                                                <a href="{% url 'review_resignation_notifications' resignation.id 'Reject' %}" class="Reject btn btn-sm"><small>Reject</small></a>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-
-
-                                </ul>
-                                </li>
+                                                {% endif %}
+                                            </ul>
+                                        </li>
+                                        
                                 <!-- Profile section -->
                                 <!-- Profile section -->
                                 <li id="profileDropdownItem" class="nav-item dropdown">

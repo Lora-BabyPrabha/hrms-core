@@ -469,13 +469,6 @@ class HelpDeskTicket(models.Model):
 
 
 
-class Skill(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-    
-    def __str__(self):
-        return self.name
-
 
 #------------------------------------------------------------- Training #
 
@@ -603,3 +596,13 @@ class CareerResource(models.Model):
 
     def __str__(self):
         return self.title
+
+class FAQ(models.Model):
+    question = models.CharField(max_length=255)
+    answer = models.TextField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.question
+

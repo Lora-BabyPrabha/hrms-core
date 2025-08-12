@@ -434,29 +434,33 @@
                 <span class="status-badge">{{ item.status|capfirst }}</span>
                 </td>
                 <td>
-                <form method="POST" action="{% url 'review_resignation_request' %}" class="action-buttons">
-                    {% csrf_token %}
-                    <input type="hidden" name="resignation_id" value="{{ item.id }}">
-                    
                     {% if item.status == 'pending' %}
-                    <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
-                    <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
+    <form method="POST" action="{% url 'review_resignation_request' item.id 'approve' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+    </form>
 
-                {% elif item.status == 'approved' %}
-                    <!-- Only show Reject button when already approved -->
-                    <button type="submit" name="status" value="rejected" class="btn btn-danger btn-sm">Reject</button>
+    <form method="POST" action="{% url 'review_resignation_request' item.id 'reject' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+    </form>
 
-                {% elif item.status == 'rejected' %}
-                    <!-- Only show Approve button when already rejected -->
-                    <button type="submit" name="status" value="approved" class="btn btn-success btn-sm">Approve</button>
+        {% elif item.status == 'Approved' %}
+            <form method="POST" action="{% url 'review_resignation_request' item.id 'reject' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+            </form>
 
-                {% else %}
-                    <span class="status-badge">{{ item.status|capfirst }}</span>
-                {% endif %}
+        {% elif item.status == 'Rejected' %}
+            <form method="POST" action="{% url 'review_resignation_request' item.id 'approve' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+            </form>
+        {% else %}
+            <span class="status-badge">{{ item.status|capfirst }}</span>
+        {% endif %}
 
-                </form>
                 </td>
-
 
               </tr>
             {% empty %}
