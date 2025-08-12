@@ -49,6 +49,11 @@ MIDDLEWARE = [
 # URL & WSGI
 ROOT_URLCONF = 'project.urls'
 WSGI_APPLICATION = 'project.wsgi.application'
+# settings.py
+LOGIN_URL = '/accounts/login/'  # Default
+LOGIN_REDIRECT_URL = '/'  # Default
+
+
 
 # Templates
 TEMPLATES = [

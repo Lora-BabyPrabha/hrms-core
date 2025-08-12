@@ -3527,36 +3527,44 @@ def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
  
-#---------------------------------from django.shortcuts import render, redirect
+from datetime import timedelta
 from django.shortcuts import render, redirect
+from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
-from .models import HelpDeskTicket, HRContact, Employee, Notification
-from .forms import HelpDeskTicketForm
-from django.contrib.auth import get_user_model
-from django.utils.timezone import now
-from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 User = get_user_model()
+
+from app.models import HelpDeskTicket, Employee, HRContact
+from app.forms import HelpDeskTicketForm  # Assuming you have this form
+
 
 @login_required
 def help_desk_page(request):
     user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    company = employee.company
+    user_employee = Employee.objects.get(employee_id=user.employee_id)
+    company = user_employee.company
     current_time = now()
 
+<<<<<<< HEAD
     notifications = Notification.objects.filter(recipient=user, is_read=False).order_by('-created_at')
+=======
+    # Notifications for logged in user (last 5 unread)
+    notifications = user.notification_set.filter(is_read=False).order_by('-created_at')[:5]
+>>>>>>> 69514e6c9428c69774e8ff9270c17624dea2af7d
 
-    # TL and HR QuerySets
-    tl_ids = HRContact.objects.filter(role='TL', employee__company=company).values_list('employee__user_id', flat=True)
-    hr_ids = HRContact.objects.filter(role='HR', employee__company=company).values_list('employee__user_id', flat=True)
-    manager_ids = HRContact.objects.filter(role='MG', employee__company=company).values_list('employee__user_id', flat=True)
+    # Get HRContact entries for this company
+    tl_contacts = HRContact.objects.filter(role='TL', employee__company=company)
+    hr_contacts = HRContact.objects.filter(role='HR', employee__company=company)
+    mg_contacts = HRContact.objects.filter(role='MG', employee__company=company)
 
-    team_leader_qs = User.objects.filter(id__in=tl_ids)
-    hr_qs = User.objects.filter(id__in=hr_ids)
-    manager_qs = User.objects.filter(id__in=manager_ids)
-    # Forms
+    # Get User QuerySets from contacts for form choices
+    team_leader_qs = User.objects.filter(id__in=tl_contacts.values_list('employee__user_id', flat=True))
+    hr_qs = User.objects.filter(id__in=hr_contacts.values_list('employee__user_id', flat=True))
+    manager_qs = User.objects.filter(id__in=mg_contacts.values_list('employee__user_id', flat=True))
+
+    # Prepare forms
     hr_form = HelpDeskTicketForm(prefix='hr', category='HR', company=company)
     it_form = HelpDeskTicketForm(prefix='it', category='IT', company=company)
     asset_form = HelpDeskTicketForm(prefix='as', category='AS', company=company)
@@ -3565,6 +3573,7 @@ def help_desk_page(request):
         form.fields['team_leader'].queryset = team_leader_qs
         form.fields['hr'].queryset = hr_qs
         form.fields['manager'].queryset = manager_qs
+
     def send_ticket_email(ticket, to_user, subject_prefix):
         if to_user and to_user.email:
             send_mail(
@@ -3580,8 +3589,9 @@ def help_desk_page(request):
                 recipient_list=[to_user.email],
                 fail_silently=False
             )
+
+    # Handle POST actions: close, mark seen by TL or HR, or submit ticket forms
     if request.method == 'POST':
-        # Handle ticket close request
         if 'close_ticket_id' in request.POST:
             ticket_id = request.POST.get('close_ticket_id')
             try:
@@ -3592,8 +3602,6 @@ def help_desk_page(request):
                 pass
             return redirect('help_desk')
 
-
-    if request.method == 'POST':
         if 'mark_seen_tl' in request.POST:
             ticket_id = request.POST.get('ticket_id')
             HelpDeskTicket.objects.filter(id=ticket_id, assigned_to=user).update(viewed_by_tl=True)
@@ -3604,6 +3612,7 @@ def help_desk_page(request):
             HelpDeskTicket.objects.filter(id=ticket_id, escalate_to_hr=user).update(viewed_by_hr=True)
             return redirect('help_desk')
 
+        # Ticket submission forms
         submitted_category = None
         if 'hr-submit' in request.POST:
             hr_form = HelpDeskTicketForm(request.POST, prefix='hr', category='HR', company=company)
@@ -3627,15 +3636,17 @@ def help_desk_page(request):
             ticket.category = submitted_category
             ticket.assigned_to = selected_form.cleaned_data['team_leader']
             ticket.escalate_to_hr = selected_form.cleaned_data['hr']
+            ticket.manager = selected_form.cleaned_data['manager']
             ticket.save()
             send_ticket_email(ticket, ticket.assigned_to, f"{submitted_category} Support")
             return redirect('help_desk')
 
-    # Filters (optional - for date/status/category)
+    # Filters from GET (optional)
     category_filter = request.GET.get('category')
     status_filter = request.GET.get('status')
-    date_filter = request.GET.get('date')  # Expecting YYYY-MM-DD format
+    date_filter = request.GET.get('date')  # YYYY-MM-DD format
 
+    # Tickets raised by user
     tickets = HelpDeskTicket.objects.filter(employee=user).order_by('-created_at')
     if category_filter:
         tickets = tickets.filter(category=category_filter)
@@ -3644,32 +3655,48 @@ def help_desk_page(request):
     if date_filter:
         tickets = tickets.filter(created_at__date=date_filter)
 
-    # TL & HR escalated tickets
-    tl_pending_tickets = HelpDeskTicket.objects.filter(
-        assigned_to=user, viewed_by_tl=False
-    ).order_by('-created_at')
+    # Determine roles of current user
+    user_role_qs = HRContact.objects.filter(employee=user_employee)
+    user_roles = set(user_role_qs.values_list('role', flat=True))
 
-    hr_escalated_tickets = HelpDeskTicket.objects.filter(
-        escalate_to_hr=user,
-        viewed_by_tl=False,
-        viewed_by_hr=False,
-        created_at__lte=current_time - timedelta(hours=2)
-    ).order_by('-created_at')
-    manager_escalated_tickets = HelpDeskTicket.objects.filter(
-    manager=user,
-    viewed_by_hr=False,
-    viewed_by_tl=False,
-    created_at__lte=current_time - timedelta(hours=4)
-    ).order_by('-created_at')
+    # Tickets assigned to this user as TL and not yet seen by TL
+    tl_pending_tickets = HelpDeskTicket.objects.none()
+    if 'TL' in user_roles:
+        tl_pending_tickets = HelpDeskTicket.objects.filter(
+            assigned_to=user,
+            viewed_by_tl=False,
+            status='open'
+        ).order_by('-created_at')
 
+    # Tickets escalated to HR if TL not seen in 2+ hours
+    hr_escalated_tickets = HelpDeskTicket.objects.none()
+    if 'HR' in user_roles:
+        hr_escalated_tickets = HelpDeskTicket.objects.filter(
+            escalate_to_hr=user,
+            viewed_by_tl=False,
+            viewed_by_hr=False,
+            status='open',
+            created_at__lte=current_time - timedelta(hours=2)
+        ).order_by('-created_at')
+
+    # Tickets escalated to Manager if HR not seen in 4+ hours
+    manager_escalated_tickets = HelpDeskTicket.objects.none()
+    if 'MG' in user_roles:
+        manager_escalated_tickets = HelpDeskTicket.objects.filter(
+            manager=user,
+            viewed_by_hr=False,
+            viewed_by_tl=False,
+            status='open',
+            created_at__lte=current_time - timedelta(hours=4)
+        ).order_by('-created_at')
 
     return render(request, 'help_desk.html', {
         'hr_form': hr_form,
         'it_form': it_form,
         'asset_form': asset_form,
         'tickets': tickets,
-        'employee': employee,
         'notifications': notifications,
+        'employee': user_employee,
         'tl_pending_tickets': tl_pending_tickets,
         'hr_escalated_tickets': hr_escalated_tickets,
         'manager_escalated_tickets': manager_escalated_tickets,
