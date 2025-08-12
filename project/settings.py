@@ -49,9 +49,7 @@ MIDDLEWARE = [
 # URL & WSGI
 ROOT_URLCONF = 'project.urls'
 WSGI_APPLICATION = 'project.wsgi.application'
-# settings.py
-LOGIN_URL = '/accounts/login/'  # Default
-LOGIN_REDIRECT_URL = '/'  # Default
+
 
 
 
@@ -194,7 +192,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440 # 2.5 MB
 
 # settings.py
-SESSION_COOKIE_AGE = 120  # 2 minutes (in seconds)
+SESSION_COOKIE_AGE = 300  # 5 minutes (in seconds)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 

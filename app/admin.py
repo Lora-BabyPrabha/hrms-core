@@ -13,6 +13,7 @@ admin.site.register(Team)
 admin.site.register(LoginLog)
 admin.site.register(LoggedInUser)
 admin.site.register(HRContact)
+admin.site.register(FAQ)
 
 
 admin.site.register(Salary)
