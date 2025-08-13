@@ -180,6 +180,7 @@ urlpatterns = [
     path('employee_self_service/', views.employee_self_service, name='employee_self_service'),
     path('benefits_compensation', views.benefits_compensation, name='benefits_compensation'),
     path('career_development', views.career_development, name='career_development'),
+    path('career_development/edit/<slug:slug>/', views.edit_resource, name='edit_resource'),
     path('help_desk', views.help_desk_page, name='help_desk'),
     path('career_development', views.career_development, name='career_development'),
     path('delete_resource/<slug:slug>/', views.delete_resource, name='delete_resource'),
