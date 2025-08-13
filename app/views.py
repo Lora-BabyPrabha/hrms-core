@@ -500,7 +500,7 @@ def base(request):
             'pending_leave_request': LeaveRequest.objects.filter(status='pending', company=company),
             'pending_expense': ExpenseClaim.objects.filter(status='pending', company=company),
             'pending_loan': LoanRequest.objects.filter(status='pending', company=company),
-            'pending_resignations': ResignationRequest.objects.filter(status='pending', employee__company=company).order_by('-submitted_at'),
+            'pending_resignations': ResignationRequest.objects.filter(status__iexact='pending', employee__company=company)
 
 
         })
@@ -2325,13 +2325,15 @@ def user_create(request):
     user = request.user
     employee = Employee.objects.get(employee_id=user.employee_id)
     company = employee.company
+ 
     if request.method == 'POST':
         form = FrontendUserForm(request.POST)
         if form.is_valid():
-            form.save(company=company)
+            new_user = form.save(commit=False)
+            new_user.company = company  # Assign company
+            new_user.save()
             messages.success(request, "User created successfully!")
             return redirect('user_list')
-
     else:
         form = FrontendUserForm()
  
@@ -2357,18 +2359,13 @@ def user_edit(request, pk):
     user_to_edit = get_object_or_404(CustomUser, pk=pk, company=company)
  
     if request.method == 'POST':
-        form = UserEditForm(request.POST, instance=user_to_edit)
+        form = UserCreationForm(request.POST, instance=user_to_edit)
         if form.is_valid():
-            # Handle password separately only if provided
-            password = form.cleaned_data.get('password')
-            if password:
-                user_to_edit.set_password(password)
             form.save()
             messages.success(request, "User updated successfully!")
             return redirect('user_list')
     else:
-        form = UserEditForm(instance=user_to_edit)
-
+        form = UserCreationForm(instance=user_to_edit)
  
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
@@ -2727,16 +2724,18 @@ def performance_page(request):
  
  
 #------------------------------------------------------------- Working days #
-
-# views.py
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import F, DurationField, ExpressionWrapper
-from django.db.models.functions import TruncDate, ExtractMonth, ExtractYear
-from datetime import timedelta
 from django.utils import timezone
+from datetime import datetime, timedelta, date
 import calendar
+from .models import CustomUser, Employee, Muster, TimeEntry  # adjust if your models are elsewhere
+from django.db.models.functions import ExtractMonth, ExtractYear
+from django.db.models import Q
+from datetime import datetime, timedelta, date
+from django.db.models import F, ExpressionWrapper, DurationField
 
+  # Mon–Fri only
 @login_required
 def working_days(request):
     selected_month = request.GET.get('month')
@@ -2750,7 +2749,8 @@ def working_days(request):
         year = now.year
         month = now.month
 
-    # Filter users only from logged-in user's company
+
+    # 🔐 Filter users by logged-in user's company
     current_company = request.user.company
     users = CustomUser.objects.filter(company=current_company)
 
@@ -2760,68 +2760,55 @@ def working_days(request):
     employee_data = []
 
     for user in users:
-        name = user.name
+        name = f"{user.first_name} {user.last_name}"
         emp_id = user.employee_id
 
-        # 1️⃣ Regular attendance days (>= 9 hours)
-        regular_days = set(
-            TimeEntry.objects.filter(
-                user=user,
-                clock_in_time__year=year,
-                clock_in_time__month=month,
-                clock_in_time__isnull=False,
-                clock_out_time__isnull=False
-            ).annotate(
-                duration=ExpressionWrapper(
-                    F('clock_out_time') - F('clock_in_time'),
-                    output_field=DurationField()
-                )
-            ).filter(
-                duration__gte=timedelta(hours=9)
-            ).annotate(date_only=TruncDate('clock_in_time'))
-            .values_list('date_only', flat=True)
-        )
+        # Regular days
+        regular_count = TimeEntry.objects.filter(
+            user=user,
+            clock_in_time__month=month,
+            clock_in_time__year=year
+        ).filter(
+            clock_in_time__isnull=False,
+            clock_out_time__isnull=False
+        ).annotate(
+            duration=ExpressionWrapper(
+                F('clock_out_time') - F('clock_in_time'),
+                output_field=DurationField()
+            )
+        ).filter(
+            duration__gte=timedelta(hours=9)
+        ).count()
 
-        # 2️⃣ Approved muster (attendance corrections, non-leave)
-        approved_working_musters = set(
-            Muster.objects.filter(
-                user=user,
-                status="Approved",
-                date__year=year,
-                date__month=month
-            ).values_list('date', flat=True)
-        )
+        # Approved muster
+        approved_muster_count = Muster.objects.filter(
+            user=user,
+            status="approved",
+            date__month=month,
+            date__year=year
+        ).count()
 
-        # 3️⃣ Leaves from LeaveRequest model
-        leave_days = set()
-        approved_leaves = LeaveRequest.objects.filter(
-            employee=user,
-            status__iexact="approved",
-            start_date__year=year,
-            start_date__month=month
-        )
-        for leave in approved_leaves:
-            day = leave.start_date
-            while day <= leave.end_date:
-                if day.weekday() < 5:  # Monday=0 ... Friday=4
-                    leave_days.add(day)
-                day += timedelta(days=1)
+        # Leaves (optional logic)
+        leaves_taken = Muster.objects.filter(
+            user=user,
+            status="approved",
+            date__month=month,
+            date__year=year,
+            reason__in=['On-site', 'Work From Home', 'Forgot Login/out', 'Forgot Logout', 'Network Issue']
+        ).count()
 
-        # 4️⃣ Present days = union of regular + muster non-leave
-        present_days = regular_days.union(approved_working_musters)
-
-        # 5️⃣ Total working days = present_days - leave_days
-        total_days = len(present_days) - len(leave_days)
+        total_present_days = regular_count + approved_muster_count
+        total_working_days = regular_count+ approved_muster_count-leaves_taken
 
         employee_data.append({
             'employee_id': emp_id,
             'name': name,
-            'working_days': len(present_days),
-            'leaves': len(leave_days),
-            'total_days': total_days,
+            'working_days': total_present_days,
+            'leaves': leaves_taken,
+            'total_days': total_working_days,
         })
 
-    # Month dropdown values
+    # Month filter dropdown
     month_years = Muster.objects.annotate(
         year=ExtractYear('date'),
         month=ExtractMonth('date')
@@ -3781,7 +3768,6 @@ def employee_self_service(request):
         elif 'professional_submit' in request.POST:
             professional_form = ProfessionalInfoForm(request.POST, instance=employee)
             personal_form = PersonalInfoForm(instance=employee)
-    
  
             if professional_form.is_valid():
                 if professional_form.has_changed():
@@ -4246,12 +4232,13 @@ def career_development(request):
  
     if request.method == 'POST' and can_edit:
         if 'add_resource' in request.POST:
-            resource_form = CareerResourceForm(request.POST)
+            resource_form = CareerResourceForm(request.POST, request.FILES)
             if resource_form.is_valid():
                 resource = resource_form.save(commit=False)
                 resource.company = request.user.company
                 resource.save()
                 return redirect('career_development')
+
  
         elif 'add_category' in request.POST:
             category_form = SkillCategoryForm(request.POST)
@@ -4294,5 +4281,24 @@ def delete_resource(request, slug):
 def resource_detail(request, slug):
     resource = get_object_or_404(CareerResource, slug=slug)
     return render(request, 'resource_detail.html', {'resource': resource})
- 
- 
+
+
+@login_required
+def edit_resource(request, slug):
+    if request.user.role not in ['HR', 'Manager']:
+        return redirect('career_development')
+
+    resource = get_object_or_404(CareerResource, slug=slug)
+
+    if request.method == 'POST':
+        form = CareerResourceForm(request.POST, request.FILES, instance=resource)
+        if form.is_valid():
+            form.save()
+            return redirect('career_development')
+    else:
+        form = CareerResourceForm(instance=resource)
+
+    return render(request, 'edit_resource.html', {
+        'form': form,
+        'resource': resource
+    })
