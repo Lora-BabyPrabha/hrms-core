@@ -531,6 +531,15 @@ from datetime import datetime
 from django.contrib import messages
 from .models import Employee, TimeEntry, LeaveRequest, Notification
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.utils import timezone
+from django.utils.timezone import localdate
+from datetime import datetime
+
+from .models import Employee, Notification, TimeEntry, LeaveRequest, Task  # ✅ make sure Task is imported
+
 @login_required(login_url='/')
 def dashboard(request):
     user = request.user
@@ -588,7 +597,15 @@ def dashboard(request):
             ).count(),
         })
 
+    # ✅ Add tasks for logged-in user (fix: use assigned_to instead of assignee)
+    context['tasks'] = Task.objects.filter(
+        assigned_to=user,
+        completed=False
+    ).order_by('due_date')
+
     return render(request, 'dashboard.html', context)
+
+
 
 
 # ---------------------- Clear Tips ----------------------

@@ -118,36 +118,53 @@
                 {% endfor %}
               </div>
             {% else %}
+              <div class="d-flex justify-content-center align-items-center mb-3"
+                  style="width:80px; height:80px; background:#f5f5f5; border-radius:50%;">
+                <i class="bi bi-calendar-x text-muted" style="font-size:2rem;"></i>
+              </div>
               <p class="txt text-center text-muted small mb-0">No birthdays today.</p>
+
             {% endif %}
           </div>
         </div>
       </div>
   
 
-
       <div class="col">
         <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-4">
-            <!-- <h5 class="card-title text-center fw-bold mb-3">
-              <i class="bi bi-award me-1"></i>Best Wishes from AIHR4U
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-4 text-center">
+
+            <!-- Card Title -->
+            <h5 class="card-title fw-bold mb-3">
+              <i class="bi bi-list-check text-primary me-1"></i> Responsibilities
             </h5>
-            <small class="txt text-muted text-center d-block">Everything Explore with AIHR4U.</small> -->
-            <img src="https://i.ibb.co/4DyV3Jp/Congratulations-removebg-preview.png" 
-            alt="Congratulations" 
-            class="img-fluid rounded"
-            style="max-width: 52%; height: auto;">
-            <!-- <div class="wave-text-container">
-              <small class="wave-text"  >Best Employee for the Month!</small>
-            </div> -->
-            <div class="hover-textt-container">
-              <span class="hover-textt">Best Employee for the Month!</span>
+
+            <!-- If tasks exist -->
+            {% if tasks %}
+            <div class="d-flex justify-content-center align-items-center mb-3"
+                style="width:80px; height:80px; background:#f5f5f5; border-radius:50%;">
+              <i class="bi bi-lightning-charge text-primary" style="font-size:2rem;"></i>
+
             </div>
-            <div class=" text-center" id="best-employee-namee" style="margin-top:-20px;" ></div>
+              <p class="txt text-center text-muted small mb-0">
+                You have {{ tasks|length }} active task{{ tasks|pluralize }}.
+
+              </p>
+
+
+            <!-- If no tasks -->
+            {% else %}
+              <div class="d-flex justify-content-center align-items-center mb-3"
+                  style="width:80px; height:80px; background:#f5f5f5; border-radius:50%;">
+                <i class="bi bi-emoji-smile text-primary" style="font-size:2rem;"></i>
+              </div>
+              <p class="txt text-center text-muted small mb-0">No tasks in sight, you’re all caught up ✅</p>
+            {% endif %}
 
           </div>
         </div>
       </div>
+
       <style>
 
 .guide-tip {
