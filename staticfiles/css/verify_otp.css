@@ -10,7 +10,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg,rgb(147, 196, 58) 0%,rgb(234, 235, 234) 100%);
+        background: linear-gradient(135deg,rgb(83, 158, 244) 0%,rgb(234, 235, 234) 100%);
         padding: 20px;
     }
 
@@ -37,7 +37,7 @@
         display: block;
         width: 50px;
         height: 3px;
-        background: rgb(75, 156, 21);
+        background: rgb(83, 158, 244) 0%;
         margin: 0.5rem auto;
         border-radius: 2px;
     }
@@ -99,7 +99,7 @@
     }
 
     .btn:hover {
-        background:rgb(75, 156, 21);
+        background:rgb(83, 158, 244) 0%;
         transform: translateY(-2px);
     }
 
