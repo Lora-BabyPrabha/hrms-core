@@ -109,12 +109,12 @@ html, body {
 }
 
 .action-buttons button[value="Accepted"] {
-    background-color: #28a745;
+    background-color: #007bff;
     color: white;
 }
 
 .action-buttons button[value="Accepted"]:hover {
-    background-color: #218838;
+    background-color: #1d4ed8;
 }
 
 .action-buttons button[value="Rejected"] {

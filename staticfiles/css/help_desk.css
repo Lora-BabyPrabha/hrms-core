@@ -25,11 +25,11 @@ h2, h4 {
 }
 
 .card-header.bg-success {
-    background-color: #198754 !important;
+    background-color: #0d6efd !important;
 }
 
 .card-header.bg-warning {
-    background-color: #ffc107 !important;
+    background-color: #0d6efd !important;
     color: #212529 !important;
 }
 
@@ -131,7 +131,6 @@ button[name="mark_seen_hr"] {
 /* Truncate description nicely */
 td .description {
     display: -webkit-box;
-    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;

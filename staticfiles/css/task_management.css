@@ -167,7 +167,7 @@ body {
     }
     
     .calendar-header button:hover {
-    background: #95c930;
+    background: #1d4ed8;
     }
     
     .calendar-header button:focus {
@@ -197,7 +197,7 @@ body {
     }
     
     #calendar .past-date {
-    background: #28a745;
+    background: #1d4ed8;
     color: white;
     }
     
@@ -223,12 +223,12 @@ body {
     }
     
     #calendar .completed-day {
-    background-color: #28a745 !important;
+    background-color: #1d4ed8 !important;
     color: white;
     }
     
     #calendar .completed-day:hover {
-    background-color: #19692c !important;
+    background-color: #1d4ed8 !important;
     }
     
     #currentMonthYear {
@@ -302,7 +302,7 @@ body {
     
     .task-completed-message {
     display: none;
-    color: green;
+    color: #007bff;
     font-weight:bold;
     }
     
@@ -318,7 +318,7 @@ body {
     left: 50%;
     transform: translate(-50%);
     padding: 15px 30px;
-    background-color: #28a745;
+    background-color: #007bff;
     color: white;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -336,7 +336,7 @@ body {
     margin-top: 15px;
     padding: 10px 20px;
     background-color: white;
-    color: #28a745;
+    color: #007bff;
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -348,7 +348,7 @@ body {
     
     .alert-box button:focus {
     outline: none;
-    box-shadow: 0 0 3px 2px #28a745;
+    box-shadow: 0 0 3px 2px #007bff;
     }
     
     .alert-box.show {
@@ -428,7 +428,7 @@ body {
     }
 
     .submit-btn {
-        background-color: #4CAF50;
+        background-color: #007bff;
         color: white;
         padding: 8px 16px;
         border: none;
@@ -446,7 +446,7 @@ body {
       }
   
       .submit-btn:hover {
-        background-color: #45a049;
+        background-color: #007bff;
         transform: translateY(-2px);
         box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
       }
