@@ -112,7 +112,7 @@
     .download-btn {
         display:inline-block;
         padding: 10px 20px;
-        background-color: #28a745;
+        background-color: #007bff;
         color: white;
         text-decoration: none;
         border-radius: 5px;
@@ -122,7 +122,7 @@
     }
      
     .download-btn:hover {
-        background-color: #218838;
+        background-color: #1d4ed8;
     }
      
      
@@ -253,7 +253,7 @@ table.payslip-details-table th, table.payslip-details-table td {
 .download-btn {
     display: inline-block;
     padding: 10px 20px;
-    background-color: #28a745;
+    background-color: #007bff;
     color: white;
     text-decoration: none;
     border-radius: 5px;
@@ -265,7 +265,7 @@ table.payslip-details-table th, table.payslip-details-table td {
 }
 
 .download-btn:hover {
-    background-color: #218838;
+    background-color: #1d4ed8;
 }
 
 p {
@@ -336,7 +336,7 @@ form button[type="submit"] {
 }
 
 form button[type="submit"]:hover {
-    background-color: #218838;
+    background-color: #1d4ed8;
 }
 
 form button[type="submit"]:focus {

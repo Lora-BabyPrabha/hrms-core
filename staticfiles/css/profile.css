@@ -193,7 +193,7 @@
     }
 
     .submit-btn {
-        background: #25eb38a8;
+        background: #007bff;
         color: white;
         border: none;
         padding: 0.75rem 1.5rem;
@@ -203,7 +203,7 @@
     }
 
     .submit-btn:hover {
-        background: var(--secondary-color);
+        background: #1d4ed8;
     }
 
    
@@ -320,8 +320,8 @@
 ;
     }
     .bbt:hover {
-        background-color:#95c930;
-        border-color:#95c930;
+        background-color:#1d4ed8;
+        border-color:#1d4ed8;
         
     }
     .cover-photo {

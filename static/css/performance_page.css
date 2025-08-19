@@ -12,7 +12,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background:rgb(114, 208, 20);
+    background: #007bff;
     color: white;
     padding: 15px;
     border-top-left-radius: 8px;
@@ -52,7 +52,7 @@
 }
 
 .task-completed-message {
-    background: #28a745;
+    background: #007bff;
     color: white;
     padding: 5px;
     margin-top: 5px;
@@ -76,7 +76,7 @@
 }
 
 .submit-btn {
-    background:rgb(62, 199, 20);
+    background:#007bff;
     color: white;
     border: none;
     padding: 6px 12px;
@@ -87,7 +87,7 @@
 }
 
 .submit-btn:hover {
-    background:rgb(95, 187, 9);
+    background:#1d4ed8;
 }
 
 /* Responsive Adjustments */
@@ -155,7 +155,7 @@
 }
 
 #myTaskInterface.interface .calendar-header button {
-    background-color:rgb(55, 199, 19);
+    background-color:#007bff;
     color: #fff;
     border: none;
     padding: 8px 16px;
@@ -165,7 +165,7 @@
 }
 
 #myTaskInterface.interface .calendar-header button:hover {
-    background-color:rgb(69, 190, 39);
+    background-color:#1d4ed8;
 }
 
 #myTaskInterface.interface #currentMonthYear {
@@ -252,7 +252,7 @@
     position: fixed;
     top: 20px;
     right: 20px;
-    background-color: #28a745;
+    background-color: #007bff;
     color: #fff;
     padding: 10px 20px;
     border-radius: 4px;

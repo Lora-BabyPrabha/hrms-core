@@ -207,7 +207,7 @@
             }
 
             .no-notification {
-                background-color: #28a745;
+                background-color: #1d4ed8;
                 color: white;
                 padding: 10px;
                 text-align: center;
@@ -477,7 +477,7 @@
             }
 
             .user-message {
-                background: linear-gradient(135deg,rgb(70, 235, 37),rgb(82, 209, 44));
+                background: linear-gradient(135deg,rgb(28, 154, 216),rgb(50, 156, 222));
                 color: white;
                 align-self: flex-end;
                 border-bottom-right-radius: 5px;
@@ -519,7 +519,7 @@
             }
 
             .send-button {
-                background: linear-gradient(135deg,rgb(99, 209, 35),rgb(94, 202, 32));
+                background: linear-gradient(135deg,rgb(35, 157, 209),rgb(35, 149, 198));
                 color: white;
                 border: none;
                 border-radius: 50%;
