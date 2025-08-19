@@ -22,7 +22,7 @@ A full-featured HRMS (Human Resource Management System) built using Django and D
 ## Tech Stack
 - **Backend**: Django, Django REST Framework
 - **Database**: PostgreSQL      
-- **Task Queue**: Celery with Redis             |
+- **Task Queue**: Celery with Redis             
 - **Real-time Features**: WebSocket / socket.io          
 - **Performance & Security**: Rate Limiting and Caching
 
@@ -146,3 +146,106 @@ Write function-based or class-based views to process data and render templates.
 Map views to URLs in both app-level and project-level urls.py.
 5. Connect Everything
 Integrate models, views, forms, URLs, and templates to make features functional.
+
+
+
+# HR4U - Human Resource Management System (v2.0) 
+HR4U (AIHR4U LORAHRMS) is a full-featured Human Resource Management System (HRMS) built with Django and Django REST Framework (DRF).
+
+- The Version 1 supported single-company use.
+- With Version 2, HR4U now introduces Multi-Company (Multi-Tenant) Support, enhanced HR service modules, and improved security and compliance features — making it scalable for organizations of all sizes.
+
+## New in Version 2.0
+🏢 Multi-Company (Tenant-Aware) Authentication
+HR4U v2.0 introduces a multi-company login system, allowing multiple organizations to use the platform securely under a single deployment.
+
+## Login Flow
+
+**Company Selection**
+- Users must enter their company name (e.g., LoRa, Tech Solutions). The system matches company names in a case-sensitive manner. Auto-suggestions are available (typing L suggests LoRa, T suggests Tech Solutions).
+**Company Verification**
+- If the company name does not exist, access is denied with Error: Company not found
+**Employee Authentication (Per Company)**
+- Once the company is verified, the system prompts for Employee ID and Password.
+**Validation rules:**
+- If an invalid Employee ID is entered → Error: User not found
+- If an incorrect password is entered → Error: Incorrect Password
+- If a valid Employee ID & Password are entered but belong to another company → Error: You are unauthorized to access this company
+**Successful Login**
+- If the company, employee ID, and password are all correct, the user is granted role-based access (Admin / HR / Manager / Employee) within their company’s HRMS environment.
+
+## Additional Security & Session Management Features 
+- Auto Logout on Inactivity: Users are automatically logged out after 5 minutes of inactivity to enhance security and prevent unauthorized access on unattended devices.
+
+- Single Device & Browser Login Restriction: Users cannot log in simultaneously on multiple sessions from the same device or browser, reducing risks of session sharing and unauthorized concurrent access.
+
+- Login History & Activity Tracking: A dedicated Login History page tracks and displays employee login activity including:
+  - Employee Name & ID
+  - IP Address
+  - Device Information
+  - Login Timestamps: This enables auditing of login events and monitoring for unusual activity.
+  - Session Timeout Implementation: Utilizes session expiry settings and middleware logic to monitor user activity time, automatically invalidating sessions after the idle timeout period.
+
+## Security Upgrades
+
+**Sensitive Data Encryption with Cryptography**
+- HR4U v2.0 uses the Python cryptography library to encrypt sensitive employee fields such as:
+
+1. UAN Number
+2. PAN Number
+3. Aadhaar Number
+4. Bank Account Number
+
+**Implementation**
+- These fields are encrypted at rest in the database using field-level encryption via the django-cryptography package. Encryption keys are securely managed via environment variables. The encryption mechanism uses strong symmetric encryption algorithms (AES-256) ensuring confidentiality even if the database is compromised.
+
+**Installation**
+- Install the cryptography package with pip before running the project: pip install cryptography
+
+## Profile & Cover Picture Enhancements (v2.0)
+- Resolved issues related to profile picture uploads and display to ensure consistent user experience.
+- Introduced the EmployeeMedia model to manage profile and cover images efficiently.
+- New users receive default profile and cover pictures set to the AIHR4U logos, which can be updated by users anytime.
+- Improved media handling and storage ensuring reliable image upload, retrieval, and display across the platform.
+
+## New Pages Added
+
+**Extended HR4U Modules:**
+- Resignation Request: Employees can submit resignations; only one active request is allowed. New submission permitted only if the previous one is rejected.
+- Employee Self Service: Employees can view/update their Personal Info, Professional Details, and Banking/Financial Details securely.
+- HR Services: HRs and Managers can manage HR contact details, accessible only with proper role permissions.
+- Career Development: Provides a Career Hub for employees with skill categories, resources, and training materials; HR/Managers can add/edit resources.
+- Help Desk: Multi-department ticket system for HR, IT, and Asset issues with escalation to Team Leaders, HR, and Managers, plus full ticket tracking.
+
+**Task Management Module:**
+- Assign Tasks: HR and Managers can assign tasks to individual employees (via email/ID) or entire teams. Includes task details like start date, due date, and description.
+- My Tasks: Employees can view their assigned tasks with status tracking and calendar views for deadlines and scheduling.
+- Task Filtering: Supports filtering tasks by employee ID and month for easier task management oversight.
+- Team Management: Provides interfaces to manage teams for bulk task assignment.
+- Detailed Task Tracking: View task status (Pending/Completed), assignment dates, and assignees via a clear tabular dashboard.
+- Interactive UI: Modals and alerts included for smooth task detail viewing and confirmations.
+
+**Training:** Manage and access training content; HR/Managers can add/edit/delete topics.
+
+**FAQ:** Browse and manage frequently asked questions; admins can add or update FAQs.
+
+**Contact Us:** Employee form to send messages directly to HR with subject and message fields.
+
+**Sidebar:** Updated navigation with quick links to Training, FAQ, and Contact Us pages for easy access.
+
+
+## Development Workflow
+
+**Design Models:** Define database models for multi-company support, employee media, training, tasks, help desk tickets, and encrypted fields.
+
+**Build Forms:** Create Django forms (ModelForms) to handle user input such as resignation requests, task assignments, self-service updates, and contact messages.
+
+**Develop Views:** Implement function-based or class-based views to manage business logic including multi-company login, task management, HR services, and session control.
+
+**Configure URLs:** Map all views to appropriate URLs in both app-level and project-level urls.py to organize routing cleanly.
+
+**Create Templates:** Develop responsive and interactive HTML templates for dashboards, login, training, FAQ, task lists, and help desk ticketing.
+
+**Integrate Security Features:** Add session timeout, single device login restriction, login history tracking, and field-level encryption using django-cryptography.
+
+**Implement Sidebar & Navigation:** Update sidebar with links to new modules and pages such as Training, FAQ, Contact Us, and Task Management for easy navigation.
