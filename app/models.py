@@ -37,7 +37,8 @@ ROLE_TYPE = (
 #------------------------------------------------------------- Custom User #
 class CustomUser(AbstractUser):
     username = None
-    name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
     role = models.CharField(choices=ROLE_TYPE, max_length=100, error_messages={'required': "Role must be provided"})
     employee_id = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254, unique=True)
@@ -53,7 +54,7 @@ class CustomUser(AbstractUser):
         return f"{self.employee_id} - {self.name}"  # ✅ Shows ID and Name in dropdowns
 
     def save(self, *args, **kwargs):
-        if self.name == 'unknown' or not self.name:
+        if self.first_name == 'unknown' or not self.first_name:
             full_name = f"{self.first_name} {self.last_name}".strip()
             self.name = full_name if full_name else self.email.split('@')[0]
         super().save(*args, **kwargs)
@@ -95,7 +96,8 @@ class Employee(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
     employee_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
-    name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
     designation = models.CharField(max_length=50)
     department = models.CharField(max_length=50)
     uan_number = EncryptedCharField(max_length=20, unique=True, verbose_name="UAN Number")

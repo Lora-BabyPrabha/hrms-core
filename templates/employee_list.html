@@ -114,6 +114,13 @@
 {% endblock %}
 
 {% block content %}
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
 <title>Employee Management System</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
@@ -144,10 +151,10 @@
         <div class="employee-card">
             <div class="employee-info">
                 <div class="employee-avatar">
-                    {{ employee.name|slice:":1" }}
+                    {{ employee.first_name|slice:":1" }}
                 </div>
                 <div class="employee-details">
-                    <h3>{{ employee.name }} ({{ employee.employee_id }})</h3>
+                    <h3>{{ employee.first_name }} {{employee.last_name}} ({{ employee.employee_id }})</h3>
                     <span class="employee-designation">{{ employee.designation }} </span>
                 </div>
             </div>

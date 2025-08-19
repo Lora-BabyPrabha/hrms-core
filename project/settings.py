@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = ['aihr4u.com', 'www.aihr4u.com', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = [
     "https://aihr4u.com",
@@ -80,7 +80,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = False
+DEBUG = True
 '''CSRF_TRUSTED_ORIGINS = [
     "https://aihr4u.com",
     "https://www.aihr4u.com",
@@ -150,7 +150,6 @@ TEMPLATES = [
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }'''
-
 
 # Database
 DATABASES = {
