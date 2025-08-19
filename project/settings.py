@@ -80,6 +80,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')
+DEBUG = False
 '''CSRF_TRUSTED_ORIGINS = [
     "https://aihr4u.com",
     "https://www.aihr4u.com",
@@ -214,8 +215,8 @@ AUTH_USER_MODEL = 'app.CustomUser'
 LOGOUT_REDIRECT_URL = '/'
 
 # Default PK
-'''DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-DATABASES = {
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+'''DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hrms_db', 
@@ -258,8 +259,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'loracareerportal@gmail.com'          # Replace with your Gmail
-EMAIL_HOST_PASSWORD = 'wuufznyviiopsacl'     
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='loraemployee@gmail.com')         # Replace with your Gmail
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')    
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Auth
