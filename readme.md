@@ -170,16 +170,16 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
 **Validation rules:**
 - If an invalid Employee ID is entered → Error: User not found
 - If an incorrect password is entered → Error: Incorrect Password
-- If a valid Employee ID & Password are entered but belong to another company → Error: You are unauthorized to access this company
-**Successful Login**
+- If a valid Employee ID & Password are entered but belong to another company → Error: You are unauthorized to access this company.
+**Successful Login:**
 - If the company, employee ID, and password are all correct, the user is granted role-based access (Admin / HR / Manager / Employee) within their company’s HRMS environment.
 
 ## Additional Security & Session Management Features 
-- Auto Logout on Inactivity: Users are automatically logged out after 5 minutes of inactivity to enhance security and prevent unauthorized access on unattended devices.
+- **Auto Logout on Inactivity:** Users are automatically logged out after 5 minutes of inactivity to enhance security and prevent unauthorized access on unattended devices.
 
-- Single Device & Browser Login Restriction: Users cannot log in simultaneously on multiple sessions from the same device or browser, reducing risks of session sharing and unauthorized concurrent access.
+- **Single Device & Browser Login Restriction:** Users cannot log in simultaneously on multiple sessions from the same device or browser, reducing risks of session sharing and unauthorized concurrent access.
 
-- Login History & Activity Tracking: A dedicated Login History page tracks and displays employee login activity including:
+- **Login History & Activity Tracking:** A dedicated Login History page tracks and displays employee login activity including:
   - Employee Name & ID
   - IP Address
   - Device Information
@@ -202,7 +202,7 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
 **Installation**
 - Install the cryptography package with pip before running the project: pip install cryptography
 
-## Profile & Cover Picture Enhancements (v2.0)
+## Profile & Cover Picture Enhancements
 - Resolved issues related to profile picture uploads and display to ensure consistent user experience.
 - Introduced the EmployeeMedia model to manage profile and cover images efficiently.
 - New users receive default profile and cover pictures set to the AIHR4U logos, which can be updated by users anytime.
