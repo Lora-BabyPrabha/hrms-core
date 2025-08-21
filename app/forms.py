@@ -496,7 +496,7 @@ class HRContactForm(forms.ModelForm):
                 label='Employee',
                 required=True
             )
-            self.fields['employee'].label_from_instance = lambda obj: f"{obj.employee_id} - {obj.name}"
+            self.fields['employee'].label_from_instance = lambda obj: f"{obj.employee_id} - {obj.first_name} {obj.last_name}"
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -679,3 +679,11 @@ class ContactHRForm(forms.Form):
             company=user.company
         )
         self.fields['hr'].widget.attrs.update({'class': 'form-select'})
+# forms.py
+from django import forms
+from .models import Company_check
+
+class CompanyLogoForm(forms.ModelForm):
+    class Meta:
+        model = Company_check
+        fields = ['logo']

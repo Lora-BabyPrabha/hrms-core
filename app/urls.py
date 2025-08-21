@@ -204,4 +204,7 @@ urlpatterns = [
     path('training/<int:pk>/delete/', views.delete_training, name='delete_training'),
     
     path('clear-tips/', views.clear_tips, name='clear_tips'),
+    path('manage_logo/', views.manage_logo, name='manage_logo'),
+   
+    path('delete-logo/', views.delete_logo, name='delete_logo'),
 ]

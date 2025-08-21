@@ -1230,24 +1230,24 @@ def generate_payslip_pdf(request, employee_id):
     user = request.user
     employee = get_object_or_404(Employee, employee_id=user.employee_id)
     company = employee.company  # restrict to logged-in user's company
- 
+
     from_month = request.GET.get('from_month')
     to_month = request.GET.get('to_month')
- 
+
     if not from_month and not to_month:
         latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
- 
+
     if from_month:
         from_month = f"{from_month}-01"
- 
+
     if to_month:
         to_month_date = datetime.strptime(f"{to_month}-01", '%Y-%m-%d')
         last_day = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
         to_month = f"{to_month}-{last_day}"
- 
+
     if from_month and to_month:
         payslips = Salary.objects.filter(
             employee=employee,
@@ -1260,22 +1260,23 @@ def generate_payslip_pdf(request, employee_id):
             employee=employee,
             employee__company=company
         ).order_by('-month')[:1]
- 
-    logo_url = request.build_absolute_uri(static('salary_logo_40.png'))
- 
+
+    # ✅ Use the company logo dynamically if available, else fallback
+    logo_url = request.build_absolute_uri(company.logo.url) if company.logo else request.build_absolute_uri(static('salary_logo_40.png'))
+
     html_string = render_to_string('all_payslips.html', {
         'employee': employee,
         'payslips': payslips,
-        'logo_url': logo_url
+        'logo_url': logo_url,   # watermark
+        'company': company,     # in case you want more details
     })
- 
+
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
- 
+
     return response
- 
- 
+
  
 #------------------------------------------------------------- Tax Deduction #
  
@@ -4347,3 +4348,31 @@ def edit_resource(request, slug):
         'form': form,
         'resource': resource
     })
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Company_check
+from .forms import CompanyLogoForm
+
+@login_required
+def manage_logo(request):
+    company = request.user.company  # ✅ Get logged-in user’s company
+    if not company:
+        return render(request, "no_company.html")  # If user not assigned to any company
+
+    if request.method == "POST":
+        form = CompanyLogoForm(request.POST, request.FILES, instance=company)
+        if form.is_valid():
+            form.save()
+            return redirect("manage_logo")  # Refresh after saving
+    else:
+        form = CompanyLogoForm(instance=company)
+
+    return render(request, "manage_logo.html", {"form": form, "company": company})
+# views.py
+@login_required
+def delete_logo(request):
+    company = request.user.company
+    if company and company.logo:
+        company.logo.delete(save=True)  # Delete from storage and DB
+    return redirect("manage_logo")

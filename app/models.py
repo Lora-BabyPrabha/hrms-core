@@ -16,7 +16,7 @@ from django.utils.text import slugify
 class Company_check(models.Model):
     company_name = models.CharField(max_length=500, null=True, blank=True)
     slug = models.SlugField(unique=True, null=True, blank=True)
-
+    logo = models.ImageField(upload_to="company_logos/", null=True, blank=True)  # ✅ Logo
     def save(self, *args, **kwargs):
         if not self.slug and self.company_name:
             self.slug = slugify(self.company_name)
@@ -51,7 +51,10 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['email']
 
     def __str__(self):
-        return f"{self.employee_id} - {self.name}"  # ✅ Shows ID and Name in dropdowns
+                # Show employee ID, name, and company
+        company_name = self.company.company_name if self.company else "No Company"
+        full_name = f"{self.first_name} {self.last_name}".strip()
+        return f"{self.employee_id} - {full_name} ({company_name})"# ✅ Shows ID and Name in dropdowns
 
     def save(self, *args, **kwargs):
         if self.first_name == 'unknown' or not self.first_name:
@@ -124,7 +127,7 @@ class Employee(models.Model):
         super(Employee, self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return self.first_name or self.user.employee_id
 
 
 #------------------------------------------------------------- Salary #
