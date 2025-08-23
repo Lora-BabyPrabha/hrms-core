@@ -1,10 +1,9 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-
 {% block page_title %}
 <li class="breadcrumb-item text-center mb-3">
     <a href="/dashboard" class="text-decoration-none">
-        <small>Login History</small>
+        <small>unlock requests</small>
     </a>
 </li>
 {% endblock %}
@@ -111,52 +110,51 @@
     </a>
 </li>
 {% endblock %}
+
 {% block content %}
 <div class="container mt-5">
-    <h4 class="mb-4">Employee Login Activity</h4>
-
-    <!-- Filter/Search Bar -->
-    <form method="get" class="mb-4 row g-2">
-        <div class="col-auto">
-            <input type="text" name="employee_id" value="{{ employee_id_filter }}" class="form-control" placeholder="Search by Employee ID">
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Filter</button>
-            <a href="{% url 'hr_login_logs' %}" class="btn btn-secondary">Reset</a>
-        </div>
-    </form>
-
-
-    <!-- Login Log Table -->
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped table-hover align-middle">
-            <thead class="table-dark sticky-top">
-                <tr>
-                    <th>#</th>
-                    <th>Employee Name</th>
-                    <th>Employee ID</th>
-                    <th>IP Address</th>
-                    <th>Device Info</th>
-                    <th>Login Time</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in login_logs %}
-                <tr class="{% if log.login_time.date == today.date %}table-success{% endif %}">
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ log.user.name }}</td>
-                    <td>{{ log.user.employee.employee_id }}</td>
-                    <td>{{ log.ip_address }}</td>
-                    <td class="text-break" style="max-width: 300px;">{{ log.device_info }}</td>
-                    <td>{{ log.login_time|date:"Y-m-d H:i:s" }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center text-muted">No login logs found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <h3>Unlock Requests</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-light">
+            <tr>
+                <th>User</th>
+                <th>Reason</th>
+                <th>Requested At</th>
+                <th>Status</th>
+                <th>Resolved By</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td>{{ req.user.first_name }} {{ req.user.last_name }} - {{ req.user.employee_id }}</td>
+                <td>{{ req.reason|default:"No reason provided" }}</td>   <!-- ✅ Added Reason here -->
+                <td>{{ req.requested_at }}</td>
+                <td>
+                    {% if req.is_resolved %}
+                        ✅ Resolved
+                    {% else %}
+                        ⏳ Pending
+                    {% endif %}
+                </td>
+                <td>{{ req.resolved_by.first_name }} {{ req.resolved_by.last_name }} - {{ req.resolved_by.employee_id|default:"-" }}</td>
+                <td>
+                    {% if not req.is_resolved %}
+                        <a href="{% url 'unlock_user' req.id %}" class="btn btn-success btn-sm">
+                            Unlock
+                        </a>
+                    {% else %}
+                        <span class="text-muted">No Action</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">No unlock requests found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}
