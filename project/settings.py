@@ -4,11 +4,11 @@ from decouple import config
 import dj_database_url
 
 # Base Directory
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(_file_).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = ['aihr4u.com', 'www.aihr4u.com', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = [
     "https://aihr4u.com",
@@ -76,7 +76,7 @@ TEMPLATES = [
 
 
 # Base Directory
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(_file_).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')
@@ -144,16 +144,15 @@ TEMPLATES = [
     },
 ]
 
-DATABASES = {
+'''DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
-}
-
+}'''
 
 # Database
-'''DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hrms_db', 
@@ -166,8 +165,7 @@ DATABASES = {
             'charset': 'utf8mb4',
         },
     }
-}'''
-
+}
 # Password Validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -216,7 +214,7 @@ LOGOUT_REDIRECT_URL = '/'
 
 # Default PK
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-'''DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hrms_db', 
@@ -229,8 +227,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
             'charset': 'utf8mb4',
         },
     }
-}'''
-
+}
 # Password Validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -273,4 +270,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 from decouple import config
 
 ENCRYPTION_KEY = config('ENCRYPTION_KEY')
-
