@@ -10,7 +10,7 @@
             background: url('{{ logo_url }}') no-repeat center center;
             background-size: 40%;
         }
-
+        
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -60,6 +60,7 @@
         .payslip-footer small {
             font-size: 11px;
         }
+        
 
         @media print {
             .no-print {
@@ -80,10 +81,13 @@
     <div class="payslip-container">
         {% for payslip in payslips %}
         <div class="payslip-section">
-            <!-- Header with logo -->
             <div class="payslip-header">
-                <img src="{% static 'images/lora-log.png' %}" alt="LORA IT Innovations Logo" class="payslip-logo">
-                <div class="company-name">AIHR4U</div>
+                {% if payslip.employee.company.logo %}
+                    <img src="{{ payslip.employee.company.logo.url }}" alt="{{ payslip.employee.company.name }} Logo" class="payslip-logo">
+                {% endif %}
+                <div class="company-name">
+                    {{ payslip.employee.company.company_name }}
+                </div>
             </div>
 
             <h3>{{ payslip.month|date:"F Y" }} - Payslip</h3>

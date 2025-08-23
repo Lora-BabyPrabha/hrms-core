@@ -52,8 +52,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="mx-auto loan-container">
 
+<div class="mx-auto loan-container">
+    <div class="mt-4 alert alert-info text-center" role="alert" style="font-size: 0.95rem; line-height:1.5;">
+    <strong>Note:</strong> Please be aware that submitting a loan request through this portal does not constitute approval. 
+    All loan applications will undergo further review and processing by the respective bank or financial institution. 
+    Approval, terms, and disbursement will be subject to the bank's policies and procedures.
+</div>
     <div class="row mx-auto container-fluid">
 
         <div class="col form-control mt-2 pb-2" style="background-color:#f1f1f1; ; shadow-lg">
@@ -101,7 +106,7 @@
                 </div>
 
                 <div class="mt-3 text-center">
-                    <button type="submit" class='btn btn-dark my-1'>Submit  Loan Request</button>
+                    <button type="submit" style= "background-color: #007bff";>Submit  Loan Request</button>
                 </div>
 
             </form>

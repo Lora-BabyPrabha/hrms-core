@@ -1322,24 +1322,24 @@ def generate_payslip_pdf(request, employee_id):
     user = request.user
     employee = get_object_or_404(Employee, employee_id=user.employee_id)
     company = employee.company  # restrict to logged-in user's company
- 
+
     from_month = request.GET.get('from_month')
     to_month = request.GET.get('to_month')
- 
+
     if not from_month and not to_month:
         latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
- 
+
     if from_month:
         from_month = f"{from_month}-01"
- 
+
     if to_month:
         to_month_date = datetime.strptime(f"{to_month}-01", '%Y-%m-%d')
         last_day = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
         to_month = f"{to_month}-{last_day}"
- 
+
     if from_month and to_month:
         payslips = Salary.objects.filter(
             employee=employee,
@@ -1352,22 +1352,23 @@ def generate_payslip_pdf(request, employee_id):
             employee=employee,
             employee__company=company
         ).order_by('-month')[:1]
- 
-    logo_url = request.build_absolute_uri(static('salary_logo_40.png'))
- 
+
+    # ✅ Use the company logo dynamically if available, else fallback
+    logo_url = request.build_absolute_uri(company.logo.url) if company.logo else request.build_absolute_uri(static('salary_logo_40.png'))
+
     html_string = render_to_string('all_payslips.html', {
         'employee': employee,
         'payslips': payslips,
-        'logo_url': logo_url
+        'logo_url': logo_url,   # watermark
+        'company': company,     # in case you want more details
     })
- 
+
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
- 
+
     return response
- 
- 
+
  
 #------------------------------------------------------------- Tax Deduction #
  
@@ -2463,28 +2464,36 @@ def user_create(request):
 def user_edit(request, pk):
     current_employee = Employee.objects.get(employee_id=request.user.employee_id)
     company = current_employee.company
- 
+
     # Secure access
     user_to_edit = get_object_or_404(CustomUser, pk=pk, company=company)
- 
+
     if request.method == 'POST':
-        form = UserCreationForm(request.POST, instance=user_to_edit)
+        form = UserEditForm(request.POST, instance=user_to_edit)
         if form.is_valid():
-            form.save()
+            user = form.save(commit=False)
+
+            # If password provided, set it properly
+            password = form.cleaned_data.get('password')
+            if password:
+                user.set_password(password)
+
+            user.save()
             messages.success(request, "User updated successfully!")
             return redirect('user_list')
     else:
-        form = UserCreationForm(instance=user_to_edit)
- 
+        form = UserEditForm(instance=user_to_edit)
+
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')
- 
+
     return render(request, 'user_form.html', {
         'form': form,
         'employee': current_employee,
         'notifications': notifications,
     })
+
  
  
 @login_required(login_url='/')
@@ -4211,6 +4220,18 @@ from app.models import Employee
 import base64
 from django.core.files.base import ContentFile
 
+from django.utils import timezone
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from .models import ResignationRequest, Notification
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from .models import ResignationRequest, Notification
+
 
 @login_required
 def resignation_request_view(request):
@@ -4218,6 +4239,12 @@ def resignation_request_view(request):
     user_requests = ResignationRequest.objects.filter(employee=user).order_by('-submitted_at')
 
     if request.method == 'POST':
+        # ✅ Check the last resignation request status
+        last_request = user_requests.first()
+        if last_request and last_request.status in ['pending', 'accepted']:
+            messages.error(request, "You cannot submit a new resignation request until your previous one is rejected.")
+            return redirect('resignation_request')
+
         resignation_date = request.POST.get('resignation_date')
         last_working_day = request.POST.get('last_working_day')
         resignation_reason = request.POST.get('resignation_reason')
@@ -4235,23 +4262,26 @@ def resignation_request_view(request):
             messages.error(request, "Please fill all required fields before submitting.")
             return redirect('resignation_request')
 
-        resignation = ResignationRequest(employee=user)
-        resignation.resignation_date = resignation_date
-        resignation.last_working_day = last_working_day
-        resignation.resignation_reason = resignation_reason
-        resignation.other_reason = other_reason
-        resignation.notes = notes
-        resignation.signature_data = signature_data
-        resignation.agreement = agreement
-        resignation.status = 'pending'
-        resignation.submitted_at = timezone.now()
+        # ✅ Create new resignation request
+        resignation = ResignationRequest(
+            employee=user,
+            resignation_date=resignation_date,
+            last_working_day=last_working_day,
+            resignation_reason=resignation_reason,
+            other_reason=other_reason,
+            notes=notes,
+            signature_data=signature_data,
+            agreement=agreement,
+            status='pending',
+            submitted_at=timezone.now()
+        )
 
         if letter_file:
             resignation.resignation_letter = letter_file
 
         resignation.save()
 
-        # Create notification for employee (confirmation)
+        # ✅ Notify employee
         Notification.objects.create(
             recipient=user,
             message=(
@@ -4260,7 +4290,7 @@ def resignation_request_view(request):
             )
         )
 
-        # Optional: Notify HR and Manager as well
+        # ✅ Notify HR and Managers
         from django.contrib.auth import get_user_model
         User = get_user_model()
         hr_managers = User.objects.filter(role__in=['HR', 'Manager'], is_active=True, company=user.company)
@@ -4277,7 +4307,6 @@ def resignation_request_view(request):
         return redirect('resignation_request')
 
     return render(request, 'resignation.html', {'requests': user_requests})
-
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -4411,3 +4440,31 @@ def edit_resource(request, slug):
         'form': form,
         'resource': resource
     })
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Company_check
+from .forms import CompanyLogoForm
+
+@login_required
+def manage_logo(request):
+    company = request.user.company  # ✅ Get logged-in user’s company
+    if not company:
+        return render(request, "no_company.html")  # If user not assigned to any company
+
+    if request.method == "POST":
+        form = CompanyLogoForm(request.POST, request.FILES, instance=company)
+        if form.is_valid():
+            form.save()
+            return redirect("manage_logo")  # Refresh after saving
+    else:
+        form = CompanyLogoForm(instance=company)
+
+    return render(request, "manage_logo.html", {"form": form, "company": company})
+# views.py
+@login_required
+def delete_logo(request):
+    company = request.user.company
+    if company and company.logo:
+        company.logo.delete(save=True)  # Delete from storage and DB
+    return redirect("manage_logo")

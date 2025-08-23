@@ -16,7 +16,7 @@ from django.utils.text import slugify
 class Company_check(models.Model):
     company_name = models.CharField(max_length=500, null=True, blank=True)
     slug = models.SlugField(unique=True, null=True, blank=True)
-
+    logo = models.ImageField(upload_to="company_logos/", null=True, blank=True)  # ✅ Logo
     def save(self, *args, **kwargs):
         if not self.slug and self.company_name:
             self.slug = slugify(self.company_name)
@@ -40,7 +40,8 @@ from datetime import timedelta
 
 class CustomUser(AbstractUser):
     username = None
-    name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
     role = models.CharField(choices=ROLE_TYPE, max_length=100, error_messages={'required': "Role must be provided"})
     employee_id = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254, unique=True)
@@ -59,10 +60,17 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['email']
 
     def __str__(self):
+<<<<<<< HEAD
         return f"{self.employee_id} - {self.name}"
+=======
+                # Show employee ID, name, and company
+        company_name = self.company.company_name if self.company else "No Company"
+        full_name = f"{self.first_name} {self.last_name}".strip()
+        return f"{self.employee_id} - {full_name} ({company_name})"# ✅ Shows ID and Name in dropdowns
+>>>>>>> ae3a3b4813d13e78fe8cbe87762846fff4fb454d
 
     def save(self, *args, **kwargs):
-        if self.name == 'unknown' or not self.name:
+        if self.first_name == 'unknown' or not self.first_name:
             full_name = f"{self.first_name} {self.last_name}".strip()
             self.name = full_name if full_name else self.email.split('@')[0]
         super().save(*args, **kwargs)
@@ -144,7 +152,8 @@ class Employee(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
     employee_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
-    name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
     designation = models.CharField(max_length=50)
     department = models.CharField(max_length=50)
     uan_number = EncryptedCharField(max_length=20, unique=True, verbose_name="UAN Number")
@@ -171,7 +180,7 @@ class Employee(models.Model):
         super(Employee, self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return self.first_name or self.user.employee_id
 
 
 #------------------------------------------------------------- Salary #

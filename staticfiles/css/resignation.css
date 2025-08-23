@@ -169,5 +169,9 @@ body {
     transition: background-color 0.3s ease;
 }
 .btn-submit:hover {
+<<<<<<< HEAD
+    background-color: #024aff;
+=======
     background-color: #1c4695;
+>>>>>>> 02aeb382f86b5afb398e2fdc8f0c40ac0b4df93d
 }

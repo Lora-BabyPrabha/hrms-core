@@ -86,7 +86,7 @@
         margin-top:-90px;
     }
     .btn-primary:hover {
-        background-color:rgb(51, 168, 27);
+        background-color:#1d4ed8;
     }
     @media(max-width:480px){
         .btn-primary{
