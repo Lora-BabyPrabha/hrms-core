@@ -133,7 +133,7 @@ A full-featured HRMS (Human Resource Management System) built using Django and D
 - acceptable_use_policy.html, refund_cancellation_policy.html, cookie_policy.html, terms_of_service.html, policy.html, data_retention_policy.html
 6. **User & Auth:**
 - reset_password.html, reset_password_with_otp.html, forgot_password.html, verify_otp.html, user_form.html, user_list.html, user_confirm_delete.html
-7. **User & Auth:**
+7. **User Features**
 - faq.html, contact_us.html, chat_bot.html, profile.html, loan_requests.html, tax_deduction.html, task_list.html, task_management.html, staff_notifications.html, training.html, all_payslips.html, view_salary.html, expense_claims.html  
 ## Implementation
 1. Define Models

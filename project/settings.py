@@ -4,7 +4,7 @@ from decouple import config
 import dj_database_url
 
 # Base Directory
-BASE_DIR = Path(_file_).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')
@@ -76,7 +76,7 @@ TEMPLATES = [
 
 
 # Base Directory
-BASE_DIR = Path(_file_).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY')

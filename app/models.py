@@ -60,14 +60,10 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['email']
 
     def __str__(self):
-<<<<<<< HEAD
-        return f"{self.employee_id} - {self.name}"
-=======
                 # Show employee ID, name, and company
         company_name = self.company.company_name if self.company else "No Company"
         full_name = f"{self.first_name} {self.last_name}".strip()
         return f"{self.employee_id} - {full_name} ({company_name})"# ✅ Shows ID and Name in dropdowns
->>>>>>> ae3a3b4813d13e78fe8cbe87762846fff4fb454d
 
     def save(self, *args, **kwargs):
         if self.first_name == 'unknown' or not self.first_name:
