@@ -672,29 +672,36 @@ form button[type="submit"]:focus {
             {% for payslip in payslips %}
                 <div class="payslip-section {% if forloop.counter > 1 %}page-break{% endif %} mt-2">
     
-                    <!-- Background Watermark Image -->
-                    <div class="background-image">
-                        <img src="{{ logo_url }}" alt="Company Symbol">
-                    </div>
+                        <!-- Background Watermark Image -->
+                        <div class="background-image">
+                            {% if request.user.company.logo %}
+                                <img src="{{ request.user.company.logo.url }}" alt="Company Symbol">
+                            {% else %}
+                                <img src="{% static 'images/default-logo.png' %}" alt="Default Logo">
+                            {% endif %}
+                        </div>
 
-                    <div class="row">
+                        <!-- Company logo on the left -->
+                        <div class="col-3">
+                            {% if request.user.company.logo %}
+                                <img src="{{ request.user.company.logo.url }}" alt="AIHR4U Logo" width="150">
+                            {% else %}
+                                <img src="{% static 'images/default-logo.png' %}" alt="Default Logo" width="150">
+                            {% endif %}
+                        </div>
 
-                        <div class="header">
-
-                            <!-- Company logo on the left -->
-                            <div class="col-3">
-                                <img src="{% static 'images/lora-log.png' %}" alt="AIHR4U Logo" width="150">
-
-                            </div>
 
                             <!-- Company name on the right -->
+                            <!-- Company name on the right -->
                             <div class="">
-                                <h1 class="lora-head text-center">AIHR4U</h1>
+                                <h1 class="lora-head text-center">
+                                    {% if request.user.company %}
+                                        {{ request.user.company.company_name }}
+                                    {% else %}
+                                        Company Name
+                                    {% endif %}
+                                </h1>
                             </div>
-
-                        </div>
-                    
-                    </div>
 
                     <h5 class="payslip-month-title py-2">Payslip for the Month {{ payslip.month|date:"F Y" }}</h5>
     

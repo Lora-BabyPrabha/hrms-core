@@ -2,13 +2,17 @@ import calendar
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.decorators import login_required
 from app.models import *
 from app.forms import *
 from django.utils import timezone
+from django.contrib.sessions.models import Session
 from django.core.mail import send_mail
 import random
+from django.dispatch import receiver
+from django.contrib.auth.signals import user_logged_out
 from django.conf import settings
 from app.decorators import *
 from datetime import datetime, timedelta, date
@@ -58,49 +62,12 @@ CustomUser = get_user_model()
  
 #------------------------------------------------------------- Index #
  
- 
-def indexview(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
- 
-    error_message = None
- 
-    if request.method == "POST":
-        company_name = request.POST.get('company_name', '').strip()
- 
-        if company_name:
-            try:
-                # Case-sensitive match
-                company = Company_check.objects.get(company_name__exact=company_name)
-                return redirect(f'/login/?company_id={company.id}')
-            except Company_check.DoesNotExist:
-                error_message = (
-                    "Company name not found. Please check capitalization. "
-                    "Example: 'Tech' is different from 'tech'."
-                )
-        else:
-            error_message = "Please enter a company name."
- 
-    return render(request, 'index.html', {
-        'message': error_message
-    })
-#------------------------------------------------------------- company_filter #
-def company_autocomplete(request):
-    term = request.GET.get('term', '')
-    companies = Company_check.objects.filter(company_name__icontains=term).values_list('company_name', flat=True)
-    return JsonResponse(list(companies), safe=False)
-
-
-import hashlib
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, get_user_model
-from django.contrib.sessions.models import Session
-from django.utils import timezone
-from .models import LoggedInUser, LoginLog
-
 User = get_user_model()
 
 
+# ==============================
+#   HELPERS
+# ==============================
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
@@ -114,9 +81,57 @@ def hash_ip(ip):
     return hashlib.sha256(ip.encode()).hexdigest()
 
 
-def loginview(request):
+def is_hr_or_manager(user):
+    return hasattr(user, "role") and user.role in ["HR", "Manager"]
+
+
+# ==============================
+#   INDEX VIEW
+# ==============================
+def indexview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
+
+    error_message = None
+
+    if request.method == "POST":
+        company_name = request.POST.get('company_name', '').strip()
+
+        if company_name:
+            try:
+                # Case-sensitive match
+                company = Company_check.objects.get(company_name__exact=company_name)
+                return redirect(f'/login/?company_id={company.id}')
+            except Company_check.DoesNotExist:
+                error_message = (
+                    "Company name not found. Please check capitalization. "
+                    "Example: 'Tech' is different from 'tech'."
+                )
+        else:
+            error_message = "Please enter a company name."
+
+    return render(request, 'index.html', {
+        'message': error_message
+    })
+
+
+# ==============================
+#   COMPANY AUTOCOMPLETE
+# ==============================
+def company_autocomplete(request):
+    term = request.GET.get('term', '')
+    companies = Company_check.objects.filter(
+        company_name__icontains=term
+    ).values_list('company_name', flat=True)
+    return JsonResponse(list(companies), safe=False)
+
+from django.contrib.sessions.models import Session
+
+# ==============================
+#   LOGIN VIEW
+def loginview(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")   # direct to common dashboard
 
     company_id = request.GET.get('company_id') or request.POST.get('company_id')
 
@@ -132,15 +147,22 @@ def loginview(request):
                 'company_id': company_id
             })
 
+        # Company restriction
         if str(user_obj.company_id) != str(company_id):
             return render(request, 'login.html', {
                 'message': 'You are not authorized for this company',
                 'company_id': company_id
             })
 
+        # ✅ Account lock check
+        if hasattr(user_obj, "check_lock_status") and user_obj.check_lock_status():
+            return render(request, "send_unlock_request.html", {"user": user_obj, "company_id": company_id})
+
+        # Authenticate
         user = authenticate(request, employee_id=employee_id, password=password)
 
         if user is not None:
+            # Single device restriction
             existing_login = LoggedInUser.objects.filter(user=user).first()
             if existing_login and Session.objects.filter(session_key=existing_login.session_key).exists():
                 return render(request, 'login.html', {
@@ -150,16 +172,22 @@ def loginview(request):
             elif existing_login:
                 existing_login.delete()
 
+            # Reset failed attempts
+            if hasattr(user_obj, "failed_attempts"):
+                user_obj.failed_attempts = 0
+                user_obj.save()
+
             login(request, user)
 
             if not request.session.session_key:
                 request.session.save()
 
-            LoggedInUser.objects.update_or_create(user=user, defaults={
-                'session_key': request.session.session_key
-            })
+            LoggedInUser.objects.update_or_create(
+                user=user,
+                defaults={'session_key': request.session.session_key}
+            )
 
-            # IP & Device logging — only if not logged today from same IP
+            # Log IP/device (only once per day)
             ip = get_client_ip(request)
             ip_hash_val = hash_ip(ip)
             today = timezone.now().date()
@@ -171,12 +199,22 @@ def loginview(request):
             ).exists()
 
             if not already_logged_today:
-                log = LoginLog(user=user)
-                log.ip_address = ip  # encrypted & sets hash
-                log.device_info = get_device_info(request)
-                log.save()
+                LoginLog.objects.create(
+                    user=user,
+                    ip_address=ip,
+                    device_info=get_device_info(request)
+                )
 
+            # ✅ same dashboard for all roles
             return redirect("dashboard")
+
+        # Wrong password handling
+        if hasattr(user_obj, "failed_attempts"):
+            user_obj.failed_attempts += 1
+            if user_obj.failed_attempts >= 5 and hasattr(user_obj, "lock_account"):
+                user_obj.lock_account()
+                return render(request, "send_unlock_request.html", {"user": user_obj, "company_id": company_id})
+            user_obj.save()
 
         return render(request, 'login.html', {
             'message': 'Incorrect password',
@@ -185,18 +223,72 @@ def loginview(request):
 
     return render(request, "login.html", {'company_id': company_id})
 
-#clear_sessions
 
-from django.contrib.auth.signals import user_logged_out
-from django.dispatch import receiver
-from .models import LoggedInUser
+# ==============================
+#   LOGOUT
+# ==============================
+def logoutview(request):
+    logout(request)
+    return redirect('login')
 
+
+# ==============================
+#   HR/Manager: Unlock Requests
+# ==============================
+@login_required
+@user_passes_test(is_hr_or_manager)
+def unlock_requests_view(request):
+    requests = UnlockRequest.objects.all().order_by("-requested_at")
+    return render(request, "unlock_requests.html", {"requests": requests})
+
+
+@login_required
+@user_passes_test(is_hr_or_manager)
+def unlock_user(request, request_id):
+    unlock_request = get_object_or_404(UnlockRequest, id=request_id)
+
+    user_obj = unlock_request.user
+    user_obj.is_locked = False
+    user_obj.failed_attempts = 0
+    user_obj.save()
+
+    unlock_request.is_resolved = True
+    unlock_request.resolved_by = request.user
+    unlock_request.save()
+
+    # ✅ Send email to user
+    subject = "Your AIHR4U Account Has Been Unlocked"
+    message = f"Hello {user_obj.name},\n\nYour account has been unlocked by HR/Manager. You can now log in to your account.\n\nRegards,\nAIHR4U Team"
+    recipient_list = [user_obj.email]  # make sure your User model has email field
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
+
+    messages.success(request, f"{user_obj.name} has been unlocked and notified via email.")
+    return redirect("unlock_requests")
+
+
+
+# ==============================
+#   Employee: Send Unlock Request
+# ==============================
+def send_unlock_request(request, user_id):
+    reason = request.POST.get("reason", "").strip()
+    user = get_object_or_404(User, id=user_id)
+    if not UnlockRequest.objects.filter(user=user, is_resolved=False).exists():
+        UnlockRequest.objects.create(user=user, requested_at=timezone.now(), reason=reason)
+    messages.info(request, "Unlock request sent successfully.")
+    return redirect('request_sent')
+
+def request_sent(request):
+    user = request.user
+    return render(request, "request_sent.html", {"user": user})
+
+
+# ==============================
+#   CLEAR SESSIONS on logout
+# ==============================
 @receiver(user_logged_out)
 def clear_logged_in_user(sender, request, user, **kwargs):
     LoggedInUser.objects.filter(user=user).delete()
-
-
- 
  
 #------------------------------------------------------------- Search bar #
  
@@ -1230,24 +1322,24 @@ def generate_payslip_pdf(request, employee_id):
     user = request.user
     employee = get_object_or_404(Employee, employee_id=user.employee_id)
     company = employee.company  # restrict to logged-in user's company
- 
+
     from_month = request.GET.get('from_month')
     to_month = request.GET.get('to_month')
- 
+
     if not from_month and not to_month:
         latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
- 
+
     if from_month:
         from_month = f"{from_month}-01"
- 
+
     if to_month:
         to_month_date = datetime.strptime(f"{to_month}-01", '%Y-%m-%d')
         last_day = calendar.monthrange(to_month_date.year, to_month_date.month)[1]
         to_month = f"{to_month}-{last_day}"
- 
+
     if from_month and to_month:
         payslips = Salary.objects.filter(
             employee=employee,
@@ -1260,22 +1352,23 @@ def generate_payslip_pdf(request, employee_id):
             employee=employee,
             employee__company=company
         ).order_by('-month')[:1]
- 
-    logo_url = request.build_absolute_uri(static('salary_logo_40.png'))
- 
+
+    # ✅ Use the company logo dynamically if available, else fallback
+    logo_url = request.build_absolute_uri(company.logo.url) if company.logo else request.build_absolute_uri(static('salary_logo_40.png'))
+
     html_string = render_to_string('all_payslips.html', {
         'employee': employee,
         'payslips': payslips,
-        'logo_url': logo_url
+        'logo_url': logo_url,   # watermark
+        'company': company,     # in case you want more details
     })
- 
+
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
- 
+
     return response
- 
- 
+
  
 #------------------------------------------------------------- Tax Deduction #
  
@@ -2371,28 +2464,36 @@ def user_create(request):
 def user_edit(request, pk):
     current_employee = Employee.objects.get(employee_id=request.user.employee_id)
     company = current_employee.company
- 
+
     # Secure access
     user_to_edit = get_object_or_404(CustomUser, pk=pk, company=company)
- 
+
     if request.method == 'POST':
-        form = UserCreationForm(request.POST, instance=user_to_edit)
+        form = UserEditForm(request.POST, instance=user_to_edit)
         if form.is_valid():
-            form.save()
+            user = form.save(commit=False)
+
+            # If password provided, set it properly
+            password = form.cleaned_data.get('password')
+            if password:
+                user.set_password(password)
+
+            user.save()
             messages.success(request, "User updated successfully!")
             return redirect('user_list')
     else:
-        form = UserCreationForm(instance=user_to_edit)
- 
+        form = UserEditForm(instance=user_to_edit)
+
     notifications = Notification.objects.filter(
         recipient=request.user, is_read=False
     ).order_by('-created_at')
- 
+
     return render(request, 'user_form.html', {
         'form': form,
         'employee': current_employee,
         'notifications': notifications,
     })
+
  
  
 @login_required(login_url='/')
@@ -4119,6 +4220,18 @@ from app.models import Employee
 import base64
 from django.core.files.base import ContentFile
 
+from django.utils import timezone
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from .models import ResignationRequest, Notification
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from .models import ResignationRequest, Notification
+
 
 @login_required
 def resignation_request_view(request):
@@ -4126,6 +4239,12 @@ def resignation_request_view(request):
     user_requests = ResignationRequest.objects.filter(employee=user).order_by('-submitted_at')
 
     if request.method == 'POST':
+        # ✅ Check the last resignation request status
+        last_request = user_requests.first()
+        if last_request and last_request.status in ['pending', 'accepted']:
+            messages.error(request, "You cannot submit a new resignation request until your previous one is rejected.")
+            return redirect('resignation_request')
+
         resignation_date = request.POST.get('resignation_date')
         last_working_day = request.POST.get('last_working_day')
         resignation_reason = request.POST.get('resignation_reason')
@@ -4143,23 +4262,26 @@ def resignation_request_view(request):
             messages.error(request, "Please fill all required fields before submitting.")
             return redirect('resignation_request')
 
-        resignation = ResignationRequest(employee=user)
-        resignation.resignation_date = resignation_date
-        resignation.last_working_day = last_working_day
-        resignation.resignation_reason = resignation_reason
-        resignation.other_reason = other_reason
-        resignation.notes = notes
-        resignation.signature_data = signature_data
-        resignation.agreement = agreement
-        resignation.status = 'pending'
-        resignation.submitted_at = timezone.now()
+        # ✅ Create new resignation request
+        resignation = ResignationRequest(
+            employee=user,
+            resignation_date=resignation_date,
+            last_working_day=last_working_day,
+            resignation_reason=resignation_reason,
+            other_reason=other_reason,
+            notes=notes,
+            signature_data=signature_data,
+            agreement=agreement,
+            status='pending',
+            submitted_at=timezone.now()
+        )
 
         if letter_file:
             resignation.resignation_letter = letter_file
 
         resignation.save()
 
-        # Create notification for employee (confirmation)
+        # ✅ Notify employee
         Notification.objects.create(
             recipient=user,
             message=(
@@ -4168,7 +4290,7 @@ def resignation_request_view(request):
             )
         )
 
-        # Optional: Notify HR and Manager as well
+        # ✅ Notify HR and Managers
         from django.contrib.auth import get_user_model
         User = get_user_model()
         hr_managers = User.objects.filter(role__in=['HR', 'Manager'], is_active=True, company=user.company)
@@ -4185,7 +4307,6 @@ def resignation_request_view(request):
         return redirect('resignation_request')
 
     return render(request, 'resignation.html', {'requests': user_requests})
-
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -4319,3 +4440,31 @@ def edit_resource(request, slug):
         'form': form,
         'resource': resource
     })
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Company_check
+from .forms import CompanyLogoForm
+
+@login_required
+def manage_logo(request):
+    company = request.user.company  # ✅ Get logged-in user’s company
+    if not company:
+        return render(request, "no_company.html")  # If user not assigned to any company
+
+    if request.method == "POST":
+        form = CompanyLogoForm(request.POST, request.FILES, instance=company)
+        if form.is_valid():
+            form.save()
+            return redirect("manage_logo")  # Refresh after saving
+    else:
+        form = CompanyLogoForm(instance=company)
+
+    return render(request, "manage_logo.html", {"form": form, "company": company})
+# views.py
+@login_required
+def delete_logo(request):
+    company = request.user.company
+    if company and company.logo:
+        company.logo.delete(save=True)  # Delete from storage and DB
+    return redirect("manage_logo")

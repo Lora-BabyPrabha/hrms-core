@@ -106,7 +106,7 @@ class UserCreationForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = ['employee_id', 'name', 'email', 'role', 'company', 'is_active', 'is_staff', 'is_first_login', 'password']
+        fields = ['employee_id', 'first_name','last_name', 'email', 'role', 'company', 'is_active', 'is_staff', 'is_first_login', 'password']
         
     def clean_password(self):
         password = self.cleaned_data.get("password")
@@ -148,10 +148,14 @@ class UserCreationForm(forms.ModelForm):
             user.save()
         return user
 
-class UserEditForm(forms.ModelForm):
+from django import forms
+from django.contrib.auth.forms import UserChangeForm
+from .models import CustomUser
+
+class UserEditForm(UserChangeForm):
     password = forms.CharField(
         widget=forms.PasswordInput,
-        required=False,  # Optional so it won't force change password
+        required=False,
         help_text="Leave blank to keep current password"
     )
 
@@ -159,15 +163,16 @@ class UserEditForm(forms.ModelForm):
         model = CustomUser
         fields = [
             'employee_id',
-            'name',
+            'first_name',
+            'last_name',
             'email',
             'role',
             'is_active',
             'is_staff',
             'is_superuser',
             'is_first_login',
-            'password'
-        ]
+            'password',
+        ]  # deliberately not including 'company'
 
 
 class FrontendUserForm(forms.ModelForm):
@@ -180,7 +185,8 @@ class FrontendUserForm(forms.ModelForm):
         model = CustomUser
         fields = [
             'employee_id',
-            'name',
+            'first_name',
+            'last_name',
             'email',
             'role',
             'is_active',
@@ -418,9 +424,10 @@ class PersonalInfoForm(forms.ModelForm):
 
     class Meta:
         model = Employee
-        fields = ['name', 'date_of_birth', 'gender', 'nationality', 'phone_number', 'address']
+        fields = ['first_name','last_name','date_of_birth', 'gender', 'nationality', 'phone_number', 'address']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'nationality': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.TextInput(attrs={'class': 'form-control'}),
         }
@@ -489,7 +496,7 @@ class HRContactForm(forms.ModelForm):
                 label='Employee',
                 required=True
             )
-            self.fields['employee'].label_from_instance = lambda obj: f"{obj.employee_id} - {obj.name}"
+            self.fields['employee'].label_from_instance = lambda obj: f"{obj.employee_id} - {obj.first_name} {obj.last_name}"
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -578,7 +585,8 @@ class PersonalInfoForm(forms.ModelForm):
     class Meta:
         model = Employee
         fields = [
-            'name',
+            'first_name',
+            'last_name',
             'date_of_birth',
             'gender',
             'nationality',
@@ -671,3 +679,11 @@ class ContactHRForm(forms.Form):
             company=user.company
         )
         self.fields['hr'].widget.attrs.update({'class': 'form-select'})
+# forms.py
+from django import forms
+from .models import Company_check
+
+class CompanyLogoForm(forms.ModelForm):
+    class Meta:
+        model = Company_check
+        fields = ['logo']

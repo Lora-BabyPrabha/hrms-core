@@ -138,8 +138,19 @@
         </div>
 
         <div>
-            <label for="{{ form.name.id_for_label }}">Name:</label>
-            {{ form.name }}
+            <label for="{{ form.name.id_for_label }}">First Name:</label>
+            {{ form.first_name }}
+            {% if form.name.errors %}
+                <div class="error">
+                    {% for error in form.name.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <label for="{{ form.name.id_for_label }}">Last Name:</label>
+            {{ form.last_name }}
             {% if form.name.errors %}
                 <div class="error">
                     {% for error in form.name.errors %}
