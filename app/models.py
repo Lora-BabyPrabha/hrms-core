@@ -35,6 +35,9 @@ ROLE_TYPE = (
 )
 
 #------------------------------------------------------------- Custom User #
+from django.utils import timezone
+from datetime import timedelta
+
 class CustomUser(AbstractUser):
     username = None
     first_name = models.CharField(max_length=100)
@@ -46,7 +49,13 @@ class CustomUser(AbstractUser):
     is_staff = models.BooleanField(default=False)
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
     is_first_login = models.BooleanField(default=True)
-    
+
+    # 🔹 New Fields
+    failed_attempts = models.IntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    unlock_requested = models.BooleanField(default=False)  # ✅ User requests HR unlock
+    is_locked = models.BooleanField(default=False)
+    lock_expires_at = models.DateTimeField(null=True, blank=True)
     USERNAME_FIELD = "employee_id"
     REQUIRED_FIELDS = ['email']
 
@@ -63,6 +72,46 @@ class CustomUser(AbstractUser):
         super().save(*args, **kwargs)
 
     objects = UserManager()
+
+    def lock_account(self):
+        from datetime import timedelta
+        self.is_locked = True
+        self.lock_expires_at = timezone.now() + timedelta(minutes=15)
+        self.save()
+
+    def unlock_account(self):
+        self.is_locked = False
+        self.failed_attempts = 0
+        self.lock_expires_at = None
+        self.save()
+
+    def check_lock_status(self):
+        """Check if lock period expired and auto-unlock"""
+        if self.is_locked and self.lock_expires_at:
+            if timezone.now() >= self.lock_expires_at:
+                # unlock automatically if time expired
+                self.unlock_account()
+                return False  # not locked anymore
+            return True  # still locked
+        return False  # not locked
+class UnlockRequest(models.Model):
+    user = models.ForeignKey("CustomUser", on_delete=models.CASCADE)   # locked employee
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reason = models.TextField(blank=True, null=True)
+    is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey(
+        "CustomUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_unlocks"
+    )
+    hr = models.ForeignKey(   # HR who will unlock
+        "CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hr_unlock_requests"
+    )
+
+    def __str__(self):
+        return f"Unlock request for {self.user.username}"
 
 
 

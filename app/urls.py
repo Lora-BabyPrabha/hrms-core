@@ -14,7 +14,12 @@ urlpatterns = [
     path('chat_bot', views.chat_bot, name='chat_bot'),
     path('training', views.training, name='training'),
     path('login_logs', views.hr_login_logs, name='hr_login_logs'),
-    
+    path('request_sent/', views.request_sent, name='request_sent'),
+    path("unlock_requests/", views.unlock_requests_view, name="unlock_requests"),
+    path("unlock_user/<int:request_id>/", views.unlock_user, name="unlock_user"),
+    path('send-unlock-request/<int:user_id>/', views.send_unlock_request, name='send_unlock_request'),
+
+   
 
     #  Login/Logout url #
     path('login', views.loginview, name='login'),
