@@ -112,7 +112,7 @@
               <div class="birthday-list">
                 {% for employee in employees_with_birthday %}
                   <div class="text-center py-2 ">
-                    <small class="fw-medium d-block ">{{ employee.name.title }}</small>
+                    <small class="fw-medium d-block ">{{ employee.first_name.title }} {{ employee.last_name.title }}</small>
                     <small class="text-mutedd">{{ employee.date_of_birth|date:"M j"}}🎁</small>
                   </div>
                 {% endfor %}

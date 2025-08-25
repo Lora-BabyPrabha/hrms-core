@@ -130,7 +130,7 @@
                 {% for log in login_logs %}
                 <tr class="{% if log.login_time.date == today.date %}table-success{% endif %}">
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ log.user.name }}</td>
+                    <td>{{ log.user.first_name }} {{ log.user.last_name }}</td>
                     <td>{{ log.user.employee.employee_id }}</td>
                     <td>{{ log.ip_address }}</td>
                     <td class="text-break" style="max-width: 300px;">{{ log.device_info }}</td>

@@ -100,7 +100,7 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label for="employeeName" class="form-label">Full Name</label>
-                    <input type="text" class="form-control" id="employeeName" value="{{ request.user.name }}" readonly>
+                    <input type="text" class="form-control" id="employeeName" value="{{ request.user.first_name }} {{ request.user.last_name }}" readonly>
                 </div>
                 <div class="col-md-6">
                     <label for="employeeId" class="form-label">Employee ID</label>
@@ -208,7 +208,7 @@
             <h5 class="preview-title">Resignation Preview</h5>
             <div class="preview-item">
                 <span class="preview-label">Employee:</span>
-                <span id="preview-name">{{ request.user.name }}</span>
+                <span id="preview-name">{{ request.user.first_name }} {{ request.user.last_name }}</span>
             </div>
             <div class="preview-item">
                 <span class="preview-label">Resignation Date:</span>
@@ -261,7 +261,7 @@
     <tbody>
         {% for item in requests %}
         <tr>
-            <td>{{ item.employee.name}}</td>
+            <td>{{ item.employee.first_name}} {{ item.employee.last_name }}</td>
             <td>{{ item.employee.employee_id }}</td>
             <td>{{ item.resignation_date }}</td>
             <td>{{ item.last_working_day }}</td>

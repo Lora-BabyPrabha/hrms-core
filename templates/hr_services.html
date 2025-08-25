@@ -110,7 +110,7 @@
         <tbody>
             {% for contact in contacts %}
             <tr>
-                <td>{{ contact.employee.employee_id }}-{{ contact.name }}</td>
+                <td>{{ contact.employee.employee_id }}-{{ contact.employee.first_name }} {{ contact.employee.last_name }}</td>
                 <td>{{ contact.email }}</td>
                 <td>{{ contact.get_role_display }}</td>
                 <td>

@@ -89,6 +89,7 @@ class Holiday(models.Model):
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='holidays')
     def __str__(self):
         return self.name
+    
 
 
 #------------------------------------------------------------- Employee #
@@ -372,7 +373,7 @@ class EmployeeMedia(models.Model):
     cover_picture = models.ImageField(upload_to='cover_pictures/', null=True, blank=True, default='cover_pictures/default_cover.jpg')
  
     def __str__(self):
-        return f"{self.employee.name} - Media"
+        return f"{self.employee.first_name} - Media"
  
 
 #------------------------------------------------------------- HR4U #
@@ -395,11 +396,11 @@ class HRContact(models.Model):
     role = models.CharField(max_length=2, choices=ROLE_CHOICES)
 
     def __str__(self):
-        return f"{self.employee.name} ({self.get_role_display()})"
+        return f"{self.employee.first_name} {{self.employee.last_name}} ({self.get_role_display()})"
 
     @property
     def name(self):
-        return self.employee.name
+        return self.employee.first_name
 
     @property
     def email(self):
