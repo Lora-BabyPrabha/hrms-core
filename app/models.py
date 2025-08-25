@@ -41,7 +41,7 @@ from datetime import timedelta
 class CustomUser(AbstractUser):
     username = None
     first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True,default="")
     role = models.CharField(choices=ROLE_TYPE, max_length=100, error_messages={'required': "Role must be provided"})
     employee_id = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254, unique=True)
@@ -150,7 +150,7 @@ class Employee(models.Model):
     company = models.ForeignKey(Company_check, on_delete=models.CASCADE, null=True, blank=True, related_name='employees')
     employee_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True, default="")
     designation = models.CharField(max_length=50)
     department = models.CharField(max_length=50)
     uan_number = EncryptedCharField(max_length=20, unique=True, verbose_name="UAN Number")

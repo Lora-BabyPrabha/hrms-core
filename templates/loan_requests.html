@@ -52,6 +52,16 @@
 {% endblock %}
 
 {% block content %}
+    {% if messages %}
+        <div class="mt-2">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
 <div class="mx-auto loan-container">
     <div class="mt-4 alert alert-info text-center" role="alert" style="font-size: 0.95rem; line-height:1.5;">

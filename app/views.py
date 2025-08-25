@@ -2901,7 +2901,7 @@ def working_days(request):
         # Approved muster
         approved_muster_count = Muster.objects.filter(
             user=user,
-            status="approved",
+            status="Approved",
             date__month=month,
             date__year=year
         ).count()
@@ -2909,7 +2909,7 @@ def working_days(request):
         # Leaves (optional logic)
         leaves_taken = Muster.objects.filter(
             user=user,
-            status="approved",
+            status="Approved",
             date__month=month,
             date__year=year,
             reason__in=['On-site', 'Work From Home', 'Forgot Login/out', 'Forgot Logout', 'Network Issue']
@@ -4349,7 +4349,7 @@ def review_resignation_request(request, resignation_id, action):
     else:
         messages.error(request, "Invalid action specified.")
 
-    return redirect('dashboard')  # Redirect to a suitable page after action
+    return redirect('staff_notifications')  # Redirect to a suitable page after action
 
 
 #------------------------------------------------------------- Career development #

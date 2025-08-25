@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='employee',
             name='last_name',
-            field=models.CharField(default='exit', max_length=100),
+            field=models.CharField(default='', max_length=100),
             preserve_default=False,
         ),
     ]
