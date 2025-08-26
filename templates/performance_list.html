@@ -142,7 +142,7 @@
             <tbody>
                 {% for performance in performance_data %}
                 <tr>
-                    <td>{{ performance.employee.name }}</td>
+                    <td>{{ performance.employee.first_name }} {{ performance.employee.last_name }}</td>
                     <td>{{ performance.employee.employee_id }}</td>
                     <td>{{ performance.performance_score }}</td>
                     <td>{{ performance.date }}</td>

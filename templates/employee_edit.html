@@ -103,7 +103,7 @@
 
 {% block content %}
 
-    <h4>Edit Employee - {{ employee.name }}</h4>
+    <h4>Edit Employee - {{ employee.first_name }} {{ employee.last_name }}</h4>
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         {{ emp_form|crispy }}

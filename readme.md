@@ -265,6 +265,12 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
    # (optional for larger sheets or styling)
    pip install XlsxWriter
 
+ **Working Days:** Modified a Working Days module to track employee attendance and leave details.
+- Displays Employee ID, Name, and monthly attendance summary
+- Calculates working days = (regular muster count + approved muster requests)
+- Shows leaves taken in the month and total working days
+- Helps in accurate attendance tracking and payroll processing
+
 **Dashboard Updates:** 
 
 1. The dashboard now displays top-bar statistics, providing HR and Managers with a quick overview of daily workforce activity:

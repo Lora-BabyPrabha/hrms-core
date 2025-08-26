@@ -453,7 +453,7 @@ p {
 
 .chat-header {
     padding: 20px;
-    background: linear-gradient(135deg,rgb(103, 175, 55),rgb(104, 216, 39));
+    background: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
     color: white;
     border-radius: 20px 20px 0 0;
     display: flex;
@@ -525,7 +525,7 @@ p {
 }
 
 .user-message {
-    background: linear-gradient(135deg,rgb(70, 235, 37),rgb(82, 209, 44));
+    background: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
     color: white;
     align-self: flex-end;
     border-bottom-right-radius: 5px;
@@ -567,7 +567,7 @@ p {
 }
 
 .send-button {
-    background: linear-gradient(135deg,rgb(99, 209, 35),rgb(94, 202, 32));
+    background: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
     color: white;
     border: none;
     border-radius: 50%;
