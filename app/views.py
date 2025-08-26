@@ -160,7 +160,6 @@ def loginview(request):
 
         # Authenticate
         user = authenticate(request, employee_id=employee_id, password=password)
-
         if user is not None:
             # Single device restriction
             existing_login = LoggedInUser.objects.filter(user=user).first()
