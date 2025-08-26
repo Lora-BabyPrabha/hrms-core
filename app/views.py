@@ -1073,6 +1073,13 @@ def muster_status(request):
  
 #------------------------------------------------------------- Leave Request #
  
+from datetime import datetime, timedelta
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.contrib.auth.decorators import login_required
+from .models import Leave, LeaveRequest, Employee, Notification
+
+
 @login_required(login_url='/')
 def leave_balance(request):
     user = request.user
@@ -1085,9 +1092,29 @@ def leave_balance(request):
 
     employee = Employee.objects.get(employee_id=user.employee_id)
     notifications = Notification.objects.filter(
-        recipient=request.user, 
+        recipient=request.user,
         is_read=False
     ).order_by('-created_at')
+
+    leave_messages = []
+    show_no_leave_message = False
+
+    if leave:
+        # Check if all three are 0
+        if (
+            leave.advance_privilege_leave == 0 and
+            leave.sick_leave == 0 and
+            leave.casual_leave == 0
+        ):
+            show_no_leave_message = True
+        else:
+            # Otherwise show per-type messages
+            if leave.advance_privilege_leave == 0:
+                leave_messages.append("Your Advance Privilege Leaves are completed.")
+            if leave.sick_leave == 0:
+                leave_messages.append("Your Sick Leaves are completed.")
+            if leave.casual_leave == 0:
+                leave_messages.append("Your Casual Leaves are completed.")
 
     return render(
         request,
@@ -1097,29 +1124,64 @@ def leave_balance(request):
             'leave_request': leave_request,
             'employee': employee,
             'notifications': notifications,
+            'leave_messages': leave_messages,
+            'show_no_leave_message': show_no_leave_message,
             'no_leave_message': "You currently have no leave balance. Please contact your Manager or HR to have it added."
         }
     )
- 
- 
+
+
 @login_required(login_url='/')
 def leave_request(request):
+    user = request.user
+    employee = Employee.objects.get(employee_id=user.employee_id)
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+
+    try:
+        leave = Leave.objects.get(employee=user)
+    except Leave.DoesNotExist:
+        leave = None
+
     if request.method == 'POST':
         leave_type = request.POST['leave_type']
         start_date = request.POST['start_date']
         end_date = request.POST['end_date']
         reason = request.POST['reason']
- 
+
+        # Block if no balance at all
+        if not leave or (
+            leave.advance_privilege_leave == 0 and
+            leave.sick_leave == 0 and
+            leave.casual_leave == 0
+        ):
+            messages.error(request, "You have no leave balance. Cannot submit request.")
+            return redirect('leave_balance')
+
+        # Block if chosen leave type has 0 balance
+        if (leave_type == "advance_privilege" and leave.advance_privilege_leave == 0):
+            messages.error(request, "You have no Advance Privilege Leave balance left. Cannot submit request.")
+            return redirect('leave_balance')
+
+        if (leave_type == "sick" and leave.sick_leave == 0):
+            messages.error(request, "You have no Sick Leave balance left. Cannot submit request.")
+            return redirect('leave_balance')
+
+        if (leave_type == "casual" and leave.casual_leave == 0):
+            messages.error(request, "You have no Casual Leave balance left. Cannot submit request.")
+            return redirect('leave_balance')
+
+        # Calculate weekdays requested
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
- 
+
         weekdays_requested = 0
         current_day = start_date
         while current_day <= end_date:
             if current_day.weekday() < 5:
                 weekdays_requested += 1
             current_day += timedelta(days=1)
- 
+
+        # Save leave request
         leave_request = LeaveRequest(
             employee=request.user,
             leave_type=leave_type,
@@ -1129,17 +1191,16 @@ def leave_request(request):
             days_requested=weekdays_requested,
             status='pending'
         )
+        leave_request.save()
+
         notification_message = f"Your Leave Request of {leave_type} from {start_date} to {end_date} has been submitted successfully."
         Notification.objects.create(recipient=leave_request.employee, message=notification_message)
-        leave_request.save()
- 
+
+        messages.success(request, notification_message)
         return redirect('leave_balance')
-   
-    user = request.user
-    employee = Employee.objects.get(employee_id=user.employee_id)
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
-    return render(request, 'leave_request.html', {"employee": employee , 'notifications': notifications})
- 
+
+    return render(request, 'leave_request.html', {"employee": employee, 'notifications': notifications})
+
  
 #------------------------------------------------------------- Holidays #
  

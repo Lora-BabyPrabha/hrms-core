@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 from decouple import config
 import dj_database_url
-
+ 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+ 
 # Security
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = False
@@ -22,18 +22,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+ 
     # Third-party
     'crispy_forms',
     'crispy_bootstrap4',
     'rest_framework',
-
+ 
     # Local app
     'app',
 ]
-
+ 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
+ 
 # Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -45,14 +45,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
-
+ 
 # URL & WSGI
 ROOT_URLCONF = 'project.urls'
 WSGI_APPLICATION = 'project.wsgi.application'
-
-
-
-
+ 
+ 
+ 
+ 
 # Templates
 TEMPLATES = [
     {
@@ -72,12 +72,12 @@ TEMPLATES = [
         },
     },
 ]
-
-
-
+ 
+ 
+ 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+ 
 # Security
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = False
@@ -85,8 +85,8 @@ DEBUG = False
     "https://aihr4u.com",
     "https://www.aihr4u.com",
 ]'''
-
-
+ 
+ 
 # Installed Applications
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -95,19 +95,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+ 
     # Third-party
     'crispy_forms',
     'crispy_bootstrap4',
     'rest_framework',
     'django_cryptography',
-
+ 
     # Local app
     'app',
 ]
-
+ 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
+ 
 # Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -120,11 +120,11 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'app.middleware.AutoLogoutMiddleware',
 ]
-
+ 
 # URL & WSGI
 ROOT_URLCONF = 'project.urls'
 WSGI_APPLICATION = 'project.wsgi.application'
-
+ 
 # Templates
 TEMPLATES = [
     {
@@ -143,19 +143,18 @@ TEMPLATES = [
         },
     },
 ]
-
+ 
 '''DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }'''
-
 # Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hrms_db', 
+        'NAME': 'hrms_db',
         'USER': 'hrms_user',
         'PASSWORD': 'Hrms@2025',
         'HOST': 'localhost',
@@ -173,32 +172,32 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
-
+ 
 # Localization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
-
+ 
 # Static & Media Files
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
+ 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440 # 2.5 MB
-
+ 
 # settings.py
 SESSION_COOKIE_AGE = 300  # 5 minutes (in seconds)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-
-
+ 
+ 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-
+ 
 # Email Config
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -211,13 +210,13 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # Auth
 AUTH_USER_MODEL = 'app.CustomUser'
 LOGOUT_REDIRECT_URL = '/'
-
+ 
 # Default PK
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hrms_db', 
+        'NAME': 'hrms_db',
         'USER': 'hrms_user',
         'PASSWORD': 'Hrms@2025',
         'HOST': 'localhost',
@@ -235,22 +234,22 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
-
+ 
 # Localization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
-
+ 
 # Static & Media Files
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
+ 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
+ 
 # Email Config
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -260,14 +259,15 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='loraemployee@gmail.com')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
+ 
 # Auth
 AUTH_USER_MODEL = 'app.CustomUser'
 LOGOUT_REDIRECT_URL = '/'
-
+ 
 # Default PK
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+ 
 from decouple import config
-
+ 
 ENCRYPTION_KEY = config('ENCRYPTION_KEY')
+ 

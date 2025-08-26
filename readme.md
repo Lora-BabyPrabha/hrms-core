@@ -153,7 +153,7 @@ Integrate models, views, forms, URLs, and templates to make features functional.
 HR4U (AIHR4U LORAHRMS) is a full-featured Human Resource Management System (HRMS) built with Django and Django REST Framework (DRF).
 
 - The Version 1 supported single-company use.
-- With Version 2, HR4U now introduces Multi-Company (Multi-Tenant) Support, enhanced HR service modules, and improved security and compliance features — making it scalable for organizations of all sizes.
+- With Version 2, HR4U now introduces Multi-Company (Multi-Tenant) Support, enhanced HR Contact modules, and improved security and compliance features — making it scalable for organizations of all sizes.
 
 ## New in Version 2.0
 🏢 Multi-Company (Tenant-Aware) Authentication
@@ -225,7 +225,7 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
  **Extended HR4U Modules:**
 - Resignation Request: Employees can submit resignations; only one active request is allowed. New submission permitted only if the previous one is rejected.
 - Employee Self Service: Employees can view/update their Personal Info, Professional Details, and Banking/Financial Details securely.
-- HR Services: HRs and Managers can manage HR contact details, accessible only with proper role permissions.
+- HR Contacts: HRs and Managers can manage HR contact details, accessible only with proper role permissions.
 - Career Development: Provides a Career Hub for employees with skill categories, resources, and training materials; HR/Managers can add/edit resources.
 - Help Desk: Multi-department ticket system for HR, IT, and Asset issues with escalation to Team Leaders, HR, and Managers, plus full ticket tracking.
 
@@ -289,7 +289,7 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
 
 **Build Forms:** Create Django forms (ModelForms) to handle user input such as resignation requests, task assignments, self-service updates, and contact messages.
 
-**Develop Views:** Implement function-based or class-based views to manage business logic including multi-company login, task management, HR services, and session control.
+**Develop Views:** Implement function-based or class-based views to manage business logic including multi-company login, task management, HR Contacts, and session control.
 
 **Configure URLs:** Map all views to appropriate URLs in both app-level and project-level urls.py to organize routing cleanly.
 
