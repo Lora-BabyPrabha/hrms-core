@@ -3,8 +3,8 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth import authenticate,login,logout
-from django.contrib.auth.decorators import login_required
 from app.models import *
 from app.forms import *
 from django.utils import timezone
@@ -12,6 +12,8 @@ from django.contrib.sessions.models import Session
 from django.core.mail import send_mail
 import random
 from django.dispatch import receiver
+from django.views.decorators.http import require_GET
+import logging
 from django.contrib.auth.signals import user_logged_out
 from django.conf import settings
 from app.decorators import *
@@ -24,50 +26,34 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.template.loader import render_to_string
 from xhtml2pdf import pisa
 from django.templatetags.static import static
-from django.contrib.auth.decorators import login_required
-from .models import Notification
 from django.urls import reverse
-from django.http import HttpResponse
 from weasyprint import HTML
-from .models import Employee, Salary
 from django.utils.timezone import now
-from datetime import timedelta
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import CustomUser, Employee
 #from .serializers import PerformanceSerializer
-from datetime import timedelta
-from django.shortcuts import render
-from django.utils import timezone
-from .models import TimeEntry, Muster, Holiday, LeaveRequest, Leave, CustomUser
 from django.http import Http404
-import calendar
 from django.db.models import F
 import re
-from django.utils.timezone import now
+from django.db import transaction
 from django.contrib.auth.hashers import make_password
-import random
-from django.core.mail import send_mail
-from django.utils import timezone
 import zoneinfo
-from django.http import JsonResponse
-from django.http import JsonResponse
-from .models import Company_check
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
+from django.utils.timezone import localdate  
+
+from .models import Notification, Employee, Salary, Company_check, CustomUser, TimeEntry, Muster, Holiday, LeaveRequest, Leave, Task, Team, ExpenseClaim, LoanRequest, ResignationRequest, FAQ, LoggedInUser, UnlockRequest, EmployeeMedia
+from .models import TrainingTopic, LoginLog, HRContact, CareerResource, SkillCategory
+from .forms import FAQForm, ContactHRForm, EmployeeProfileForm, EmployeeMediaForm, PersonalInfoForm, ProfessionalInfoForm, CareerResourceForm, SkillCategoryForm, TrainingTopicForm, CompanyLogoForm, TeamForm
+from app.models import HelpDeskTicket, Employee, HRContact
+from app.forms import HelpDeskTicketForm 
  
 CustomUser = get_user_model()
- 
- 
-# Create your views here.
  
 #------------------------------------------------------------- Index #
  
 User = get_user_model()
-
-
-# ==============================
 #   HELPERS
-# ==============================
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
@@ -84,10 +70,6 @@ def hash_ip(ip):
 def is_hr_or_manager(user):
     return hasattr(user, "role") and user.role in ["HR", "Manager"]
 
-
-# ==============================
-#   INDEX VIEW
-# ==============================
 def indexview(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -114,10 +96,7 @@ def indexview(request):
         'message': error_message
     })
 
-
-# ==============================
 #   COMPANY AUTOCOMPLETE
-# ==============================
 def company_autocomplete(request):
     term = request.GET.get('term', '')
     companies = Company_check.objects.filter(
@@ -125,9 +104,6 @@ def company_autocomplete(request):
     ).values_list('company_name', flat=True)
     return JsonResponse(list(companies), safe=False)
 
-from django.contrib.sessions.models import Session
-
-# ==============================
 #   LOGIN VIEW
 def loginview(request):
     if request.user.is_authenticated:
@@ -224,17 +200,12 @@ def loginview(request):
     return render(request, "login.html", {'company_id': company_id})
 
 
-# ==============================
 #   LOGOUT
-# ==============================
 def logoutview(request):
     logout(request)
     return redirect('login')
 
-
-# ==============================
 #   HR/Manager: Unlock Requests
-# ==============================
 @login_required
 @user_passes_test(is_hr_or_manager)
 def unlock_requests_view(request):
@@ -265,11 +236,7 @@ def unlock_user(request, request_id):
     messages.success(request, f"{user_obj.first_name} has been unlocked and notified via email.")
     return redirect("unlock_requests")
 
-
-
-# ==============================
 #   Employee: Send Unlock Request
-# ==============================
 def send_unlock_request(request, user_id):
     reason = request.POST.get("reason", "").strip()
     user = get_object_or_404(User, id=user_id)
@@ -282,21 +249,12 @@ def request_sent(request):
     user = request.user
     return render(request, "request_sent.html", {"user": user})
 
-
-# ==============================
 #   CLEAR SESSIONS on logout
-# ==============================
 @receiver(user_logged_out)
 def clear_logged_in_user(sender, request, user, **kwargs):
     LoggedInUser.objects.filter(user=user).delete()
  
 #------------------------------------------------------------- Search bar #
- 
-from django.contrib import messages
-from django.urls import reverse
-from django.shortcuts import redirect
-from django.contrib.auth.decorators import login_required
- 
 @login_required(login_url='/')
 def search_results(request):
     query = request.GET.get('query', '').lower()
@@ -387,7 +345,6 @@ def search_results(request):
         # Others
         'faq': 'faq',
         'contact': 'contact_us',
-        'chat': 'chat_bot',
         'notifications': 'staff_notifications',
  
         # HR4U
@@ -414,10 +371,8 @@ def search_results(request):
     return redirect('dashboard')
  
  
- 
- 
 #------------------------------------------------------------- FAQ #
-# ✅ Utility function to check if user is HR or Manager
+# Utility function to check if user is HR or Manager
 def is_hr_or_manager(user):
     return getattr(user, "role", "").lower() in ["hr", "manager"]
 
@@ -467,6 +422,7 @@ def faq(request):
     })
 
 
+#------------------------------------------------------------- Chat Bot #
  
 @login_required(login_url='/')
 def chat_bot(request):
@@ -474,10 +430,7 @@ def chat_bot(request):
     employee = Employee.objects.get(employee_id=user.employee_id)
     return render(request,'chat_bot.html' , {'employee': employee})
  
- 
-#------------------------------------------------------------- Chat Bot #
-
-#------------------------------------------------------------- Chat Bot #
+#------------------------------------------------------------- CTraining #
  
 @login_required(login_url='/')
 def training(request):
@@ -493,13 +446,6 @@ def training(request):
  
  
 #------------------------------------------------------------- Contact us #
- 
-# views.py
-from django.shortcuts import render, redirect
-from django.core.mail import send_mail
-from django.contrib import messages
-from .forms import ContactHRForm
-
 def contact_us(request):
     if request.method == "POST":
         form = ContactHRForm(request.POST, user=request.user)
@@ -524,14 +470,6 @@ def contact_us(request):
     return render(request, "contact_us.html", {"form": form})
 
 #------------------------------------------------------------- Company records #
- 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
- 
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .models import Company_check
- 
 @login_required(login_url='/')
 def company_check(request):
     if request.method == 'POST':
@@ -555,8 +493,6 @@ def company_detail(request, company_id):
  
 #------------------------------------------------------------- Company records #
  
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
 from .models import (
     Notification, Employee, Muster,
     LeaveRequest, ExpenseClaim, LoanRequest, ResignationRequest
@@ -604,33 +540,6 @@ def base(request):
  
  
 #------------------------------------------------------------- Dashboard #
- 
-from django.contrib import messages
-from django.shortcuts import redirect
-from django.core.exceptions import ObjectDoesNotExist
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.utils import timezone
-from .models import Employee, Notification
-from datetime import datetime
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.utils.timezone import localdate
-from django.utils import timezone
-from datetime import datetime
-from django.contrib import messages
-from .models import Employee, TimeEntry, LeaveRequest, Notification
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.utils import timezone
-from django.utils.timezone import localdate
-from datetime import datetime
-
-from .models import Employee, Notification, TimeEntry, LeaveRequest, Task  # ✅ make sure Task is imported
 
 @login_required(login_url='/')
 def dashboard(request):
@@ -709,13 +618,6 @@ def clear_tips(request):
     return JsonResponse({'status': 'cleared'})
  
 #------------------------------------------------------------- Employee requests - Notifications  #
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.utils.timezone import localdate
-from datetime import datetime
-from django.contrib import messages
-
 from app.models import (
     Muster, LeaveRequest, ExpenseClaim, LoanRequest, TimeEntry,
     CustomUser, Employee, Notification, ResignationRequest
@@ -872,19 +774,11 @@ def employee_requests(request):
 
  
 #------------------------------------------------------------- Mark as read -- Notifications  #
-from django.utils.timezone import localdate
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from django.contrib import messages
-from datetime import datetime
-
 from app.models import (
     Employee, CustomUser, Muster, LeaveRequest,
     ExpenseClaim, LoanRequest, ResignationRequest,
     Notification
 )
-
 
 @login_required(login_url='/')
 @staff_member_required
@@ -1007,12 +901,6 @@ def staff_notifications(request):
 
  
 #------------------------------------------------------------- clock In #
- 
-from django.utils import timezone
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect
-from .models import TimeEntry, Employee
 
 @login_required(login_url='/')
 def clock_in(request):
@@ -1256,10 +1144,6 @@ def leave_request(request):
  
 #------------------------------------------------------------- Holidays #
  
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import Holiday, Employee, Notification
- 
 @login_required(login_url='/')
 def holidays(request):
     user = request.user
@@ -1471,7 +1355,6 @@ def verify_otp(request):
             return redirect('forgot_password')
  
     return render(request, 'verify_otp.html')
- 
  
 def reset_password_with_otp(request):
     if request.method == 'POST':
@@ -1718,14 +1601,6 @@ def task_management(request):
             'user_email': user.email
         }
     })
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
-from django.db.models import Q
-from django.db import transaction
-from datetime import datetime, timedelta
-from django.shortcuts import render
-from .models import Employee, Task, Team, CustomUser, Notification
 
 def staff_required(view_func):
     """
@@ -1737,27 +1612,6 @@ def staff_required(view_func):
         redirect_field_name=None
     )
     return actual_decorator(view_func)
-
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
-from django.db import transaction
-from django.db.models import Q
-from django.http import JsonResponse
-from django.shortcuts import render
-from datetime import datetime, timedelta # custom staff_required
-from .models import Task, Team, Employee, Notification, CustomUser
-
-
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.views.decorators.http import require_http_methods
-from django.db import transaction
-from django.db.models import Q
-from django.http import JsonResponse
-from django.shortcuts import render
-from datetime import datetime, timedelta
-
-from .models import Task, Notification, Team, Employee, CustomUser
 
 @login_required(login_url='/')
 @staff_member_required
@@ -1915,8 +1769,6 @@ def assign_task(request):
         'filter_employee_id': employee_id,
         'filter_month': month
     })
-from django.utils import timezone
-from django.db.models import Q
 
 @login_required
 def tasks_by_date(request):
@@ -1991,14 +1843,7 @@ def mark_task_complete(request, task_id):
             'status': 'error',
             'message': 'Task not found or you are not authorized'
         }, status=404)
- 
- 
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_GET
-from django.db.models import Q
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -2080,14 +1925,6 @@ def get_task_status(task, current_date):
 
 
 #------------------------------------------------------------- Expense claim #
- 
-from django.contrib.auth.decorators import login_required
-from django.utils import timezone
-from django.contrib import messages
-from django.http import JsonResponse
-from django.shortcuts import redirect
-from .models import ExpenseClaim, Notification
-
 @login_required(login_url='/')
 def submit_expense_claim(request):
     if request.method == 'POST':
@@ -2224,7 +2061,7 @@ def review_muster(request):
         }
     )
  
- 
+#------------------------------------------------------------- Reviews - Leave Requests #
 @login_required(login_url='/')
 @staff_member_required
 def review_leave(request):
@@ -2252,7 +2089,7 @@ def review_leave(request):
         }
     )
  
- 
+#------------------------------------------------------------- Reviews - Expense Claims #
 @login_required(login_url='/')
 @staff_member_required
 def review_expense(request):
@@ -2280,7 +2117,7 @@ def review_expense(request):
         }
     )
  
- 
+#------------------------------------------------------------- Reviews - Loan Requests #
 @login_required(login_url='/')
 @staff_member_required
 def review_loan(request):
@@ -2307,8 +2144,7 @@ def review_loan(request):
         'notifications': notifications,
         }
     )
- 
- 
+
 #------------------------------------------------------------- Reviews - Notification Bar #
  
 @login_required(login_url='/')
@@ -2329,7 +2165,8 @@ def review_muster_notifications(request, muster_id, action):
         Notification.objects.create(recipient=muster_request.user, message=message)
  
     return redirect('dashboard')
- 
+
+#------------------------------------------------------------- Reviews - Leave Requests - Notification Bar # 
 @login_required(login_url='/')
 @staff_member_required
 def review_leaves_notifications(request, leaves_id, action):
@@ -2360,7 +2197,8 @@ def review_leaves_notifications(request, leaves_id, action):
         Notification.objects.create(recipient=leave_request.employee, message=message)
  
     return redirect('dashboard')
- 
+
+#------------------------------------------------------------- Reviews - Expense Claims - Notification Bar #
 @login_required(login_url='/')
 @staff_member_required
 def review_expense_notifications(request, expense_id, action):
@@ -2379,7 +2217,8 @@ def review_expense_notifications(request, expense_id, action):
         Notification.objects.create(recipient=expense_claim.employee, message=message)
  
     return redirect('dashboard')
- 
+
+#------------------------------------------------------------- Reviews - Loan Requests - Notification Bar #
 @login_required(login_url='/')
 @staff_member_required
 def review_loan_notifications(request, loan_id, action):
@@ -2400,8 +2239,7 @@ def review_loan_notifications(request, loan_id, action):
     return redirect('dashboard')
  
  
-#------------------------------------------------------------- Reviews-notification bar #
- 
+#------------------------------------------------------------- Reviews-notification bar # 
 @login_required(login_url='/')
 @staff_member_required
 def user_list(request):
@@ -2431,7 +2269,7 @@ def user_list(request):
         'employee_id_filter': employee_id_filter,
     })
  
- 
+#------------------------------------------------------------- Add/Edit Users by Staff #
 @login_required(login_url='/')
 @staff_member_required
 def user_create(request):
@@ -2461,7 +2299,7 @@ def user_create(request):
     })
  
  
- 
+#------------------------------------------------------------- Edit Users by Staff #
 @login_required(login_url='/')
 @staff_member_required
 def user_edit(request, pk):
@@ -2498,7 +2336,7 @@ def user_edit(request, pk):
     })
 
  
- 
+#------------------------------------------------------------- Delete Users by Staff #
 @login_required(login_url='/')
 @staff_member_required
 def user_confirm_delete(request, pk):
@@ -2522,8 +2360,6 @@ def user_confirm_delete(request, pk):
         'current_employee': current_employee,
         'notifications': notifications
     })
- 
- 
  
 #------------------------------------------------------------- Policies #
  
@@ -2652,7 +2488,7 @@ def create_salary(request):
         'month_filter': month_filter,
     })
  
- 
+#------------------------------------------------------------- View/Edit/Delete Salaries by Staff #
 @login_required(login_url='/')
 @staff_member_required
 def view_salary(request, salary_id):
@@ -2703,12 +2539,6 @@ def delete_salary(request, salary_id):
         return redirect('salary_list')
     return render(request, 'delete_salary.html')
  
- 
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from datetime import datetime
-from .models import Salary, Employee, Notification
  
 @login_required(login_url='/')
 @staff_member_required
@@ -2845,15 +2675,7 @@ def performance_page(request):
  
  
 #------------------------------------------------------------- Working days #
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.utils import timezone
-from datetime import datetime, timedelta, date
-import calendar
-from .models import CustomUser, Employee, Muster, TimeEntry  # adjust if your models are elsewhere
 from django.db.models.functions import ExtractMonth, ExtractYear
-from django.db.models import Q
-from datetime import datetime, timedelta, date
 from django.db.models import F, ExpressionWrapper, DurationField
 
   # Mon–Fri only
@@ -3010,16 +2832,6 @@ def company_delete(request, pk):
  
  
 #------------------------------------------------------------- Task list by staff #
- 
-from datetime import datetime, timedelta
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from .models import Task, Employee, Notification, CustomUser  # adjust if needed
- 
- 
- 
- 
 from django.db.models import Prefetch
  
 @login_required(login_url='/')
@@ -3179,25 +2991,6 @@ def employee_list(request):
         'notifications': notifications,
         'employee_id_filter': employee_id_filter,
     })
- 
- 
- 
- 
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-from .forms import EmployeeProfileForm, EmployeeMediaForm
-from .models import CustomUser, Employee, Notification
-
-
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404
-from .forms import EmployeeProfileForm, EmployeeMediaForm
-from .models import CustomUser, Employee, Notification
 
 @login_required(login_url='/')
 @staff_member_required
@@ -3253,12 +3046,6 @@ def upload_employee_media(request):
  
     return render(request, 'upload_media.html', {'form': form})
  
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import EmployeeMedia, Employee
-from .forms import EmployeeMediaForm
- 
 # --- Edit Profile Picture ---
 @login_required(login_url='/')
 def edit_profile_picture(request):
@@ -3304,22 +3091,7 @@ def edit_cover_picture(request):
         form = EmployeeMediaForm(instance=employee_media)
  
     return render(request, 'profile.html', {'form': form})
- 
- 
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import Employee, Notification
-from .forms import EmployeeProfileForm
 
-from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-
-from .models import Employee, EmployeeMedia, Notification
-from .forms import EmployeeProfileForm, EmployeeMediaForm
 
 @login_required(login_url='/')
 @staff_member_required
@@ -3378,9 +3150,6 @@ def employee_delete(request, pk):
         'current_employee': current_employee,
         'notifications': notifications
     })
- 
- 
- 
  
 #------------------------------------------------------------- Holidays adding by staff #
  
@@ -3592,15 +3361,7 @@ def leave_delete(request, pk):
         'notifications': notifications
     })
  
- 
- 
- 
- 
 # ----------------------------------------------Main views  HR4U content
-
-
-
-
 @login_required
 def hr_services_page(request):
     user = request.user
@@ -3677,27 +3438,14 @@ def assign_manager(ticket, company):
         except User.DoesNotExist:
             ticket.manager = None
 
-from django.utils.timezone import now
-from datetime import timedelta
-
-
 @login_required
 def hr4u_dashboard(request):
     """Main HR4U dashboard view"""
     return render(request, 'HR4U.html')
- 
-from datetime import timedelta
-from django.shortcuts import render, redirect
-from django.utils.timezone import now
-from django.contrib.auth.decorators import login_required
-from django.core.mail import send_mail
+
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
-
-from app.models import HelpDeskTicket, Employee, HRContact
-from app.forms import HelpDeskTicketForm  # Assuming you have this form
-
 
 @login_required
 def help_desk_page(request):
@@ -3861,14 +3609,6 @@ def help_desk_page(request):
     })
 
 #---------------------------- Employee Self Service #
- 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404
-from .models import Employee
-from .forms import PersonalInfoForm, ProfessionalInfoForm  # Make sure forms.py has these
-from django.contrib import messages
-from django.contrib import messages
- 
 @login_required(login_url='/')
 def employee_self_service(request):
     employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
@@ -3941,27 +3681,12 @@ def clear_single_notification(request, notification_id):
     messages.success(request, "Notification cleared successfully.")
     return redirect('dashboard')'''
 
-from django.contrib import messages
-from django.views.decorators.http import require_POST
 @login_required(login_url='/')
 @require_POST
 def clear_all_notifications(request):
     Notification.objects.filter(recipient=request.user).delete()
     messages.success(request, "All notifications cleared successfully.")
     return redirect('dashboard')
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import Team, CustomUser
-from .forms import TeamForm
-
-# views.py
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import Team
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import Team
 
 @login_required
 def list_teams(request):
@@ -3977,14 +3702,6 @@ def list_teams(request):
         'teams_created': teams_created,
         'teams_part_of': teams_part_of
     })
-
-
-
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.db import transaction
-from .models import Team, CustomUser
 
 @login_required
 def create_team(request):
@@ -4044,9 +3761,6 @@ def create_team(request):
     return render(request, 'create_team.html', {
         'employees': employees
     })
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import Team, CustomUser
 
 @login_required
 def edit_team(request, team_id):
@@ -4081,9 +3795,6 @@ def delete_team(request, team_id):
     
     return render(request, 'delete_team.html', {'team': team})
 
-from django.shortcuts import render, get_object_or_404
-from .models import Team
-
 @login_required
 def team_detail(request, team_id):
     team = get_object_or_404(Team, id=team_id)
@@ -4093,13 +3804,7 @@ def team_detail(request, team_id):
         'members': members
     })
 
-
-
-
 #------------------------------------------------------------- Training#
-from .models import TrainingTopic
-from .forms import TrainingTopicForm
-
 # Check if user is HR or Manager
 def is_hr_or_manager(user):
     return hasattr(user, 'role') and user.role in ['HR', 'Manager']
@@ -4179,11 +3884,8 @@ def delete_training(request, pk):
         return redirect('training')
 
     return render(request, 'delete_training.html', {'training': training})
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
-from django.utils import timezone
-from .models import LoginLog, Employee, Notification
+
+#------------------------------------------------------------- Login Logs #
 
 @login_required(login_url='/')
 @staff_member_required
@@ -4222,30 +3924,8 @@ def hr_login_logs(request):
 
 
 #------------------------------------------------------------- Resignation Request #
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.views.decorators.http import require_POST
-from django.contrib import messages
-from django.utils import timezone
-
-from .models import ResignationRequest, Notification, HRContact
-from app.models import Employee
 import base64
 from django.core.files.base import ContentFile
-
-from django.utils import timezone
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from .models import ResignationRequest, Notification
-
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.utils import timezone
-from .models import ResignationRequest, Notification
-
 
 @login_required
 def resignation_request_view(request):
@@ -4322,13 +4002,6 @@ def resignation_request_view(request):
 
     return render(request, 'resignation.html', {'requests': user_requests})
 
-from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
-from django.views.decorators.http import require_POST
-from .models import ResignationRequest, Notification
-
 @login_required(login_url='/')
 @staff_member_required
 def review_resignation_request(request, resignation_id, action):
@@ -4367,12 +4040,6 @@ def review_resignation_request(request, resignation_id, action):
 
 
 #------------------------------------------------------------- Career development #
- 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from .models import CareerResource, SkillCategory
-from .forms import CareerResourceForm, SkillCategoryForm
- 
 @login_required(login_url='/')
 def career_development(request):
     categories = SkillCategory.objects.all()
@@ -4405,7 +4072,6 @@ def career_development(request):
         'category_form': category_form,
         'can_edit': can_edit,
     })
- 
  
  
 @login_required
@@ -4454,11 +4120,6 @@ def edit_resource(request, slug):
         'form': form,
         'resource': resource
     })
-# views.py
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from .models import Company_check
-from .forms import CompanyLogoForm
 
 @login_required
 def manage_logo(request):
