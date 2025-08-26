@@ -128,12 +128,7 @@
                 <div class="card-header bg-danger text-white">
                     <h2 class="mb-0 h5">Are you sure you want to delete this salary record?</h2>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <p class="mb-2"><strong>Employee:</strong> {{ salary.employee }}</p>
-                        <p class="mb-0"><strong>Month:</strong> {{ salary.month }}</p>
-                    </div>
-                    
+                    <br><br>
                     <form method="POST" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger">Yes, delete</button>

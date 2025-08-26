@@ -150,7 +150,6 @@ TEMPLATES = [
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }'''
- 
 # Database
 DATABASES = {
     'default': {
