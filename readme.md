@@ -257,14 +257,6 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
 - Update or replace existing logos  
 - Delete logos when needed  
 
- **New Excel export feature:** Added Excel Export functionality for employee data:  
-- Allows HR and Managers to download all employee records in `.xlsx` format  
-- Provides structured and portable data for reporting and compliance  
-   ```bash
-   pip install openpyxl
-   # (optional for larger sheets or styling)
-   pip install XlsxWriter
-
  **Working Days:** Modified a Working Days module to track employee attendance and leave details.
 - Displays Employee ID, Name, and monthly attendance summary
 - Calculates working days = (regular muster count + approved muster requests)
