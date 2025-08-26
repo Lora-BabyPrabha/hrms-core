@@ -3869,42 +3869,53 @@ from django.contrib import messages
 @login_required(login_url='/')
 def employee_self_service(request):
     employee = get_object_or_404(Employee, employee_id=request.user.employee_id)
- 
+    user = request.user  # CustomUser
+
     if request.method == 'POST':
         if 'personal_submit' in request.POST:
             personal_form = PersonalInfoForm(request.POST, instance=employee)
             professional_form = ProfessionalInfoForm(instance=employee)
- 
+
             if personal_form.is_valid():
                 if personal_form.has_changed():
                     changed_fields = personal_form.changed_data
                     personal_form.save()
+
+                    # 🔹 Sync with CustomUser
+                    user.first_name = employee.first_name
+                    user.last_name = employee.last_name
+                    user.email = personal_form.cleaned_data.get("email", user.email)  # if email is part of the form
+                    user.company = employee.company
+                    user.save()
+
                     messages.success(request, "Updated personal info: " + ", ".join(changed_fields))
                 else:
                     messages.info(request, "No changes detected in personal information.")
- 
+
         elif 'professional_submit' in request.POST:
             professional_form = ProfessionalInfoForm(request.POST, instance=employee)
             personal_form = PersonalInfoForm(instance=employee)
- 
+
             if professional_form.is_valid():
                 if professional_form.has_changed():
                     changed_fields = professional_form.changed_data
                     professional_form.save()
+                    # (optional: sync any overlapping fields here too)
                     messages.success(request, "Updated professional info: " + ", ".join(changed_fields))
                 else:
                     messages.info(request, "No changes detected in professional information.")
- 
+
     else:
         personal_form = PersonalInfoForm(instance=employee)
         professional_form = ProfessionalInfoForm(instance=employee)
- 
+
     return render(request, 'employee_self_service.html', {
         'employee': employee,
         'user': request.user,
         'personal_form': personal_form,
         'professional_form': professional_form,
     })
+
 @login_required
 def benefits_compensation(request):
     employee = get_object_or_404(EmployeeProfile, user=request.user)
