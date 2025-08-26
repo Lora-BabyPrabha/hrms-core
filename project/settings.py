@@ -144,15 +144,15 @@ TEMPLATES = [
     },
 ]
 
-DATABASES = {
+'''DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
-}
+}'''
 
 # Database
-'''DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hrms_db', 
@@ -165,7 +165,7 @@ DATABASES = {
             'charset': 'utf8mb4',
         },
     }
-}'''
+}
 # Password Validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -214,7 +214,7 @@ LOGOUT_REDIRECT_URL = '/'
 
 # Default PK
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-'''DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hrms_db', 
@@ -227,7 +227,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
             'charset': 'utf8mb4',
         },
     }
-}'''
+}
 # Password Validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
