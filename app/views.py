@@ -258,11 +258,11 @@ def unlock_user(request, request_id):
 
     # ✅ Send email to user
     subject = "Your AIHR4U Account Has Been Unlocked"
-    message = f"Hello {user_obj.name},\n\nYour account has been unlocked by HR/Manager. You can now log in to your account.\n\nRegards,\nAIHR4U Team"
+    message = f"Hello {user_obj.first_name},\n\nYour account has been unlocked by HR/Manager. You can now log in to your account.\n\nRegards,\nAIHR4U Team"
     recipient_list = [user_obj.email]  # make sure your User model has email field
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
 
-    messages.success(request, f"{user_obj.name} has been unlocked and notified via email.")
+    messages.success(request, f"{user_obj.first_name} has been unlocked and notified via email.")
     return redirect("unlock_requests")
 
 
@@ -1327,7 +1327,9 @@ def generate_payslip_pdf(request, employee_id):
     to_month = request.GET.get('to_month')
 
     if not from_month and not to_month:
-        latest_payslip = Salary.objects.filter(employee=employee, employee__company=company).order_by('-month').first()
+        latest_payslip = Salary.objects.filter(
+            employee=employee, employee__company=company
+        ).order_by('-month').first()
         if latest_payslip:
             from_month = latest_payslip.month.strftime('%Y-%m')
             to_month = latest_payslip.month.strftime('%Y-%m')
@@ -1353,14 +1355,14 @@ def generate_payslip_pdf(request, employee_id):
             employee__company=company
         ).order_by('-month')[:1]
 
-    # ✅ Use the company logo dynamically if available, else fallback
-    logo_url = request.build_absolute_uri(company.logo.url) if company.logo else request.build_absolute_uri(static('salary_logo_40.png'))
+    # ✅ FIXED: remove fallback logo, only use uploaded one
+    logo_url = request.build_absolute_uri(company.logo.url) if company.logo else None
 
     html_string = render_to_string('all_payslips.html', {
         'employee': employee,
         'payslips': payslips,
         'logo_url': logo_url,   # watermark
-        'company': company,     # in case you want more details
+        'company': company,
     })
 
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
@@ -1368,6 +1370,7 @@ def generate_payslip_pdf(request, employee_id):
     response['Content-Disposition'] = f'attachment; filename="{employee.user.username}_payslips.pdf"'
 
     return response
+
 
  
 #------------------------------------------------------------- Tax Deduction #

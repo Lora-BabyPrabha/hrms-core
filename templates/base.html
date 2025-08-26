@@ -420,7 +420,7 @@
                                 <div id="profileDropdownMenu" class="dropdown-menu dropdown-menu-light dropdown-menu-end text-center" style="width: 250px;">
                                     <a href="/profile" id="profileGreeting" class="dropdown-item">
                                         <i class="fas fa-user-circle me-2"></i>
-                                        Hello, {{ user.get_full_name|default:user.username }}
+                                        Hello, {{ user.employee.first_name }}!
                                     </a>
                                     <hr id="divider1" class="dropdown-divider">
                                     <a href="/profile" id="profileLink" class="dropdown-item">

@@ -687,7 +687,7 @@ form button[type="submit"]:focus {
                             {% if request.user.company.logo %}
                                 <img src="{{ request.user.company.logo.url }}" alt="Company Symbol">
                             {% else %}
-                                <img src="{% static 'images/default-logo.png' %}" alt="Default Logo">
+                                <h3>Company Logo</h3>
                             {% endif %}
                         </div>
 
@@ -696,7 +696,7 @@ form button[type="submit"]:focus {
                             {% if request.user.company.logo %}
                                 <img src="{{ request.user.company.logo.url }}" alt="AIHR4U Logo" width="150">
                             {% else %}
-                                <img src="{% static 'images/default-logo.png' %}" alt="Default Logo" width="150">
+                               <h5>Company Logo</h5>
                             {% endif %}
                         </div>
 

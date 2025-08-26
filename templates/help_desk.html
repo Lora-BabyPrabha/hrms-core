@@ -42,7 +42,7 @@
             <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M2 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
             <path d="M2.5 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z"/>
         </svg>
-        HR Services
+        HR Contact
     </a>
 </li>
 {% endif %}
@@ -161,9 +161,9 @@
             <tr>
                 <td>{{ ticket.get_category_display }}</td>
                 <td>{{ ticket.issue_type }}</td>
-                <td>{{ ticket.assigned_to.employee.name|default:"-" }}</td>
-                <td>{{ ticket.escalate_to_hr.employee.name|default:"-" }}</td>
-                <td>{{ ticket.manager.employee.name|default:"-" }}</td>
+                <td>{{ ticket.assigned_to.employee.first_name|default:"-" }}</td>
+                <td>{{ ticket.escalate_to_hr.employee.first_name|default:"-" }}</td>
+                <td>{{ ticket.manager.employee.first_name|default:"-" }}</td>
                 <td>{{ ticket.get_status_display }}</td>
                 <td>{{ ticket.created_at|date:"d M Y, H:i" }}</td>
                 <td>
@@ -202,7 +202,7 @@
             <tr>
                 <td>{{ ticket.get_category_display }}</td>
                 <td>{{ ticket.issue_type }}</td>
-                <td>{{ ticket.employee.employee.name }}</td>
+                <td>{{ ticket.employee.employee.first_name }}</td>
                 <td>{{ ticket.description|truncatewords:10 }}</td>
                 <td>
                     <form method="POST">{% csrf_token %}
@@ -234,7 +234,7 @@
             <tr>
                 <td>{{ ticket.get_category_display }}</td>
                 <td>{{ ticket.issue_type }}</td>
-                <td>{{ ticket.employee.employee.name }}</td>
+                <td>{{ ticket.employee.employee.first_name }}</td>
                 <td>{{ ticket.description|truncatewords:10 }}</td>
                 <td>
                     <form method="POST">{% csrf_token %}
@@ -265,7 +265,7 @@
             <tr>
                 <td>{{ ticket.get_category_display }}</td>
                 <td>{{ ticket.issue_type }}</td>
-                <td>{{ ticket.employee.employee.name }}</td>
+                <td>{{ ticket.employee.employee.first_name }}</td>
                 <td>{{ ticket.description|truncatewords:10 }}</td>
             </tr>
             {% endfor %}
