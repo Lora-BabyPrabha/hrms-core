@@ -1073,13 +1073,6 @@ def muster_status(request):
  
 #------------------------------------------------------------- Leave Request #
  
-from datetime import datetime, timedelta
-from django.contrib import messages
-from django.shortcuts import redirect, render
-from django.contrib.auth.decorators import login_required
-from .models import Leave, LeaveRequest, Employee, Notification
-
-
 @login_required(login_url='/')
 def leave_balance(request):
     user = request.user
@@ -1097,16 +1090,16 @@ def leave_balance(request):
     ).order_by('-created_at')
 
     leave_messages = []
-    show_no_leave_message = False
+    no_leave_message = None
 
     if leave:
-        # Check if all three are 0
+        # If all three are 0 -> show HR contact message
         if (
             leave.advance_privilege_leave == 0 and
             leave.sick_leave == 0 and
             leave.casual_leave == 0
         ):
-            show_no_leave_message = True
+            no_leave_message = "You currently have no leave record. Please contact your Manager or HR."
         else:
             # Otherwise show per-type messages
             if leave.advance_privilege_leave == 0:
@@ -1115,6 +1108,9 @@ def leave_balance(request):
                 leave_messages.append("Your Sick Leaves are completed.")
             if leave.casual_leave == 0:
                 leave_messages.append("Your Casual Leaves are completed.")
+    else:
+        # No Leave object at all
+        no_leave_message = "You currently have no leave record. Please contact your Manager or HR."
 
     return render(
         request,
@@ -1125,11 +1121,9 @@ def leave_balance(request):
             'employee': employee,
             'notifications': notifications,
             'leave_messages': leave_messages,
-            'show_no_leave_message': show_no_leave_message,
-            'no_leave_message': "You currently have no leave balance. Please contact your Manager or HR to have it added."
+            'no_leave_message': no_leave_message
         }
     )
-
 
 @login_required(login_url='/')
 def leave_request(request):
@@ -1154,7 +1148,7 @@ def leave_request(request):
             leave.sick_leave == 0 and
             leave.casual_leave == 0
         ):
-            messages.error(request, "You have no leave balance. Cannot submit request.")
+            messages.error(request, "You currently have no leave record. Please contact your Manager or HR.")
             return redirect('leave_balance')
 
         # Block if chosen leave type has 0 balance
