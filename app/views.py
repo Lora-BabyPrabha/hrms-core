@@ -2122,26 +2122,61 @@ def review_leave(request):
     if not request.user.is_staff:
         return HttpResponseForbidden("You are not authorized to view this page.")
    
-    leaves = LeaveRequest.objects.all()
     if request.method == 'POST':
         leave_id = request.POST.get('leave_id')
         status = request.POST.get('status')
         try:
-            leave = LeaveRequest.objects.get(id=leave_id)
-            leave.status = status
-            leave.save()
+            leave_request = LeaveRequest.objects.get(id=leave_id)
+            leave_balance = Leave.objects.get(employee=leave_request.employee)
+
+            if status == "Approved":
+                # Deduct balance
+                requested_leave_days = leave_balance.update_balance(
+                    leave_request.leave_type,
+                    leave_request.days_requested,
+                    leave_request.start_date,
+                    leave_request.end_date
+                )
+
+                if requested_leave_days > 0:
+                    leave_request.days_requested = requested_leave_days
+
+                leave_request.status = "Approved"
+                leave_request.save()
+
+                Notification.objects.create(
+                    recipient=leave_request.employee,
+                    message=f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
+                )
+
+            elif status == "Rejected":
+                leave_request.status = "Rejected"
+                leave_request.save()
+
+                Notification.objects.create(
+                    recipient=leave_request.employee,
+                    message=f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been rejected."
+                )
+
         except LeaveRequest.DoesNotExist:
-            pass
+            messages.error(request, "Leave request not found.")
+        except Leave.DoesNotExist:
+            messages.error(request, "Leave balance record not found for this employee.")
+
         return redirect('staff_notifications')
-   
+
+    # GET flow
     leaves = LeaveRequest.objects.all()
-    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
- 
+    notifications = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).order_by('-created_at')
+
     return render(request, 'staff_notifications.html', {
         'leaves': leaves,
         'notifications': notifications,
-        }
-    )
+    })
+
  
 #------------------------------------------------------------- Reviews - Expense Claims #
 @login_required(login_url='/')
