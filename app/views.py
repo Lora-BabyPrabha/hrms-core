@@ -635,7 +635,7 @@ def employee_requests(request):
     users_qs = CustomUser.objects.filter(company=company)
     
     muster_requests = Muster.objects.filter(user__company=company, date__date=today)
-    leave_requests = LeaveRequest.objects.filter(employee__company=company, start_date=today)
+    leave_requests = LeaveRequest.objects.filter(employee__company=company, created_at__date=today)
     expense_claims = ExpenseClaim.objects.filter(employee__company=company, date=today)
     loan_requests = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
     time_entries = TimeEntry.objects.filter(user__company=company, clock_in_time__date=today)
@@ -790,7 +790,7 @@ def staff_notifications(request):
     # Base querysets
     users_qs = CustomUser.objects.filter(company=company)
     musters = Muster.objects.filter(user__company=company, date__date=today)
-    leaves = LeaveRequest.objects.filter(employee__company=company, start_date=today)
+    leaves = LeaveRequest.objects.filter(employee__company=company, created_at__date=today)
     expenses = ExpenseClaim.objects.filter(employee__company=company, date=today)
     pendings_loan = LoanRequest.objects.filter(employee__company=company, date_requested__date=today)
 
