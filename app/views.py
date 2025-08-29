@@ -1451,7 +1451,7 @@ def reset_password_with_otp(request):
                 request.session.pop(key, None)
  
             messages.success(request, "Password reset successful. You can now log in with your new password.")
-            return redirect('login')
+            return redirect('index')
         except get_user_model().DoesNotExist:
             messages.error(request, "No user found with this email address.")
             return redirect('forgot_password')
@@ -1483,7 +1483,7 @@ def reset_password(request):
                     user.save()
                     update_session_auth_hash(request, user)
                     messages.success(request, "Your password has been updated successfully.")
-                    return redirect('login')
+                    return redirect('index')
                 else:
                     messages.error(request, "Old password is incorrect.")
             except CustomUser.DoesNotExist:
