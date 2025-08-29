@@ -2129,17 +2129,18 @@ def review_leave(request):
             leave_request = LeaveRequest.objects.get(id=leave_id)
             leave_balance = Leave.objects.get(employee=leave_request.employee)
 
+            # ✅ Approve case
             if status == "Approved":
-                # Deduct balance
-                requested_leave_days = leave_balance.update_balance(
-                    leave_request.leave_type,
-                    leave_request.days_requested,
-                    leave_request.start_date,
-                    leave_request.end_date
-                )
+                if leave_request.status != "Approved":  # avoid double deduction
+                    requested_leave_days = leave_balance.update_balance(
+                        leave_request.leave_type,
+                        leave_request.days_requested,
+                        leave_request.start_date,
+                        leave_request.end_date
+                    )
 
-                if requested_leave_days > 0:
-                    leave_request.days_requested = requested_leave_days
+                    if requested_leave_days > 0:
+                        leave_request.days_requested = requested_leave_days
 
                 leave_request.status = "Approved"
                 leave_request.save()
@@ -2149,7 +2150,18 @@ def review_leave(request):
                     message=f"Your Leave request from {leave_request.start_date} to {leave_request.end_date} has been approved."
                 )
 
+            # ✅ Reject case
             elif status == "Rejected":
+                # If previously approved → restore balance
+                if leave_request.status == "Approved":
+                    if leave_request.leave_type == "advance_privilege":
+                        leave_balance.advance_privilege_leave += leave_request.days_requested
+                    elif leave_request.leave_type == "sick":
+                        leave_balance.sick_leave += leave_request.days_requested
+                    elif leave_request.leave_type == "casual":
+                        leave_balance.casual_leave += leave_request.days_requested
+                    leave_balance.save()
+
                 leave_request.status = "Rejected"
                 leave_request.save()
 
@@ -2177,7 +2189,6 @@ def review_leave(request):
         'notifications': notifications,
     })
 
- 
 #------------------------------------------------------------- Reviews - Expense Claims #
 @login_required(login_url='/')
 @staff_member_required
