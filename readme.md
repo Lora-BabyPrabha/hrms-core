@@ -292,5 +292,15 @@ HR4U v2.0 introduces a multi-company login system, allowing multiple organizatio
 **Implement Sidebar & Navigation:** Update sidebar with links to new modules and pages such as Training, FAQ, Contact Us, and Task Management, etc for easy navigation.
 
 **Update Dependencies:** Maintain and update requirements.txt with all installed libraries.   
-```bash
-pip freeze > requirements.txt
+      ```bash
+      pip freeze > requirements.txt
+
+## PWA & Offline Support in HR4U
+
+The HR4U Project is now enhanced with Progressive Web App (PWA) features, making it installable on both desktop and mobile, and fully functional even when offline.
+
+**Installable Application:** 
+- HR4U can now be installed directly from the browser onto mobile or desktop devices.
+
+**Offline Availability:**
+- Cached pages, forms, and key data remain accessible even without an internet connection.
