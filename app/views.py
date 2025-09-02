@@ -1072,7 +1072,6 @@ def muster_status(request):
  
  
 #------------------------------------------------------------- Leave Request #
- 
 @login_required(login_url='/')
 def leave_balance(request):
     user = request.user
@@ -1174,6 +1173,19 @@ def leave_request(request):
             if current_day.weekday() < 5:
                 weekdays_requested += 1
             current_day += timedelta(days=1)
+
+        # ✅ NEW: Prevent applying more leave days than balance
+        if leave_type == "advance_privilege" and weekdays_requested > leave.advance_privilege_leave:
+            messages.error(request, f"You only have {leave.advance_privilege_leave} Advance Privilege Leave days left, but you requested {weekdays_requested}.")
+            return redirect('leave_balance')
+
+        if leave_type == "sick" and weekdays_requested > leave.sick_leave:
+            messages.error(request, f"You only have {leave.sick_leave} Sick Leave days left, but you requested {weekdays_requested}.")
+            return redirect('leave_balance')
+
+        if leave_type == "casual" and weekdays_requested > leave.casual_leave:
+            messages.error(request, f"You only have {leave.casual_leave} Casual Leave days left, but you requested {weekdays_requested}.")
+            return redirect('leave_balance')
 
         # Save leave request
         leave_request = LeaveRequest(
@@ -1439,7 +1451,7 @@ def reset_password_with_otp(request):
                 request.session.pop(key, None)
  
             messages.success(request, "Password reset successful. You can now log in with your new password.")
-            return redirect('login')
+            return redirect('index')
         except get_user_model().DoesNotExist:
             messages.error(request, "No user found with this email address.")
             return redirect('forgot_password')
@@ -1471,7 +1483,7 @@ def reset_password(request):
                     user.save()
                     update_session_auth_hash(request, user)
                     messages.success(request, "Your password has been updated successfully.")
-                    return redirect('login')
+                    return redirect('index')
                 else:
                     messages.error(request, "Old password is incorrect.")
             except CustomUser.DoesNotExist:
