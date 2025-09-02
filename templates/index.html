@@ -2,39 +2,55 @@
 <html lang="en">
 <head>
     {% load static %}
-    
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>AIHR4U</title>
+               
+                    <!-- PWA Manifest -->
+                <link rel="manifest" href="{% static 'manifest.json' %}">
+                <meta name="theme-color" content="#4CAF50">
+               
+                    <!-- Apple PWA Support -->
+                <link rel="apple-touch-icon" href="{% static 'images/icon-192.png' %}">
+                <meta name="apple-mobile-web-app-capable" content="yes">
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+               
+                    <!-- Bootstrap CSS -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+               
+                    <!-- Custom CSS -->
+                <link rel="stylesheet" href="{% static 'css/index.css' %}">
     <title>AIHR4U</title>
-    
+   
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+   
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+   
     <!-- Typed.js -->
     <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-    
+   
     <!-- jQuery + jQuery UI for Autocomplete -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-
+ 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/index.css' %}"><style>
     .ui-menu-item-wrapper:hover {
         background-color: #F0F8F8 !important;
         color: #333333;
     }
-
+ 
     .ui-state-active {
         background-color: #F0F8F8 !important;
         color: #333333 !important;
         margin-top: 2px !important;
         border-radius: 5px !important;
     }
-
+ 
     /* 👇 Add this */
     .ui-menu-item-wrapper:focus,
     .ui-menu-item-wrapper:active {
@@ -43,15 +59,15 @@
         outline: none !important;
         box-shadow: none !important;
     }
-
+ 
     input:focus,
     button:focus {
         outline: none;
         box-shadow: none;
     }
 </style>
-
-
+ 
+ 
 </head>
 <body>
     <div class="main-container">
@@ -59,17 +75,17 @@
             <div class="hero-section">
                 <h1><span id="elementID"></span></h1>
             </div>
-            
+           
             <div class="form-section">
                 <div class="logo-container">
                     <img src="{% static 'images/lora-log.png' %}" alt="LoRa Logo">
                 </div>
-                
+               
                 <form method='POST' action="/" class="needs-validation" novalidate>
                     {% csrf_token %}
                     <div class="mb-4">
                         <label class="form-label fw-medium">Enter Your Company Name</label>
-                        <input 
+                        <input
                             class="form-control"
                             id="company_name"
                             name="company_name"
@@ -86,16 +102,16 @@
             </div>
         </div>
     </div>
-
+ 
     <footer>
         <div class="container">
             <p class="mb-0">Copyright © 2024 - All rights Reserved by AIHR4U</p>
         </div>
     </footer>
-
+ 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
+ 
     <!-- Typed.js Init -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -108,7 +124,7 @@
             });
         });
     </script>
-
+ 
     <!-- jQuery UI Autocomplete Init -->
     <script>
         $(function () {

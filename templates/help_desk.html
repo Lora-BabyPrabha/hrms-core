@@ -80,7 +80,7 @@
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">HR Support</div>
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" onsubmit="alert('HR Ticket raised successfully ✅')">
                 {% csrf_token %}
                 {{ hr_form.non_field_errors }}
                 <div class="row">
@@ -101,7 +101,7 @@
     <div class="card mb-4">
         <div class="card-header bg-success text-white">IT Support</div>
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" onsubmit="alert('IT Ticket raised successfully ✅')">
                 {% csrf_token %}
                 {{ it_form.non_field_errors }}
                 <div class="row">
@@ -120,9 +120,9 @@
 
     <!-- Asset Ticket Form -->
     <div class="card mb-4">
-        <div class="card-header bg-warning text-dark">Asset</div>
+        <div class="card-header bg-warning text-white">Asset</div>
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" onsubmit="alert('Asset Ticket raised successfully ✅')">
                 {% csrf_token %}
                 {{ asset_form.non_field_errors }}
                 <div class="row">
