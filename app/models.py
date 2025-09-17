@@ -596,7 +596,7 @@ class ResignationRequest(models.Model):
     resignation_letter = models.FileField(upload_to='resignation_letters/', blank=True, null=True)
     signature_data = models.TextField(help_text="Base64 image of signature", blank=True, null=True)
     agreement = models.BooleanField(default=False)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -615,6 +615,7 @@ from django.utils.text import slugify
  
 class SkillCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    company = models.ForeignKey('app.Company_check', on_delete=models.CASCADE, null=True, blank=True)
  
     def __str__(self):
         return self.name

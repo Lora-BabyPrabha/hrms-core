@@ -101,7 +101,7 @@
         <h5 class="fw-bold text-dark mb-3"><i class="bi bi-journal-plus"></i> New Career Resource</h5>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-            {{ form.as_p }}
+            {{ resource_form.as_p }}
             <button type="submit" name="add_resource" class="btn btn-primary" style="background-color:#0a3d62; border-color:#0a3d62;">
                 Save
             </button>
@@ -126,8 +126,7 @@
         {% endif %}
 
         <div class="row g-3">
-            {% for skill in resources %}
-                {% if skill.category == category %}
+            {% for skill in category.resources.all %}
                 <div class="col-md-4 col-sm-6">
                     <div class="card resource-card h-100 shadow-sm border-0">
                         <div class="card-body d-flex flex-column">
@@ -145,7 +144,6 @@
                         </div>
                     </div>
                 </div>
-                {% endif %}
             {% endfor %}
         </div>
 

@@ -379,7 +379,7 @@
             reasonBadges.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             
-            const reason = this.getAttribute('data-reason');
+            const reason = this.getAttribute('data-value');
             document.getElementById('resignationReason').value = reason;
             document.getElementById('preview-reason').textContent = this.textContent;
             

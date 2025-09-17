@@ -115,20 +115,26 @@ def loginview(request):
         employee_id = request.POST.get('username')
         password = request.POST.get('password')
 
+        user_obj = None
         try:
             user_obj = User.objects.get(employee_id=employee_id)
         except User.DoesNotExist:
-            return render(request, 'login.html', {
-                'message': 'User not found',
-                'company_id': company_id
-            })
+            # Don't return here, just let it fall through to show generic message
+            pass
 
-        # Company restriction
-        if str(user_obj.company_id) != str(company_id):
-            return render(request, 'login.html', {
-                'message': 'You are not authorized for this company',
-                'company_id': company_id
-            })
+        # Validate only if user exists
+        if user_obj:
+            # Check company and password together
+            if str(user_obj.company_id) == str(company_id) and user_obj.check_password(password):
+                # login user
+                login(request, user_obj)
+                return redirect("dashboard")
+
+        # If anything fails, return generic error
+        return render(request, 'login.html', {
+            'message': 'The Employee ID or Password is incorrect. Please check and try again.',
+            'company_id': company_id
+        })
 
         # ✅ Account lock check
         if hasattr(user_obj, "check_lock_status") and user_obj.check_lock_status():
@@ -4047,7 +4053,7 @@ def resignation_request_view(request):
     if request.method == 'POST':
         # ✅ Check the last resignation request status
         last_request = user_requests.first()
-        if last_request and last_request.status in ['pending', 'accepted']:
+        if last_request and last_request.status in ['Pending', 'Approved']:
             messages.error(request, "You cannot submit a new resignation request until your previous one is rejected.")
             return redirect('resignation_request')
 
@@ -4154,7 +4160,7 @@ def review_resignation_request(request, resignation_id, action):
 #------------------------------------------------------------- Career development #
 @login_required(login_url='/')
 def career_development(request):
-    categories = SkillCategory.objects.all()
+    categories = SkillCategory.objects.filter
     resources = CareerResource.objects.filter(company=request.user.company)
     can_edit = request.user.role in ['HR', 'Manager']
  
@@ -4174,7 +4180,9 @@ def career_development(request):
         elif 'add_category' in request.POST:
             category_form = SkillCategoryForm(request.POST)
             if category_form.is_valid():
-                category_form.save()
+                category = category_form.save(commit=False)
+                category.company = request.user.company   # assign company
+                category.save()
                 return redirect('career_development')
  
     return render(request, 'career_development.html', {

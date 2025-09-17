@@ -32,18 +32,30 @@
             <hr class="col-8">
             <p class="text pb-3">AIHR4U where AI meets your workforce.</p>
 
-            <form action="" method="POST">
+            <form action="" method="POST" autocomplete="off">
                 {% csrf_token %}
-
+                <input type="text" name="fakeuser" id="fakeuser" style="display:none" autocomplete="username">
+               <input type="password" name="fakepass" id="fakepass" style="display:none" autocomplete="new-password">
                 <div class="col-8 mb-3">
                     <label class="form-label">Employee ID</label>
-                    <input class="form-control" type="text" id="username" name="username" placeholder="Employee ID" required>
+                    <input class="form-control" type="text" id="username" name="username" placeholder="Employee ID" required autocomplete="new-password">
                 </div>
-
                 <div class="col-8 mb-3">
                     <label class="form-label">Password</label>
-                    <input class="form-control" type="password" id="password" name="password" placeholder="Password" required>
+                    <input class="form-control" 
+                        type="password" 
+                        id="secrete" 
+                        name="password" 
+                        placeholder="Password" 
+                        readonly 
+                        onfocus="this.removeAttribute('readonly');"
+                        required 
+                        oncopy="return false" 
+                        onpaste="return false" 
+                        oncut="return false"
+                        autocomplete="new-password">
                 </div>
+
 
                 <input type="hidden" name="company_id" value="{{ company_id }}">
 
